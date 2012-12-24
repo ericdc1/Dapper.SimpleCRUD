@@ -3,7 +3,7 @@ Dapper.SimpleCRUD - simple CRUD helpers for Dapper
 
 Features
 --------
-Dapper.SimpleCRUD is a [single file](https://github.com/ericdc1/dapper-dot-net/blob/master/Dapper.SimpleCRUD/SimpleCRUD.cs) you can drop in to your project that will extend your IDbConnection interface.
+Dapper.SimpleCRUD is a [single file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD/SimpleCRUD.cs) you can drop in to your project that will extend your IDbConnection interface.
 
 The existing Dapper extensions did not fit my ideal pattern. I wanted simple CRUD operations with smart defaults without anything extra. I also wanted to have models with additional properties that did not directly map to the database. For example - a FullName property that combines FirstName and LastName in its getter - and not add FullName to the Insert and Update statements.
 
