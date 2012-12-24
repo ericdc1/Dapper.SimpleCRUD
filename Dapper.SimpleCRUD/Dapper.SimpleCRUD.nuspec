@@ -1,0 +1,34 @@
+﻿<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>Dapper.SimpleCRUD</id>
+    <version>1.0.0</version>
+    <title>Dapper.SimpleCRUD</title>
+    <authors>Eric Coffman</authors>
+    <owners>Eric Coffman</owners>
+    <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
+    <projectUrl>http://github.com/ericdc1/Dapper.SimpleCRUD/</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>
+      Simple Get, GetList, Insert, Update, and Delete extensions for Dapper. Uses smart defaults for attribute free classes but can be overridden as needed.
+	  By default uses Id column as the primary key but this can be overridden with an attribute
+	  By default queries the table matching the class name but this can be overridden with an attribute 
+    </description>
+    <summary>
+     By default uses Id column as the primary key but this can be overridden with an attribute
+	  By default queries the table matching the class name but this can be overridden with an attribute 
+    </summary>
+    <releaseNotes>
+      * version 1.0:
+      Initial Release
+    </releaseNotes>
+    <copyright>Copyright Eric Coffman 2012</copyright>
+    <tags>orm dapper micro-orm</tags>
+    <dependencies>
+      <dependency id="Dapper" version="1.8" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="bin\Release\Dapper.SimpleCRUD.dll" target="lib\net40" />
+  </files>
+</package>
