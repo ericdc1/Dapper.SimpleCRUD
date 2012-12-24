@@ -28,18 +28,21 @@ namespace Dapper
             var idProps = GetIdProperties(currenttype);
 
             if (idProps.Count() == 0)
-                throw new ArgumentException("Entity must have at least one [Key] property");
+                throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
+            if (idProps.Count() > 1)
+                throw new ArgumentException("Get<T> only supports an entity with a single [Key] or Id property");
 
+            var OnlyKey = idProps.First();
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
             sb.AppendFormat("Select * from [{0}]", name);
-            sb.Append(" where ");
-            BuildWhere(sb, idProps);
+            sb.Append(" where " + OnlyKey.Name + " = @Id");
 
-            //replace primary key column dynamic parameter with @Id in all cases to simplify things
-            var query = sb.ToString().Replace("@" + idProps.ElementAt(0).Name, "@Id");
-            return connection.Query<T>(query, new { id }).FirstOrDefault();
+            var dynParms = new DynamicParameters();
+            dynParms.Add("@id", id);
+
+            return connection.Query<T>(sb.ToString(), dynParms).FirstOrDefault();
         }
 
         /// <summary>
@@ -160,7 +163,7 @@ namespace Dapper
             sb.Append(" where ");
             BuildWhere(sb, idProps);
 
-            return connection.Execute(sb.ToString().Replace(idProps.ElementAt(0).Name,"Id"), entityToDelete);
+            return connection.Execute(sb.ToString(), entityToDelete);
         }
 
         /// <summary>
@@ -171,29 +174,32 @@ namespace Dapper
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
-        /// <param name="entityToDelete"></param>
+        /// <param name="id"></param>
         /// <returns>The number of records effected</returns>
-
-        public static int Delete<T>(this IDbConnection connection, int Id)
+        public static int Delete<T>(this IDbConnection connection, int id)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype);
 
             if (idProps.Count() == 0)
-                throw new ArgumentException("Entity must have at least one [Key] property");
+                throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
+            if (idProps.Count() > 1)
+                throw new ArgumentException("Delete<T> only supports an entity with a single [Key] or Id property");
 
+            var onlyKey = idProps.First();
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
             sb.AppendFormat("Delete from [{0}]", name);
-            sb.Append(" where ");
-            BuildWhere(sb, idProps);
+            sb.Append(" where " + onlyKey.Name + " = @Id");
 
-            //replace primary key column dynamic parameter with @Id in all cases to simplify things
-            var query = sb.ToString().Replace("@" + idProps.ElementAt(0).Name, "@Id");
-            return connection.Execute(query, new { Id });
+            var dynParms = new DynamicParameters();
+            dynParms.Add("@id", id);
+
+            return connection.Execute(sb.ToString(), dynParms);
         }
 
+        //build update statement based on list on an entity
         private static void BuildUpdateSet(object entityToUpdate, StringBuilder sb)
         {
             var nonIdProps = GetNonIdProperties(entityToUpdate).ToArray();
@@ -208,6 +214,7 @@ namespace Dapper
             }
         }
 
+        //build where clause based on list of properties
         private static void BuildWhere(StringBuilder sb, IEnumerable<PropertyInfo> idProps)
         {
             for (var i = 0; i < idProps.Count(); i++)
@@ -218,6 +225,8 @@ namespace Dapper
             }
         }
 
+        //build insert values which include all properties in the class that are not marked with the Editable(false) attribute,
+        //are not marked with the [Key] attribute, and are not named Id
         private static void BuildInsertValues(object entityToInsert, StringBuilder sb)
         {
             var props = GetScaffoldableProperties(entityToInsert);
@@ -225,7 +234,6 @@ namespace Dapper
             {
                 var property = props.ElementAt(i);
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
-                // if (property.GetCustomAttributes(true).Where(a => a is KeyAttribute).Any()) continue;
                 if (property.Name == "Id") continue;
                 sb.AppendFormat("@{0}", property.Name);
                 if (i < props.Count() - 1)
@@ -233,6 +241,8 @@ namespace Dapper
             }
         }
 
+        //build insert parameters which include all properties in the class that are not marked with the Editable(false) attribute,
+        //are not marked with the [Key] attribute, and are not named Id
         private static void BuildInsertParameters(object entityToInsert, StringBuilder sb)
         {
             var props = GetScaffoldableProperties(entityToInsert);
@@ -240,7 +250,6 @@ namespace Dapper
             for (var i = 0; i < props.Count(); i++)
             {
                 var property = props.ElementAt(i);
-                //if (property.GetCustomAttributes(true).Where(a => a is KeyAttribute).Any()) continue;
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
                 if (property.Name == "Id") continue;
                 sb.Append(property.Name);
@@ -249,18 +258,20 @@ namespace Dapper
             }
         }
 
+        //Get all properties in an entity
         private static IEnumerable<PropertyInfo> GetAllProperties(object entity)
         {
             return entity.GetType().GetProperties();
         }
 
+        //Get all properties that are not decorated with the Editable(false) attribute
         private static IEnumerable<PropertyInfo> GetScaffoldableProperties(object entity)
         {
-            // var props = entity.GetType().GetProperties().Where(p => p.GetCustomAttributes(true).Any(a => a is EditableAttribute) == false);
             var props = entity.GetType().GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "EditableAttribute" && !IsEditable(p)) == false);
             return props.Where(p => p.PropertyType.IsSimpleType());
         }
 
+        //Determine if the Attribute has an AllowEdit key and return its boolean state
         //fake the funk and try to mimick EditableAttribute in System.ComponentModel.DataAnnotations 
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
         public static bool IsEditable(PropertyInfo pi)
@@ -274,42 +285,41 @@ namespace Dapper
             return true;
         }
 
-        //if we include system.componentmodel.dataannotations
-        //public static bool IsEditable1(PropertyInfo pi)
-        //{
-        //    object[] attributes = pi.GetCustomAttributes(typeof(EditableAttribute), false);
-        //    if (attributes.Length == 1)
-        //    {
-        //        EditableAttribute write = (EditableAttribute)attributes[0];
-        //        return write.AllowEdit;
-        //    }
-        //    return true;
-        //}
-
+        //Get all properties that are NOT named Id and DO NOT have the Key attribute
         private static IEnumerable<PropertyInfo> GetNonIdProperties(object entity)
         {
             return GetScaffoldableProperties(entity).Where(p => p.Name != "Id" && p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute") == false);
-            //return GetScaffoldableProperties(entity).Where(p => p.Name != "Id" && p.GetCustomAttributes(true).Any(a => a is KeyAttribute) == false);
         }
 
+        //Get all properties that are named Id or have the Key attribute
+        //For Inserts and updates we have a whole entity so this method is used
         private static IEnumerable<PropertyInfo> GetIdProperties(object entity)
         {
             var type = entity.GetType();
             return GetIdProperties(type);
         }
 
+        //Get all properties that are named Id or have the Key attribute
+        //For Get(id) and Delete(id) we don't have an entity, just the type so this method is used
         private static IEnumerable<PropertyInfo> GetIdProperties(Type type)
         {
             return type.GetProperties().Where(p => p.Name == "Id" || p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute"));
-            //return type.GetProperties().Where(p => p.Name == "Id" || p.GetCustomAttributes(true).Any(a => a is KeyAttribute));
         }
 
+
+        //Gets the table name for this entity
+        //For Inserts and updates we have a whole entity so this method is used
+        //Uses class name by default and overrides if the class has a Table attribute
         private static string GetTableName(object entity)
         {
             var type = entity.GetType();
             return GetTableName(type);
         }
 
+        //Gets the table name for this type
+        //For Get(id) and Delete(id) we don't have an entity, just the type so this method is used
+        //Use dynamic type to be able to handle both our Table-attribute and the DataAnnotation
+        //Uses class name by default and overrides if the class has a Table attribute
         private static string GetTableName(Type type)
         {
             var tableName = type.Name;
@@ -318,14 +328,12 @@ namespace Dapper
             if (tableattr != null)
                 tableName = tableattr.Name;
 
-
-            //var a = type.GetCustomAttributes(typeof (TableNameAttribute), true);
-            //var tableName = a.Length == 0 ? type.Name : (a[0] as TableNameAttribute).Value;
             return tableName;
         }
     }
 
     // Specify the table name of a poco
+    //Don't depend on System.ComponentModel.DataAnnotations
     [AttributeUsage(AttributeTargets.Class)]
     public class TableAttribute : Attribute
     {
@@ -335,13 +343,16 @@ namespace Dapper
         }
         public string Name { get; private set; }
     }
+
     // Specify the primary key name of a poco
+    //Don't depend on System.ComponentModel.DataAnnotations
     [AttributeUsage(AttributeTargets.Property)]
     public class KeyAttribute : Attribute
     {
     }
 
     // Specify the properties that are editable
+    //Don't depend on System.ComponentModel.DataAnnotations
     [AttributeUsage(AttributeTargets.Property)]
     public class EditableAttribute : Attribute
     {
@@ -355,6 +366,7 @@ namespace Dapper
 }
 public static class TypeExtension
 {
+    //You can't insert or update complex types. Lets filter them out.
     public static bool IsSimpleType(this Type type)
     {
         var simpleTypes = new List<Type>

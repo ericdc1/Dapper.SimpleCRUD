@@ -10,7 +10,7 @@ using Dapper;
 
 namespace Dapper.SimpleCRUD.Tests
 {
-    //For .Net 4.5> [System.ComponentModel.DataAnnotations.Schema.Table(Name = "Users")]
+    //For .Net 4.5> [System.ComponentModel.DataAnnotations.Schema.Table("Users")]
     [System.Data.Linq.Mapping.Table(Name = "Users")]
     public class User
     {
@@ -170,6 +170,16 @@ namespace Dapper.SimpleCRUD.Tests
             }
         }
 
+        public void TestDeleteByObjectWithAttributes()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.Insert(new Car { Make = "Honda", Model ="Civic" });
+                var car = connection.Get<Car>(4);
+                connection.Delete(car);
+                connection.Get<Car>(4).IsNull();
+            }
+        }
 
     }
 }
