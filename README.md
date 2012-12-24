@@ -5,11 +5,13 @@ Features
 --------
 Dapper.SimpleCRUD is a [single file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD/SimpleCRUD.cs) you can drop in to your project that will extend your IDbConnection interface.
 
+Who wants to write basic read/insert/update/delete statements? 
+
 The existing Dapper extensions did not fit my ideal pattern. I wanted simple CRUD operations with smart defaults without anything extra. I also wanted to have models with additional properties that did not directly map to the database. For example - a FullName property that combines FirstName and LastName in its getter - and not add FullName to the Insert and Update statements.
 
 I wanted the primary key column to be Id in most cases but allow overriding with an attribute.
 
-Finally, I wanted the table name to match the classname by default but allow overriding with an attribute. 
+Finally, I wanted the table name to match the class name by default but allow overriding with an attribute. 
 
 This extension adds the following 6 helpers: 
 
@@ -43,7 +45,7 @@ public class User
       
 var user = connection.Get<Users>(1);   
 ```
-Results in 
+Results in executing this SQL 
 ```sql
 Select * from [User] where Id = 1 
 ```
@@ -66,7 +68,7 @@ Notes:
 - The [Key] attribute can be used from the Dapper namespace or from System.ComponentModel.DataAnnotations
 - The [Table] attribute can be used from the Dapper namespace, System.ComponentModel.DataAnnotations.Schema, or System.Data.Linq.Mapping
 
-Results in 
+Results in executing this SQL 
 ```sql
 Select * from [Users] where UserId = @UserID
 ```
@@ -76,7 +78,7 @@ Execute a query and map the results to a strongly typed List
 ------------------------------------------------------------
 
 ```csharp
-       public static IEnumerable<T> GetList<T>(this IDbConnection connection, object whereConditions)
+public static IEnumerable<T> GetList<T>(this IDbConnection connection, object whereConditions)
 ```
 
 Example usage: 
@@ -112,7 +114,7 @@ public static int Insert(this IDbConnection connection, object entityToInsert)
 Example usage: 
 
 ```csharp     
-[System.Data.Linq.Mapping.Table(Name="Users")]
+[System.Data.Linq.Mapping.Table("Users")]
 public class User
 {
    [Key]
@@ -129,7 +131,7 @@ public class User
 
 var newId = connection.Insert<User>(new User { Name = "User", Age = 10 });  
 ```
-Results in 
+Results in executing this SQL 
 ```sql
 Insert into [Users] (FirstName, LastName, Age) VALUES (@FirstName, @LastName, @Age)
 ```
@@ -154,7 +156,7 @@ Example usage:
 connection.Update(entity);
 
 ```
-Results in 
+Results in executing this SQL  
 ```sql
 Update [Users] Set (FirstName=@FirstName, LastName=@LastName, Age=@Age) Where ID = @ID
 ```
@@ -185,7 +187,7 @@ Example usage:
 connection.Delete(entity);
 ```
 
-Results in 
+Results in executing this SQL  
 ```sql
 Delete From [Users] Where ID = @ID
 ```
