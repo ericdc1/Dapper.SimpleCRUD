@@ -17,26 +17,9 @@ namespace Dapper.SimpleCRUD.Tests
         public int Id { get; set; }
         public string Name { get; set; }
         public int Age { get; set; }
+        [Editable(true)]
+        public DayOfWeek? ScheduledDayOff { get; set; }
     }
-
-    [System.Data.Linq.Mapping.Table(Name="Users")]
-    public class User1
-    {
-        [Key]
-        public int UserId { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public int Age { get; set; }
-
-        //Additional properties not in database
-        [Editable(false)]
-        public string FullName { get { return string.Format("{0} {1}", FirstName, LastName); } }
-        public List<User> Friends { get; set; }
-
-    }
-
-
-
 
     public class Car
     {
@@ -178,6 +161,17 @@ namespace Dapper.SimpleCRUD.Tests
                 var car = connection.Get<Car>(4);
                 connection.Delete(car);
                 connection.Get<Car>(4).IsNull();
+            }
+        }
+
+        public void TestComplexTypesMarkedEditableAreSaved()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.Insert(new User { Name = "User", Age=11, ScheduledDayOff = DayOfWeek.Friday});
+                var user1 = connection.Get<User>(id);
+                user1.ScheduledDayOff.IsEqualTo(DayOfWeek.Friday);
+                connection.Delete(user1);
             }
         }
 

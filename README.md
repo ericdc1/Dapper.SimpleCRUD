@@ -139,8 +139,8 @@ Insert into [Users] (FirstName, LastName, Age) VALUES (@FirstName, @LastName, @A
 Notes:
 - Default table name would match the class name - The Table attribute overrides this
 - Default primary key would be Id - The Key attribute overrides this
-- By default the insert statement would include all properties in the class - The Editable attribute removes item from the insert statement
-- Complex types are not included in the insert statement - This keeps the List<User> out of the insert even without the Editable attribute
+- By default the insert statement would include all properties in the class - The Editable(false) attribute removes item from the insert statement
+- Complex types are not included in the insert statement - This keeps the List<User> out of the insert even without the Editable attribute. You can include complex types if you decorate them with Editable(true). This is useful for enumerators.
 
 
 Update a record

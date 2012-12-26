@@ -268,7 +268,7 @@ namespace Dapper
         private static IEnumerable<PropertyInfo> GetScaffoldableProperties(object entity)
         {
             var props = entity.GetType().GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "EditableAttribute" && !IsEditable(p)) == false);
-            return props.Where(p => p.PropertyType.IsSimpleType());
+            return props.Where(p => p.PropertyType.IsSimpleType() || IsEditable(p));
         }
 
         //Determine if the Attribute has an AllowEdit key and return its boolean state
@@ -282,7 +282,7 @@ namespace Dapper
                 dynamic write = attributes[0];
                 return write.AllowEdit;
             }
-            return true;
+            return false;
         }
 
         //Get all properties that are NOT named Id and DO NOT have the Key attribute

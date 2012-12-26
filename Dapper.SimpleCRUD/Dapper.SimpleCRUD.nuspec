@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>Dapper.SimpleCRUD</id>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <title>Dapper.SimpleCRUD</title>
     <authors>Eric Coffman</authors>
     <owners>Eric Coffman</owners>
@@ -20,7 +20,8 @@
     </summary>
     <releaseNotes>
       * version 1.0:  Initial Release
-      * version 1.0.0: Added comments to methods, refactored get and delete(id) methods to allow only one key in the entity
+      * version 1.0.1: Added comments to methods, refactored get and delete(id) methods to allow only one key in the entity
+      * version 1.0.2: Added ability to include complex types in insert and update operations by decorating them with the Editable(true) attribute - useful for enumerators
     </releaseNotes>
     <copyright>Copyright Eric Coffman 2012</copyright>
     <tags>orm dapper micro-orm</tags>

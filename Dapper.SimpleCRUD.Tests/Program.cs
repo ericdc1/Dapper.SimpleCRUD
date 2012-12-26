@@ -30,7 +30,7 @@ namespace Dapper.SimpleCRUD.Tests
             using (var connection = new SqlCeConnection(connectionString))
             {
                 connection.Open();
-                connection.Execute(@" create table Users (Id int IDENTITY(1,1) not null, Name nvarchar(100) not null, Age int not null) ");
+                connection.Execute(@" create table Users (Id int IDENTITY(1,1) not null, Name nvarchar(100) not null, Age int not null, ScheduledDayOff int null) ");
                 connection.Execute(@" create table Car (CarId int IDENTITY(1,1) not null, Make nvarchar(100) not null, Model nvarchar(100) not null) ");
             }
             Console.WriteLine("Created database");
