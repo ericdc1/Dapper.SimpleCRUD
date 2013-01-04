@@ -106,6 +106,7 @@ namespace Dapper.SimpleCRUD.Tests
             }
         }
 
+
         public void TestFilteredGetList()
         {
             using (var connection = GetOpenConnection())
@@ -117,8 +118,35 @@ namespace Dapper.SimpleCRUD.Tests
 
                 var user = connection.GetList<User>(new { Age = 10 });
                 user.Count().IsEqualTo(3);
+                connection.Delete<User>(5);
+                connection.Delete<User>(6);
+                connection.Delete<User>(7);
+                connection.Delete<User>(8);
             }
         }
+
+        public void TestGetListWithNullWhere()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new User { Name = "User9", Age = 10 });
+                var user = connection.GetList<User>(null);
+                user.Count().IsEqualTo(1);
+                connection.Delete<User>(9);
+            }
+        }
+
+        public void TestGetListWithoutWhere()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new User { Name = "User10", Age = 10 });
+                var user = connection.GetList<User>();
+                user.Count().IsEqualTo(1);
+                connection.Delete<User>(10);
+            }
+        }
+
 
         public void InsertWithSpecifiedKey()
         {

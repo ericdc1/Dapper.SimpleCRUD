@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Odbc;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -77,6 +78,19 @@ namespace Dapper
             }
 
             return connection.Query<T>(sb.ToString(), whereConditions);
+        }
+
+        /// <summary>
+        /// Gets a list of all entities
+        /// By default queries the table matching the class name
+        /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <returns>Gets a list of all entities</returns>
+        public static IEnumerable<T> GetList<T>(this IDbConnection connection)
+        {
+            return connection.GetList<T>(new {});
         }
 
         /// <summary>
@@ -261,6 +275,7 @@ namespace Dapper
         //Get all properties in an entity
         private static IEnumerable<PropertyInfo> GetAllProperties(object entity)
         {
+            if (entity == null) entity = new {};
             return entity.GetType().GetProperties();
         }
 
