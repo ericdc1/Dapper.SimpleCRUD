@@ -403,7 +403,25 @@ public static class TypeExtension
                                    typeof(Guid),
                                    typeof(DateTime),
                                    typeof(DateTimeOffset),
-                                   typeof(byte[])
+                                   typeof(byte[]),
+								   typeof(DateTime?),
+								   typeof(byte?),
+                                   typeof(sbyte?),
+                                   typeof(short?),
+                                   typeof(ushort?),
+                                   typeof(int?),
+                                   typeof(uint?),
+                                   typeof(long?),
+                                   typeof(ulong?),
+                                   typeof(float?),
+                                   typeof(double?),
+                                   typeof(decimal?),
+                                   typeof(bool?),
+                                   typeof(char?),
+                                   typeof(Guid?),
+                                   typeof(DateTime?),
+                                   typeof(DateTimeOffset?),
+                                   typeof(byte?[])
                                };
         return simpleTypes.Contains(type);
     }
