@@ -13,9 +13,10 @@ I wanted the primary key column to be Id in most cases but allow overriding with
 
 Finally, I wanted the table name to match the class name by default but allow overriding with an attribute. 
 
-This extension adds the following 6 helpers: 
+This extension adds the following 7 helpers: 
 
 - Get(id) - gets one record based on the primary key 
+- GetList<Type> - gets list of records all records from a table
 - GetList<Type>(anonymous object for where clause) - gets list of records matching the where options
 - Insert<Type>(entity) - Inserts a record and returns the new primary key
 - Update<Type>(entity) - Updates a record
@@ -75,6 +76,30 @@ Select * from [Users] where UserId = @UserID
 
 
 Execute a query and map the results to a strongly typed List
+------------------------------------------------------------
+
+```csharp
+public static IEnumerable<T> GetList<T>(this IDbConnection connection)
+```
+
+Example usage: 
+
+public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public int Age { get; set; }
+}
+
+```csharp     
+var user = connection.GetList<User>();  
+```
+Results in 
+```sql
+Select * from [Users]
+```
+
+Execute a query with where conditions and map the results to a strongly typed List
 ------------------------------------------------------------
 
 ```csharp

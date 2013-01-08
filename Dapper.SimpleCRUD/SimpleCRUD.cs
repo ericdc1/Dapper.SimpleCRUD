@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Odbc;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -42,6 +43,9 @@ namespace Dapper
 
             var dynParms = new DynamicParameters();
             dynParms.Add("@id", id);
+            
+            if(Debugger.IsAttached)
+                Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb.ToString(), id));
 
             return connection.Query<T>(sb.ToString(), dynParms).FirstOrDefault();
         }
@@ -76,6 +80,9 @@ namespace Dapper
                 sb.Append(" where ");
                 BuildWhere(sb, whereprops.ToArray());
             }
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb.ToString()));
 
             return connection.Query<T>(sb.ToString(), whereConditions);
         }
@@ -119,6 +126,9 @@ namespace Dapper
             //var newId = connection.Query<int?>(sb.ToString(), entityToInsert).Single();
             //return (newId == null) ? 0 : (int)newId;
 
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("Insert: {0}", sb.ToString()));
+
             connection.Execute(sb.ToString(), entityToInsert);
             var r = connection.Query("select @@IDENTITY id");
             return (int)r.First().id;
@@ -149,6 +159,9 @@ namespace Dapper
             sb.Append(" where ");
             BuildWhere(sb, idProps.ToArray());
 
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("Update: {0}", sb.ToString()));
+
             return connection.Execute(sb.ToString(), entityToUpdate);
         }
 
@@ -176,6 +189,9 @@ namespace Dapper
 
             sb.Append(" where ");
             BuildWhere(sb, idProps);
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("Delete: {0}", sb.ToString()));
 
             return connection.Execute(sb.ToString(), entityToDelete);
         }
@@ -209,6 +225,9 @@ namespace Dapper
 
             var dynParms = new DynamicParameters();
             dynParms.Add("@id", id);
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("Delete<{0}> {1}",currenttype, sb.ToString()));
 
             return connection.Execute(sb.ToString(), dynParms);
         }

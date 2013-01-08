@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>Dapper.SimpleCRUD</id>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <title>Dapper.SimpleCRUD</title>
     <authors>Eric Coffman</authors>
     <owners>Eric Coffman</owners>
@@ -23,7 +23,8 @@
       * version 1.0.1: Added comments to methods, refactored get and delete(id) methods to allow only one key in the entity
       * version 1.0.2: Added ability to include complex types in insert and update operations by decorating them with the Editable(true) attribute - useful for enumerators
       * version 1.0.3: Added GetList() without where filter and corresponding tests. Fixed package reference to Dapper in test project. Fixed bug with null parameter in GetList(object where).
-   
+      * version 1.0.4: Added nullable types to SimpleTypes allowed list. Add a test for this case. Added sql statements to output window when debugger is attached.
+
     </releaseNotes>
     <copyright>Copyright Eric Coffman 2012</copyright>
     <tags>orm dapper micro-orm</tags>
