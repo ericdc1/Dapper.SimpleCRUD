@@ -1,6 +1,5 @@
 Dapper.SimpleCRUD - simple CRUD helpers for Dapper
 ========================================
-
 Features
 --------
 Dapper.SimpleCRUD is a [single file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD/SimpleCRUD.cs) you can drop in to your project that will extend your IDbConnection interface.
@@ -26,6 +25,8 @@ This extension adds the following 7 helpers:
 If you need something more complex use Dapper's Query or Execute methods!
 
 Note: all extension methods assume the connection is already open, they will fail if the connection is closed.
+
+Install via NuGet - https://nuget.org/packages/Dapper.SimpleCRUD
 
 Get a single record mapped to a strongly typed object
 ------------------------------------------------------------
