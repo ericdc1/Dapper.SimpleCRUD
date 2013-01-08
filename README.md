@@ -44,7 +44,7 @@ public class User
     public int Age { get; set; }
 }
       
-var user = connection.Get<Users>(1);   
+var user = connection.Get<User>(1);   
 ```
 Results in executing this SQL 
 ```sql
@@ -62,6 +62,13 @@ More complex example:
         public string LastName { get; set; }
         public int Age { get; set; }
     }
+    
+    var user = connection.Get<User>(1);  
+```
+
+Results in executing this SQL 
+```sql
+Select * from [Users] where UserId = @UserID
 ```
 
 Notes:
@@ -69,10 +76,6 @@ Notes:
 - The [Key] attribute can be used from the Dapper namespace or from System.ComponentModel.DataAnnotations
 - The [Table] attribute can be used from the Dapper namespace, System.ComponentModel.DataAnnotations.Schema, or System.Data.Linq.Mapping
 
-Results in executing this SQL 
-```sql
-Select * from [Users] where UserId = @UserID
-```
 
 
 Execute a query and map the results to a strongly typed List
@@ -84,19 +87,21 @@ public static IEnumerable<T> GetList<T>(this IDbConnection connection)
 
 Example usage: 
 
+```csharp
 public class User
 {
     public int Id { get; set; }
     public string Name { get; set; }
     public int Age { get; set; }
 }
+```
 
 ```csharp     
 var user = connection.GetList<User>();  
 ```
 Results in 
 ```sql
-Select * from [Users]
+Select * from [User]
 ```
 
 Execute a query with where conditions and map the results to a strongly typed List
@@ -108,19 +113,19 @@ public static IEnumerable<T> GetList<T>(this IDbConnection connection, object wh
 
 Example usage: 
 
+```csharp
 public class User
 {
     public int Id { get; set; }
     public string Name { get; set; }
     public int Age { get; set; }
 }
-
-```csharp     
+  
 var user = connection.GetList<User>(new { Age = 10 });  
 ```
 Results in 
 ```sql
-Select * from [Users] where Age = @Age
+Select * from [User] where Age = @Age
 ```
 
 Notes:
@@ -139,7 +144,7 @@ public static int Insert(this IDbConnection connection, object entityToInsert)
 Example usage: 
 
 ```csharp     
-[System.Data.Linq.Mapping.Table("Users")]
+[Table("Users")]
 public class User
 {
    [Key]
@@ -177,7 +182,21 @@ public static int Update(this IDbConnection connection, object entityToUpdate)
 
 Example usage: 
 
-```csharp 
+```csharp    
+[Table("Users")]
+public class User
+{
+   [Key]
+   public int UserId { get; set; }
+   public string FirstName { get; set; }
+   public string LastName { get; set; }
+   public int Age { get; set; }
+
+   //Additional properties not in database
+   [Editable(false)]
+   public string FullName { get { return string.Format("{0} {1}", FirstName, LastName); } }
+   public List<User> Friends { get; set; }
+}
 connection.Update(entity);
 
 ```
@@ -196,8 +215,15 @@ public static int Delete<T>(this IDbConnection connection, int Id)
 
 Example usage: 
 
-```csharp 
-connection.Delete<Car>(newid);
+```csharp     
+public class User
+{
+   public int Id { get; set; }
+   public string FirstName { get; set; }
+   public string LastName { get; set; }
+   public int Age { get; set; }
+}
+connection.Delete<User>(newid);
 
 ```
 Or 
@@ -209,12 +235,20 @@ public static int Delete<T>(this IDbConnection connection, T entityToDelete)
 Example usage: 
 
 ```csharp 
+public class User
+{
+   public int Id { get; set; }
+   public string FirstName { get; set; }
+   public string LastName { get; set; }
+   public int Age { get; set; }
+}
+
 connection.Delete(entity);
 ```
 
 Results in executing this SQL  
 ```sql
-Delete From [Users] Where ID = @ID
+Delete From [User] Where ID = @ID
 ```
 
 Do you have a comprehensive list of examples?
