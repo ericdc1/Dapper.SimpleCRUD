@@ -28,6 +28,9 @@ Note: all extension methods assume the connection is already open, they will fai
 
 Install via NuGet - https://nuget.org/packages/Dapper.SimpleCRUD
 
+Check out the [T4 template](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/SampleWebsite/Models/ModelGenerator.tt) to generate your POCOs. 
+- Documentation: https://github.com/ericdc1/Dapper.SimpleCRUD/wiki/T4-Template
+
 Get a single record mapped to a strongly typed object
 ------------------------------------------------------------
 
