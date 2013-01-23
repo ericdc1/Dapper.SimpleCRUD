@@ -272,6 +272,9 @@ namespace Dapper
                 if (i < props.Count() - 1)
                     sb.Append(", ");
             }
+            if (sb.ToString().EndsWith(", "))
+                sb.Remove(sb.Length - 2, 2);
+            
         }
 
         //build insert parameters which include all properties in the class that are not marked with the Editable(false) attribute,
@@ -289,6 +292,8 @@ namespace Dapper
                 if (i < props.Count() - 1)
                     sb.Append(", ");
             }
+            if (sb.ToString().EndsWith(", "))
+                sb.Remove(sb.Length - 2, 2);
         }
 
         //Get all properties in an entity

@@ -67,10 +67,6 @@
     <None Include="Dapper.SimpleCRUD.nuspec">
       <SubType>Designer</SubType>
     </None>
-    <Content Include="ModelGenerator.tt">
-      <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>ModelGenerator.cs</LastGenOutput>
-    </Content>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
