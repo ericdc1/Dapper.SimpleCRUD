@@ -363,7 +363,7 @@ namespace Dapper
         {
             var tableName = type.Name;
 
-            var tableattr = type.GetCustomAttributes(false).SingleOrDefault(attr => attr.GetType().Name == "TableAttribute") as dynamic;
+            var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "TableAttribute") as dynamic;
             if (tableattr != null)
                 tableName = tableattr.Name;
 

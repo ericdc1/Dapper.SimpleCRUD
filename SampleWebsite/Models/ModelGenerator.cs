@@ -8,7 +8,6 @@
 //     Connection String:      `Data Source=C:\Users\ecoffman\Documents\GitHub\Dapper.SimpleCRUD\SampleWebsite\App_Data\test.sdf;Persist Security Info=False;`
 //     Include Views:          `True`
 
-using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
