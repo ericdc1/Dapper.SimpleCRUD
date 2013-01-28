@@ -9,6 +9,8 @@ namespace SampleWebsite.ViewModels
 {
 
     //viewmodel extends generated model and adds annotations and other items useful to the actual view
+    //this method could be dangerous due to overposting if this viewmodel edits fewer properties than the model contains
+    //http://bradwilson.typepad.com/blog/2010/01/input-validation-vs-model-validation-in-aspnet-mvc.html
     public partial class UserAddEdit : Models.User
     {
         [Required]

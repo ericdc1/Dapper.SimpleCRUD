@@ -7,18 +7,20 @@ using System.Web;
 namespace SampleWebsite.ViewModels
 {
 
-    //viewmodel extends generated model and adds annotations and other items useful to the actual view
-    public partial class CarAddEdit : Models.Car
+    //viewmodel uses same properties from generated model 
+    //and adds annotations and other items useful to the actual view
+    public class CarAddEdit 
     {
+        public int CarId { get; set; }
         [Required]
         [StringLength(50)]
-        public override string Make { get; set; }
+        public string Make { get; set; }
         [Required]
         [StringLength(50)]
-        public override string Model { get; set; }
+        public string Model { get; set; }
 
 
-        //mapper to convert from domain model to viewmodel 
+        //mapper to convert from domain model to viewmodel - would be easier with Automapper 
         public static CarAddEdit MapCarToCarAddEdit(Models.Car car)
         {
             var caraddedit = new CarAddEdit();

@@ -1,0 +1,30 @@
+﻿<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>Dapper.SimpleCRUD.ModelGenerator</id>
+    <version>1.0.0</version>
+    <title>Dapper.SimpleCRUD.ModelGenerator</title>
+    <authors>Eric Coffman</authors>
+    <owners>Eric Coffman</owners>
+    <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
+    <projectUrl>https://github.com/ericdc1/Dapper.SimpleCRUD/wiki/T4-Template</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>
+      T4 template generates database models from a database for use with Dapper.SimpleCRUD.
+      Uses core .Net attributes so the generator could be used for other ORMs. 
+    </description>
+    <summary>
+     By default uses Id column as the primary key but this can be overridden with an attribute
+	  By default queries the table matching the class name but this can be overridden with an attribute 
+    </summary>
+    <releaseNotes>
+      Documentation can be found at https://github.com/ericdc1/Dapper.SimpleCRUD/wiki/T4-Template
+      * version 1.0:  Initial Release
+    </releaseNotes>
+    <copyright>Copyright Eric Coffman 2013</copyright>
+    <tags>orm dapper micro-orm t4 template</tags>
+  </metadata>
+  <files>
+  	<file src="Content\Models\*" target="Content\Models" />
+  </files>
+</package>

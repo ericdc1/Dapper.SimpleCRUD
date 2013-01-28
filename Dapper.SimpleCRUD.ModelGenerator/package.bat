@@ -1,0 +1,1 @@
+nuget pack Dapper.SimpleCRUD.ModelGenerator.nuspec
