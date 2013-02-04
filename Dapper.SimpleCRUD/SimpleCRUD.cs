@@ -10,15 +10,17 @@ using Dapper;
 
 namespace Dapper    
 {
-
+    /// <summary>
+    /// Main class for Dapper.SimpleCRUD extensions
+    /// </summary>
     public static class SimpleCRUD
     {
         /// <summary>
-        /// Returns a single entity by a single id from table T. 
         /// By default queries the table matching the class name
         /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
         /// By default filters on the Id column
         /// Id column name can be overridden by adding an attribute on your primary key property [Key]
+        /// Returns a single entity by a single id from table T. 
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
@@ -51,11 +53,11 @@ namespace Dapper
         }
 
         /// <summary>
-        /// Gets a list of entities with optional exact match where conditions
         /// By default queries the table matching the class name
         /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
         /// whereConditions is an anonymous type to filter the results ex: new {Category = 1, SubCategory=2}
         /// To get all records use an empty anonymous object ex: new{}
+        /// Returns a list of entities with optional exact match where conditions
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
@@ -88,9 +90,9 @@ namespace Dapper
         }
 
         /// <summary>
-        /// Gets a list of all entities
         /// By default queries the table matching the class name
         /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
+        /// Returns a list of all entities
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
@@ -105,6 +107,7 @@ namespace Dapper
         /// By default inserts into the table matching the class name
         /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
         /// Insert filters out Id column and any columns with the [Key] attribute
+        /// Returns the ID (primary key) of the newly inserted record
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="entityToInsert"></param>
@@ -139,6 +142,7 @@ namespace Dapper
         /// By default updates records in the table matching the class name
         /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
         /// Updates records where the Id property and properties with the [Key] attribute match those in the database
+        /// Returns number of rows effected
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="entityToUpdate"></param>
@@ -169,7 +173,7 @@ namespace Dapper
         /// Deletes a record or records in the database that match the object passed in
         /// By default deletes records in the table matching the class name
         /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
-        /// Deletes records that match the entity passed in
+        /// Returns the number of records effected
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
@@ -201,6 +205,7 @@ namespace Dapper
         /// By default deletes records in the table matching the class name
         /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
         /// Deletes records where the Id property and properties with the [Key] attribute match those in the database
+        /// <returns>The number of records effected</returns>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
@@ -313,7 +318,7 @@ namespace Dapper
         //Determine if the Attribute has an AllowEdit key and return its boolean state
         //fake the funk and try to mimick EditableAttribute in System.ComponentModel.DataAnnotations 
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
-        public static bool IsEditable(PropertyInfo pi)
+        private static bool IsEditable(PropertyInfo pi)
         {
             object[] attributes = pi.GetCustomAttributes(false);
             if (attributes.Length == 1)
@@ -371,39 +376,63 @@ namespace Dapper
         }
     }
 
-    // Specify the table name of a poco
-    //Don't depend on System.ComponentModel.DataAnnotations
+    
+
+    /// <summary>
+    /// Optional Table attribute.
+    /// You can use the System.ComponentModel.DataAnnotations version in its place to specify the table name of a poco
+    /// </summary>
     [AttributeUsage(AttributeTargets.Class)]
     public class TableAttribute : Attribute
     {
+        /// <summary>
+        /// Optional Table attribute.
+        /// </summary>
+        /// <param name="tableName"></param>
         public TableAttribute(string tableName)
         {
             Name = tableName;
         }
+        /// <summary>
+        /// Name of the table
+        /// </summary>
         public string Name { get; private set; }
     }
 
-    // Specify the primary key name of a poco
-    //Don't depend on System.ComponentModel.DataAnnotations
+
+    /// <summary>
+    /// Optional Key attribute.
+    /// You can use the System.ComponentModel.DataAnnotations version in its place to specify the Primary Key of a poco
+    /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
     public class KeyAttribute : Attribute
     {
     }
 
-    // Specify the properties that are editable
-    //Don't depend on System.ComponentModel.DataAnnotations
+    /// <summary>
+    /// Optional Editable attribute.
+    /// You can use the System.ComponentModel.DataAnnotations version in its place to specify the properties that are editable
+    /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
     public class EditableAttribute : Attribute
     {
+        /// <summary>
+        /// Optional Editable attribute.
+        /// </summary>
+        /// <param name="iseditable"></param>
         public EditableAttribute(bool iseditable)
         {
             AllowEdit = iseditable;
         }
+        /// <summary>
+        /// Does this property persist to the database?
+        /// </summary>
         public bool AllowEdit { get; private set; }
     }
 
 }
-public static class TypeExtension
+
+static class TypeExtension
 {
     //You can't insert or update complex types. Lets filter them out.
     public static bool IsSimpleType(this Type type)
