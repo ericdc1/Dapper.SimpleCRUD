@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>Dapper.SimpleCRUD</id>
-    <version>1.1.2</version>
+    <version>1.1.3</version>
     <title>Dapper.SimpleCRUD</title>
     <authors>Eric Coffman</authors>
     <owners>Eric Coffman</owners>
@@ -20,8 +20,7 @@
     </summary>
     <releaseNotes>
       Full documentation can be found at http://github.com/ericdc1/Dapper.SimpleCRUD/ 
-      * version 1.1.1: Added XML doc to nuget package
-      * version 1.1.2: Improved xml comments
+      * version 1.1.3: Improved xml comments
      </releaseNotes>
     <copyright>Copyright Eric Coffman 2013</copyright>
     <tags>orm dapper micro-orm</tags>

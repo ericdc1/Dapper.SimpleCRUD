@@ -16,11 +16,11 @@ namespace Dapper
     public static class SimpleCRUD
     {
         /// <summary>
-        /// By default queries the table matching the class name
-        /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
-        /// By default filters on the Id column
-        /// Id column name can be overridden by adding an attribute on your primary key property [Key]
-        /// Returns a single entity by a single id from table T. 
+        /// <para>By default queries the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>By default filters on the Id column</para>
+        /// <para>-Id column name can be overridden by adding an attribute on your primary key property [Key]</para>
+        /// <para>Returns a single entity by a single id from table T</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
@@ -53,11 +53,10 @@ namespace Dapper
         }
 
         /// <summary>
-        /// By default queries the table matching the class name
-        /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
-        /// whereConditions is an anonymous type to filter the results ex: new {Category = 1, SubCategory=2}
-        /// To get all records use an empty anonymous object ex: new{}
-        /// Returns a list of entities with optional exact match where conditions
+        /// <para>By default queries the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>whereConditions is an anonymous type to filter the results ex: new {Category = 1, SubCategory=2}</para>
+        /// <para>Returns a list of entities that match where conditions</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
@@ -90,9 +89,9 @@ namespace Dapper
         }
 
         /// <summary>
-        /// By default queries the table matching the class name
-        /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
-        /// Returns a list of all entities
+        /// <para>By default queries the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Returns a list of all entities</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
@@ -103,11 +102,12 @@ namespace Dapper
         }
 
         /// <summary>
-        /// Inserts a row into the database
-        /// By default inserts into the table matching the class name
-        /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
-        /// Insert filters out Id column and any columns with the [Key] attribute
-        /// Returns the ID (primary key) of the newly inserted record
+        /// <para>Inserts a row into the database</para>
+        /// <para>By default inserts into the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Insert filters out Id column and any columns with the [Key] attribute</para>
+        /// <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
+        /// <para>Returns the ID (primary key) of the newly inserted record</para>
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="entityToInsert"></param>
@@ -137,12 +137,13 @@ namespace Dapper
             return (int)r.First().id;
         }
 
-        /// <summary>
-        /// Updates a record or records in the database
-        /// By default updates records in the table matching the class name
-        /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
-        /// Updates records where the Id property and properties with the [Key] attribute match those in the database
-        /// Returns number of rows effected
+        ///<summary>
+        /// <para>Updates a record or records in the database</para>
+        /// <para>By default updates records in the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Updates records where the Id property and properties with the [Key] attribute match those in the database.</para>
+        /// <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
+        /// <para>Returns number of rows effected</para>
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="entityToUpdate"></param>
@@ -170,10 +171,10 @@ namespace Dapper
         }
 
         /// <summary>
-        /// Deletes a record or records in the database that match the object passed in
-        /// By default deletes records in the table matching the class name
-        /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
-        /// Returns the number of records effected
+        /// <para>Deletes a record or records in the database that match the object passed in</para>
+        /// <para>-By default deletes records in the table matching the class name</para>
+        /// <para>Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Returns the number of records effected</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
@@ -201,11 +202,11 @@ namespace Dapper
         }
 
         /// <summary>
-        /// Deletes a record or records in the database by ID
-        /// By default deletes records in the table matching the class name
-        /// Table name can be overridden by adding an attribute on your class [Table("YourTableName")]
-        /// Deletes records where the Id property and properties with the [Key] attribute match those in the database
-        /// <returns>The number of records effected</returns>
+        /// <para>Deletes a record or records in the database by ID</para>
+        /// <para>By default deletes records in the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Deletes records where the Id property and properties with the [Key] attribute match those in the database</para>
+        /// <para>The number of records effected</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>

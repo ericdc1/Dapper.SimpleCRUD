@@ -9,3 +9,4 @@
 * version 1.1.0: Allow table attribute to inherit. Incremented minor version here as I should have done that with the prior few releases
 * version 1.1.1: Added XML doc to nuget package
 * version 1.1.2: Improved xml comments
+* version 1.1.3: Improved xml comments
