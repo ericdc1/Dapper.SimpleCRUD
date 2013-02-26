@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>Dapper.SimpleCRUD.ModelGenerator</id>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <title>Dapper.SimpleCRUD.ModelGenerator</title>
     <authors>Eric Coffman</authors>
     <owners>Eric Coffman</owners>
@@ -20,6 +20,7 @@
     <releaseNotes>
       Documentation can be found at https://github.com/ericdc1/Dapper.SimpleCRUD/wiki/T4-Template
       * version 1.0:  Initial Release
+	  * version 1.0.1:  Normalize line endings
     </releaseNotes>
     <copyright>Copyright Eric Coffman 2013</copyright>
     <tags>orm dapper micro-orm t4 template</tags>
