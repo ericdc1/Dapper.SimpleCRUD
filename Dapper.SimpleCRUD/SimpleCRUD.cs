@@ -105,12 +105,15 @@ namespace Dapper
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Insert filters out Id column and any columns with the [Key] attribute</para>
         /// <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
+        /// <para>Supports transaction and command timeout</para>
         /// <para>Returns the ID (primary key) of the newly inserted record</para>
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="entityToInsert"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
         /// <returns>The ID (primary key) of the newly inserted record</returns>
-        public static int Insert(this IDbConnection connection, object entityToInsert)
+        public static int Insert(this IDbConnection connection, object entityToInsert,IDbTransaction transaction = null,int? commandTimeout =null)
         {
             var name = GetTableName(entityToInsert);
 
@@ -130,23 +133,26 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
-            connection.Execute(sb.ToString(), entityToInsert);
+            connection.Execute(sb.ToString(), entityToInsert,transaction,commandTimeout);
             var r = connection.Query("select @@IDENTITY id");
             return (int)r.First().id;
         }
 
-        ///<summary>
-        /// <para>Updates a record or records in the database</para>
-        /// <para>By default updates records in the table matching the class name</para>
-        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
-        /// <para>Updates records where the Id property and properties with the [Key] attribute match those in the database.</para>
-        /// <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
-        /// <para>Returns number of rows effected</para>
-        /// </summary>
-        /// <param name="connection"></param>
-        /// <param name="entityToUpdate"></param>
+        /// <summary>
+        ///  <para>Updates a record or records in the database</para>
+        ///  <para>By default updates records in the table matching the class name</para>
+        ///  <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        ///  <para>Updates records where the Id property and properties with the [Key] attribute match those in the database.</para>
+        ///  <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
+        ///  <para>Supports transaction and command timeout</para>
+        ///  <para>Returns number of rows effected</para>
+        ///  </summary>
+        ///  <param name="connection"></param>
+        ///  <param name="entityToUpdate"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
         /// <returns>The number of effected records</returns>
-        public static int Update(this IDbConnection connection, object entityToUpdate)
+        public static int Update(this IDbConnection connection, object entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToUpdate).ToList();
            
@@ -166,20 +172,23 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Update: {0}", sb));
 
-            return connection.Execute(sb.ToString(), entityToUpdate);
+            return connection.Execute(sb.ToString(), entityToUpdate,transaction,commandTimeout);
         }
 
         /// <summary>
         /// <para>Deletes a record or records in the database that match the object passed in</para>
         /// <para>-By default deletes records in the table matching the class name</para>
         /// <para>Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Supports transaction and command timeout</para>
         /// <para>Returns the number of records effected</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="entityToDelete"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
         /// <returns>The number of records effected</returns>
-        public static int Delete<T>(this IDbConnection connection, T entityToDelete)
+        public static int Delete<T>(this IDbConnection connection, T entityToDelete,IDbTransaction transaction = null,int? commandTimeout =null)
         {
             var idProps = GetIdProperties(entityToDelete).ToList();
 
@@ -198,7 +207,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete: {0}", sb));
 
-            return connection.Execute(sb.ToString(), entityToDelete);
+            return connection.Execute(sb.ToString(), entityToDelete,transaction,commandTimeout);
         }
 
         /// <summary>
@@ -207,12 +216,15 @@ namespace Dapper
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Deletes records where the Id property and properties with the [Key] attribute match those in the database</para>
         /// <para>The number of records effected</para>
+        /// <para>Supports transaction and command timeout</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="id"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
         /// <returns>The number of records effected</returns>
-        public static int Delete<T>(this IDbConnection connection, int id)
+        public static int Delete<T>(this IDbConnection connection, int id, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
@@ -236,7 +248,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete<{0}> {1}",currenttype, sb));
 
-            return connection.Execute(sb.ToString(), dynParms);
+            return connection.Execute(sb.ToString(), dynParms,transaction,commandTimeout);
         }
 
         //build update statement based on list on an entity
