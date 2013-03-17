@@ -134,7 +134,7 @@ namespace Dapper
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
             connection.Execute(sb.ToString(), entityToInsert,transaction,commandTimeout);
-            var r = connection.Query("select @@IDENTITY id");
+            var r = connection.Query("select @@IDENTITY id",null,transaction,true,commandTimeout);
             return (int)r.First().id;
         }
 
