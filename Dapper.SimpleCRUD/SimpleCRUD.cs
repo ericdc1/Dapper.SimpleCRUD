@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Odbc;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Dapper;
 
 namespace Dapper    
 {
@@ -29,25 +27,25 @@ namespace Dapper
         public static T Get<T>(this IDbConnection connection, int id)
         {
             var currenttype = typeof(T);
-            var idProps = GetIdProperties(currenttype);
+            var idProps = GetIdProperties(currenttype).ToList();
 
-            if (idProps.Count() == 0)
+            if (!idProps.Any())
                 throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
             if (idProps.Count() > 1)
                 throw new ArgumentException("Get<T> only supports an entity with a single [Key] or Id property");
 
-            var OnlyKey = idProps.First();
+            var onlyKey = idProps.First();
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
             sb.AppendFormat("Select * from [{0}]", name);
-            sb.Append(" where " + OnlyKey.Name + " = @Id");
+            sb.Append(" where " + onlyKey.Name + " = @Id");
 
             var dynParms = new DynamicParameters();
             dynParms.Add("@id", id);
             
             if(Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb.ToString(), id));
+                Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
 
             return connection.Query<T>(sb.ToString(), dynParms).FirstOrDefault();
         }
@@ -65,25 +63,25 @@ namespace Dapper
         public static IEnumerable<T> GetList<T>(this IDbConnection connection, object whereConditions)
         {
             var currenttype = typeof(T);
-            var idProps = GetIdProperties(currenttype);
+            var idProps = GetIdProperties(currenttype).ToList(); 
 
-            if (idProps.Count() == 0)
+            if (!idProps.Any())
                 throw new ArgumentException("Entity must have at least one [Key] property");
 
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            var whereprops = GetAllProperties(whereConditions);
+            var whereprops = GetAllProperties(whereConditions).ToArray();
             sb.AppendFormat("Select * from [{0}]", name);
 
-            if (whereprops.Count() > 0)
+            if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops.ToArray());
+                BuildWhere(sb, whereprops);
             }
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb.ToString()));
+                Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb));
 
             return connection.Query<T>(sb.ToString(), whereConditions);
         }
@@ -130,7 +128,7 @@ namespace Dapper
             //return (newId == null) ? 0 : (int)newId;
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Insert: {0}", sb.ToString()));
+                Trace.WriteLine(String.Format("Insert: {0}", sb));
 
             connection.Execute(sb.ToString(), entityToInsert);
             var r = connection.Query("select @@IDENTITY id");
@@ -150,8 +148,9 @@ namespace Dapper
         /// <returns>The number of effected records</returns>
         public static int Update(this IDbConnection connection, object entityToUpdate)
         {
-            var idProps = GetIdProperties(entityToUpdate);
-            if (idProps.Count() == 0)
+            var idProps = GetIdProperties(entityToUpdate).ToList();
+           
+            if (!idProps.Any())
                 throw new ArgumentException("Entity must have at least one [Key] or Id property");
 
             var name = GetTableName(entityToUpdate);
@@ -162,10 +161,10 @@ namespace Dapper
             sb.AppendFormat(" set ");
             BuildUpdateSet(entityToUpdate, sb);
             sb.Append(" where ");
-            BuildWhere(sb, idProps.ToArray());
+            BuildWhere(sb, idProps);
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Update: {0}", sb.ToString()));
+                Trace.WriteLine(String.Format("Update: {0}", sb));
 
             return connection.Execute(sb.ToString(), entityToUpdate);
         }
@@ -182,9 +181,10 @@ namespace Dapper
         /// <returns>The number of records effected</returns>
         public static int Delete<T>(this IDbConnection connection, T entityToDelete)
         {
-            var idProps = GetIdProperties(entityToDelete);
+            var idProps = GetIdProperties(entityToDelete).ToList();
 
-            if (idProps.Count() == 0)
+
+            if (!idProps.Any())
                 throw new ArgumentException("Entity must have at least one [Key] or Id property");
 
             var name = GetTableName(entityToDelete);
@@ -196,7 +196,7 @@ namespace Dapper
             BuildWhere(sb, idProps);
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Delete: {0}", sb.ToString()));
+                Trace.WriteLine(String.Format("Delete: {0}", sb));
 
             return connection.Execute(sb.ToString(), entityToDelete);
         }
@@ -215,9 +215,10 @@ namespace Dapper
         public static int Delete<T>(this IDbConnection connection, int id)
         {
             var currenttype = typeof(T);
-            var idProps = GetIdProperties(currenttype);
+            var idProps = GetIdProperties(currenttype).ToList();
 
-            if (idProps.Count() == 0)
+
+            if (!idProps.Any())
                 throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
             if (idProps.Count() > 1)
                 throw new ArgumentException("Delete<T> only supports an entity with a single [Key] or Id property");
@@ -233,7 +234,7 @@ namespace Dapper
             dynParms.Add("@id", id);
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Delete<{0}> {1}",currenttype, sb.ToString()));
+                Trace.WriteLine(String.Format("Delete<{0}> {1}",currenttype, sb));
 
             return connection.Execute(sb.ToString(), dynParms);
         }
@@ -256,10 +257,11 @@ namespace Dapper
         //build where clause based on list of properties
         private static void BuildWhere(StringBuilder sb, IEnumerable<PropertyInfo> idProps)
         {
-            for (var i = 0; i < idProps.Count(); i++)
+            var propertyInfos = idProps.ToArray();
+            for (var i = 0; i < propertyInfos.Count(); i++)
             {
-                sb.AppendFormat("[{0}] = @{1}", idProps.ElementAt(i).Name, idProps.ElementAt(i).Name);
-                if (i < idProps.Count() - 1)
+                sb.AppendFormat("[{0}] = @{1}", propertyInfos.ElementAt(i).Name, propertyInfos.ElementAt(i).Name);
+                if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
             }
         }
@@ -268,7 +270,7 @@ namespace Dapper
         //are not marked with the [Key] attribute, and are not named Id
         private static void BuildInsertValues(object entityToInsert, StringBuilder sb)
         {
-            var props = GetScaffoldableProperties(entityToInsert);
+            var props = GetScaffoldableProperties(entityToInsert).ToArray(); 
             for (var i = 0; i < props.Count(); i++)
             {
                 var property = props.ElementAt(i);
@@ -287,7 +289,7 @@ namespace Dapper
         //are not marked with the [Key] attribute, and are not named Id
         private static void BuildInsertParameters(object entityToInsert, StringBuilder sb)
         {
-            var props = GetScaffoldableProperties(entityToInsert);
+            var props = GetScaffoldableProperties(entityToInsert).ToArray(); 
 
             for (var i = 0; i < props.Count(); i++)
             {

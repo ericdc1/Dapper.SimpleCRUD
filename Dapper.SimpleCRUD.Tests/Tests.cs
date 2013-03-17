@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
 using System;
-using Dapper;
 
 
 namespace Dapper.SimpleCRUD.Tests
@@ -87,7 +86,7 @@ namespace Dapper.SimpleCRUD.Tests
         {
             using (var connection = GetOpenConnection())
             {
-                var user = connection.Delete<User>(1);
+                connection.Delete<User>(1);
                 connection.Get<User>(1).IsNull();
             }
         }
@@ -96,7 +95,7 @@ namespace Dapper.SimpleCRUD.Tests
         {
             using (var connection = GetOpenConnection())
             {
-                var id = connection.Insert(new User { Name = "User2", Age = 10 });
+                connection.Insert(new User { Name = "User2", Age = 10 });
                 var user = connection.Get<User>(2);
                 connection.Delete(user);
                 connection.Get<User>(2).IsNull();
@@ -172,7 +171,7 @@ namespace Dapper.SimpleCRUD.Tests
         {
             using (var connection = GetOpenConnection())
             {
-                var id = connection.Insert(new Car { Make = "Honda", Model = "Civic", Users = new List<User>() { new User() { Age = 12, Name = "test" } } });
+                var id = connection.Insert(new Car { Make = "Honda", Model = "Civic", Users = new List<User> { new User { Age = 12, Name = "test" } } });
                 id.IsEqualTo(2);
             }
         }
@@ -195,7 +194,7 @@ namespace Dapper.SimpleCRUD.Tests
         {
             using (var connection = GetOpenConnection())
             {
-                var id = connection.Insert(new Car { Make = "Honda", Model ="Civic" });
+                connection.Insert(new Car { Make = "Honda", Model ="Civic" });
                 var car = connection.Get<Car>(4);
                 connection.Delete(car);
                 connection.Get<Car>(4).IsNull();
