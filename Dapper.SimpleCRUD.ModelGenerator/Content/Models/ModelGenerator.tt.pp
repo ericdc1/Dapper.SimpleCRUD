@@ -68,7 +68,7 @@ foreach(Table tbl in from t in tables where !t.Ignore select t){
 	{
 <#foreach(Column col in from c in tbl.Columns where !c.Ignore select c)
 {#>
-	<# if (tbl.PK!=null && tbl.PK.IsAutoIncrement && tbl.PK.Name==col.PropertyName) { #>
+	<# if (tbl.PK!=null &&  tbl.PK.Name==col.PropertyName) { #>
 	[Key]
 	<#}#>
 	public virtual <#=col.PropertyType #><#=CheckNullable(col)#> <#=col.PropertyName #> { get; set; }
