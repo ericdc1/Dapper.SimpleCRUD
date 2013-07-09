@@ -56,7 +56,7 @@ Select * from [User] where Id = 1
 
 More complex example: 
 ```csharp
-    [Table(Name="Users")]
+    [Table("Users")]
     public class User
     {
         [Key]
