@@ -106,14 +106,14 @@ namespace Dapper
         /// <para>Insert filters out Id column and any columns with the [Key] attribute</para>
         /// <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
         /// <para>Supports transaction and command timeout</para>
-        /// <para>Returns the ID (primary key) of the newly inserted record</para>
+        /// <para>Returns the ID (primary key) of the newly inserted record if it is identity, otherwise null</para>
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="entityToInsert"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <returns>The ID (primary key) of the newly inserted record</returns>
-        public static int Insert(this IDbConnection connection, object entityToInsert,IDbTransaction transaction = null,int? commandTimeout =null)
+        /// <returns>The ID (primary key) of the newly inserted record if it is identity, otherwise null</returns>
+        public static int? Insert(this IDbConnection connection, object entityToInsert,IDbTransaction transaction = null,int? commandTimeout =null)
         {
             var name = GetTableName(entityToInsert);
 
@@ -135,7 +135,7 @@ namespace Dapper
 
             connection.Execute(sb.ToString(), entityToInsert,transaction,commandTimeout);
             var r = connection.Query("select @@IDENTITY id",null,transaction,true,commandTimeout);
-            return (int)r.First().id;
+            return (int?)r.First().id;
         }
 
         /// <summary>
