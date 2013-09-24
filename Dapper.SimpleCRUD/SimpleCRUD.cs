@@ -335,13 +335,8 @@ namespace Dapper
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
         private static bool IsEditable(PropertyInfo pi)
         {
-            object[] attributes = pi.GetCustomAttributes(false);
-            if (attributes.Length == 1)
-            {
-                dynamic write = attributes[0];
-                return write.AllowEdit;
-            }
-            return false;
+            var attributes = pi.GetCustomAttributes(false).Where(i => i.GetType().Name == "EditableAttribute");
+            return attributes.Count() == 1 && ((dynamic)attributes.First()).AllowEdit;
         }
 
         //Get all properties that are NOT named Id and DO NOT have the Key attribute
