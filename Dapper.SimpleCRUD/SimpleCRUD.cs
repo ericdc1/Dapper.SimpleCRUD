@@ -24,7 +24,7 @@ namespace Dapper
         /// <param name="connection"></param>
         /// <param name="id"></param>
         /// <returns>Returns a single entity by a single id from table T.</returns>
-        public static T Get<T, K>(this IDbConnection connection, K id) where K : struct
+        public static T Get<T>(this IDbConnection connection, object id)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
@@ -224,7 +224,7 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of records effected</returns>
-        public static int Delete<T, K>(this IDbConnection connection, K id, IDbTransaction transaction = null, int? commandTimeout = null) where K : struct
+        public static int Delete<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
