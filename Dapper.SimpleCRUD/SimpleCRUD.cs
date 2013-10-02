@@ -380,7 +380,7 @@ namespace Dapper
 
             var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "TableAttribute") as dynamic;
             if (tableattr != null)
-                tableName = tableattr.Name;
+                tableName = (String.IsNullOrEmpty(tableattr.Schema) ? "" : tableattr.Schema + ".") + tableattr.Name;
 
             return tableName;
         }
