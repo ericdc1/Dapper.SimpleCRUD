@@ -180,7 +180,7 @@ namespace Dapper.SimpleCRUD.Tests
         {
             using (var connection = GetOpenConnection())
             {
-                var newid = connection.Insert(new Car { Make = "Honda", Model = "Civic"});
+                var newid = (int)connection.Insert(new Car { Make = "Honda", Model = "Civic"});
                 var newitem = connection.Get<Car>(3);
                 newitem.Make = "Toyota";
                 connection.Update(newitem);
@@ -205,7 +205,7 @@ namespace Dapper.SimpleCRUD.Tests
         {
             using (var connection = GetOpenConnection())
             {
-                var id = connection.Insert(new User { Name = "User", Age=11, ScheduledDayOff = DayOfWeek.Friday});
+                var id = (int)connection.Insert(new User { Name = "User", Age = 11, ScheduledDayOff = DayOfWeek.Friday });
                 var user1 = connection.Get<User>(id);
                 user1.ScheduledDayOff.IsEqualTo(DayOfWeek.Friday);
                 connection.Delete(user1);
@@ -216,7 +216,7 @@ namespace Dapper.SimpleCRUD.Tests
         {
             using (var connection = GetOpenConnection())
             {
-                var id = connection.Insert(new User1 { Name = "User", Age = 11, ScheduledDayOff = 2 });
+                var id = (int)connection.Insert(new User1 { Name = "User", Age = 11, ScheduledDayOff = 2 });
                 var user1 = connection.Get<User1>(id);
                 user1.ScheduledDayOff.IsEqualTo(2);
                 connection.Delete(user1);
