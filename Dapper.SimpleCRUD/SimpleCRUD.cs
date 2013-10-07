@@ -38,7 +38,7 @@ namespace Dapper
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("Select * from [{0}]", name);
+            sb.AppendFormat("Select * from {0}", name);
             sb.Append(" where " + onlyKey.Name + " = @Id");
 
             var dynParms = new DynamicParameters();
@@ -72,7 +72,7 @@ namespace Dapper
 
             var sb = new StringBuilder();
             var whereprops = GetAllProperties(whereConditions).ToArray();
-            sb.AppendFormat("Select * from [{0}]", name);
+            sb.AppendFormat("Select * from {0}", name);
 
             if (whereprops.Any())
             {
@@ -118,7 +118,7 @@ namespace Dapper
             var name = GetTableName(entityToInsert);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("insert into [{0}]", name);
+            sb.AppendFormat("insert into {0}", name);
             sb.Append(" (");
             BuildInsertParameters(entityToInsert, sb);
             sb.Append(") values (");
@@ -162,7 +162,7 @@ namespace Dapper
             var name = GetTableName(entityToUpdate);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("update [{0}]", name);
+            sb.AppendFormat("update {0}", name);
 
             sb.AppendFormat(" set ");
             BuildUpdateSet(entityToUpdate, sb);
@@ -199,7 +199,7 @@ namespace Dapper
             var name = GetTableName(entityToDelete);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("delete from [{0}]", name);
+            sb.AppendFormat("delete from {0}", name);
 
             sb.Append(" where ");
             BuildWhere(sb, idProps);
@@ -239,7 +239,7 @@ namespace Dapper
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("Delete from [{0}]", name);
+            sb.AppendFormat("Delete from {0}", name);
             sb.Append(" where " + onlyKey.Name + " = @Id");
 
             var dynParms = new DynamicParameters();
@@ -376,11 +376,11 @@ namespace Dapper
         //Uses class name by default and overrides if the class has a Table attribute
         private static string GetTableName(Type type)
         {
-            var tableName = type.Name;
+            var tableName = String.Format("[{0}]", type.Name);
 
             var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "TableAttribute") as dynamic;
             if (tableattr != null)
-                tableName = (String.IsNullOrEmpty(tableattr.Schema) ? "" : tableattr.Schema + ".") + tableattr.Name;
+                tableName = (String.IsNullOrEmpty(tableattr.Schema) ? "" : String.Format("[{0}].", tableattr.Schema)) + String.Format("[{0}]", tableattr.Name);
 
             return tableName;
         }
