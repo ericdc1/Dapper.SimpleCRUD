@@ -330,19 +330,23 @@ namespace Dapper
             return props.Where(p => p.PropertyType.IsSimpleType() || IsEditable(p));
         }
 
-        //Determine if the Attribute has an AllowEdit key and return its boolean state
+       //Determine if the Attribute has an AllowEdit key and return its boolean state
         //fake the funk and try to mimick EditableAttribute in System.ComponentModel.DataAnnotations 
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
         private static bool IsEditable(PropertyInfo pi)
         {
             object[] attributes = pi.GetCustomAttributes(false);
-            if (attributes.Length == 1)
+            if (attributes.Length > 0)
             {
-                dynamic write = attributes[0];
-                return write.AllowEdit;
+                dynamic write = attributes.FirstOrDefault(x=> x.GetType().Name=="EditableAttribute");
+                if (write != null)
+                {
+                    return write.AllowEdit;
+                }
             }
             return false;
-        }
+        } 
+
 
         //Get all properties that are NOT named Id and DO NOT have the Key attribute
         private static IEnumerable<PropertyInfo> GetNonIdProperties(object entity)
