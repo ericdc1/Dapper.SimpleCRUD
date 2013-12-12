@@ -24,7 +24,7 @@ namespace Dapper
         /// <param name="connection"></param>
         /// <param name="id"></param>
         /// <returns>Returns a single entity by a single id from table T.</returns>
-        public static T Get<T>(this IDbConnection connection, int id)
+        public static T Get<T>(this IDbConnection connection, object id)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
@@ -38,8 +38,10 @@ namespace Dapper
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("Select * from [{0}]", name);
-            sb.Append(" where " + onlyKey.Name + " = @Id");
+            sb.Append("Select ");
+            BuildSelectAs(sb, currenttype.GetProperties());
+            sb.AppendFormat(" from [{0}]", name);
+            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
 
             var dynParms = new DynamicParameters();
             dynParms.Add("@id", id);
@@ -72,7 +74,9 @@ namespace Dapper
 
             var sb = new StringBuilder();
             var whereprops = GetAllProperties(whereConditions).ToArray();
-            sb.AppendFormat("Select * from [{0}]", name);
+            sb.Append("Select ");
+            BuildSelectAs(sb, currenttype.GetProperties());
+            sb.AppendFormat(" from [{0}]", name);
 
             if (whereprops.Any())
             {
@@ -125,17 +129,12 @@ namespace Dapper
             BuildInsertValues(entityToInsert, sb);
             sb.Append(")");
          
-            //sqlce doesn't support scope_identity so we have to dumb it down
-            //sb.Append("; select cast(scope_identity() as int)");
-            //var newId = connection.Query<int?>(sb.ToString(), entityToInsert).Single();
-            //return (newId == null) ? 0 : (int)newId;
-
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
-            connection.Execute(sb.ToString(), entityToInsert,transaction,commandTimeout);
-            var r = connection.Query("select @@IDENTITY id",null,transaction,true,commandTimeout);
-            return (int?)r.First().id;
+            sb.Append(" select SCOPE_IDENTITY() as id");
+            var resId = connection.Query(sb.ToString(), entityToInsert, transaction, true, commandTimeout);
+            return (int?)resId.First().id;
         }
 
         /// <summary>
@@ -224,7 +223,7 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of records effected</returns>
-        public static int Delete<T>(this IDbConnection connection, int id, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static int Delete<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
@@ -240,7 +239,7 @@ namespace Dapper
 
             var sb = new StringBuilder();
             sb.AppendFormat("Delete from [{0}]", name);
-            sb.Append(" where " + onlyKey.Name + " = @Id");
+            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
 
             var dynParms = new DynamicParameters();
             dynParms.Add("@id", id);
@@ -259,9 +258,25 @@ namespace Dapper
             for (var i = 0; i < nonIdProps.Length; i++)
             {
                 var property = nonIdProps[i];
-
-                sb.AppendFormat("{0} = @{1}", property.Name, property.Name);
+                var propertyColumnName = GetColumnName(property);
+                sb.AppendFormat("{0} = @{1}", propertyColumnName, property.Name);
                 if (i < nonIdProps.Length - 1)
+                    sb.AppendFormat(", ");
+            }
+        }
+
+        //build select as value based on list of properties
+        private static void BuildSelectAs(StringBuilder sb, IEnumerable<PropertyInfo> idProps)
+        {
+            var propertyInfos = idProps.ToArray();
+            for (var i = 0; i < propertyInfos.Count(); i++)
+            {
+                var propInfo = propertyInfos.ElementAt(i);
+
+                var propertyColumnName = GetColumnName(propInfo);
+                sb.AppendFormat("{0} as {1}", propertyColumnName, propInfo.Name);
+
+                if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(", ");
             }
         }
@@ -272,7 +287,11 @@ namespace Dapper
             var propertyInfos = idProps.ToArray();
             for (var i = 0; i < propertyInfos.Count(); i++)
             {
-                sb.AppendFormat("[{0}] = @{1}", propertyInfos.ElementAt(i).Name, propertyInfos.ElementAt(i).Name);
+                var propInfo = propertyInfos.ElementAt(i);
+
+                var propertyColumnName = GetColumnName(propInfo);
+                sb.AppendFormat("{0} = @{1}", propertyColumnName, propInfo.Name);
+
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
             }
@@ -288,6 +307,7 @@ namespace Dapper
                 var property = props.ElementAt(i);
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
                 if (property.Name == "Id") continue;
+
                 sb.AppendFormat("@{0}", property.Name);
                 if (i < props.Count() - 1)
                     sb.Append(", ");
@@ -308,7 +328,8 @@ namespace Dapper
                 var property = props.ElementAt(i);
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
                 if (property.Name == "Id") continue;
-                sb.Append(property.Name);
+                var propertyColumnName = GetColumnName(property);
+                sb.Append(propertyColumnName);
                 if (i < props.Count() - 1)
                     sb.Append(", ");
             }
@@ -369,6 +390,11 @@ namespace Dapper
             return type.GetProperties().Where(p => p.Name == "Id" || p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute"));
         }
 
+        private static string GetColumnName(PropertyInfo propInfo)
+        {
+            return propInfo.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "ColumnAttribute") ? ((ColumnAttribute) propInfo.GetCustomAttributes(typeof (ColumnAttribute), true).First()).Name : propInfo.Name;
+        }
+
 
         //Gets the table name for this entity
         //For Inserts and updates we have a whole entity so this method is used
@@ -411,6 +437,27 @@ namespace Dapper
         public TableAttribute(string tableName)
         {
             Name = tableName;
+        }
+        /// <summary>
+        /// Name of the table
+        /// </summary>
+        public string Name { get; private set; }
+    }
+
+    /// <summary>
+    /// Optional Table attribute.
+    /// You can use the System.ComponentModel.DataAnnotations version in its place to specify the table name of a poco
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property)]
+    public class ColumnAttribute : Attribute
+    {
+        /// <summary>
+        /// Optional Table attribute.
+        /// </summary>
+        /// <param name="columnName"></param>
+        public ColumnAttribute(string columnName)
+        {
+            Name = columnName;
         }
         /// <summary>
         /// Name of the table
