@@ -6,7 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 
-namespace Dapper
+namespace Dapper    
 {
     /// <summary>
     /// Main class for Dapper.SimpleCRUD extensions
@@ -43,7 +43,7 @@ namespace Dapper
 
             var dynParms = new DynamicParameters();
             dynParms.Add("@id", id);
-
+            
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
 
@@ -63,7 +63,7 @@ namespace Dapper
         public static IEnumerable<T> GetList<T>(this IDbConnection connection, object whereConditions)
         {
             var currenttype = typeof(T);
-            var idProps = GetIdProperties(currenttype).ToList();
+            var idProps = GetIdProperties(currenttype).ToList(); 
 
             if (!idProps.Any())
                 throw new ArgumentException("Entity must have at least one [Key] property");
@@ -124,7 +124,7 @@ namespace Dapper
             sb.Append(") values (");
             BuildInsertValues(entityToInsert, sb);
             sb.Append(")");
-
+         
             //sqlce doesn't support scope_identity so we have to dumb it down
             //sb.Append("; select cast(scope_identity() as int)");
             //var newId = connection.Query<int?>(sb.ToString(), entityToInsert).Single();
@@ -155,7 +155,7 @@ namespace Dapper
         public static int Update(this IDbConnection connection, object entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToUpdate).ToList();
-
+           
             if (!idProps.Any())
                 throw new ArgumentException("Entity must have at least one [Key] or Id property");
 
@@ -282,7 +282,7 @@ namespace Dapper
         //are not marked with the [Key] attribute, and are not named Id
         private static void BuildInsertValues(object entityToInsert, StringBuilder sb)
         {
-            var props = GetScaffoldableProperties(entityToInsert).ToArray();
+            var props = GetScaffoldableProperties(entityToInsert).ToArray(); 
             for (var i = 0; i < props.Count(); i++)
             {
                 var property = props.ElementAt(i);
@@ -294,14 +294,14 @@ namespace Dapper
             }
             if (sb.ToString().EndsWith(", "))
                 sb.Remove(sb.Length - 2, 2);
-
+            
         }
 
         //build insert parameters which include all properties in the class that are not marked with the Editable(false) attribute,
         //are not marked with the [Key] attribute, and are not named Id
         private static void BuildInsertParameters(object entityToInsert, StringBuilder sb)
         {
-            var props = GetScaffoldableProperties(entityToInsert).ToArray();
+            var props = GetScaffoldableProperties(entityToInsert).ToArray(); 
 
             for (var i = 0; i < props.Count(); i++)
             {
@@ -335,9 +335,18 @@ namespace Dapper
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
         private static bool IsEditable(PropertyInfo pi)
         {
-            var attributes = pi.GetCustomAttributes(false).Where(i => i.GetType().Name == "EditableAttribute");
-            return attributes.Count() == 1 && ((dynamic)attributes.First()).AllowEdit;
+            object[] attributes = pi.GetCustomAttributes(false);
+            if (attributes.Length > 0)
+            {
+                dynamic write = attributes.FirstOrDefault(x=> x.GetType().Name=="EditableAttribute");
+                if (write != null)
+                {
+                    return write.AllowEdit;
+                }
+            }
+            return false;
         }
+
 
         //Get all properties that are NOT named Id and DO NOT have the Key attribute
         private static IEnumerable<PropertyInfo> GetNonIdProperties(object entity)
@@ -386,7 +395,7 @@ namespace Dapper
         }
     }
 
-
+    
 
     /// <summary>
     /// Optional Table attribute.
