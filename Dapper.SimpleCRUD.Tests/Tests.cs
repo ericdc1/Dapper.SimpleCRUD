@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Data.SqlClient;
 using System.Data.SqlServerCe;
 using System.IO;
 using System.Linq;
@@ -50,6 +51,23 @@ namespace Dapper.SimpleCRUD.Tests
 
     }
 
+    [System.ComponentModel.DataAnnotations.Schema.Table("CarLog", Schema = "Log")]
+    public class CarLog
+    {
+        public int Id { get; set; }
+        public string LogNotes { get; set; }
+    }
+
+    /// <summary>
+    /// This class should be used for failing tests, since no schema is specified and 'CarLog' is not on dbo
+    /// </summary>
+    [System.Data.Linq.Mapping.Table(Name = "CarLog")]
+    public class SchemalessCarLog
+    {
+        public int Id { get; set; }
+        public string LogNotes { get; set; }
+    }
+
     public class Tests
     {
         private IDbConnection GetOpenConnection()
@@ -57,7 +75,7 @@ namespace Dapper.SimpleCRUD.Tests
             var projLoc = Assembly.GetAssembly(GetType()).Location;
             var projFolder = Path.GetDirectoryName(projLoc);
 
-            var connection = new SqlCeConnection("Data Source = " + projFolder + "\\Test.sdf;");
+            var connection = new SqlConnection(@"Data Source = (LocalDB)\v11.0;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True");
             connection.Open();
             return connection;
         }
@@ -223,5 +241,41 @@ namespace Dapper.SimpleCRUD.Tests
             }
         }
 
+        public void InsertIntoDifferentSchema()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.Insert(new CarLog { LogNotes = "blah blah blah"});
+                id.IsEqualTo(1);
+            }
+        }
+
+        public void TestGetFromDifferentSchema()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var carlog = connection.Get<CarLog>(1);
+                carlog.LogNotes.IsEqualTo("blah blah blah");
+            }
+        }
+
+        public void TestTryingToGetFromTableInSchemaWithoutDataAnnotationShouldFail()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                try
+                {
+                    connection.Get<SchemalessCarLog>(1);
+                }
+                catch (Exception)
+                {
+                   //we expect to get an exception, so return
+                    return;
+                }
+               
+                //if we get here without throwing an exception, the test failed.
+                throw new ApplicationException("Expected exception");
+            }
+        }
     }
 }
