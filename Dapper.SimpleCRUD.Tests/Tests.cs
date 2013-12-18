@@ -68,6 +68,13 @@ namespace Dapper.SimpleCRUD.Tests
         public string LogNotes { get; set; }
     }
 
+    public class City
+    {
+        [Key]
+        public string Name { get; set; }
+        public int Population { get; set; }
+    }
+
     public class Tests
     {
         private IDbConnection GetOpenConnection()
@@ -241,7 +248,7 @@ namespace Dapper.SimpleCRUD.Tests
             }
         }
 
-        public void InsertIntoDifferentSchema()
+        public void TestInsertIntoDifferentSchema()
         {
             using (var connection = GetOpenConnection())
             {
@@ -275,6 +282,27 @@ namespace Dapper.SimpleCRUD.Tests
                
                 //if we get here without throwing an exception, the test failed.
                 throw new ApplicationException("Expected exception");
+            }
+        }
+
+        public void TestGetFromTableWithNonIntPrimaryKey()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                //note - there's not yet support for inserts without a non-int id, so drop down to a normal execute
+                connection.Execute("INSERT INTO CITY (NAME, POPULATION) VALUES ('Morgantown', 31000)");
+                var city = connection.Get<City>("Morgantown");
+                city.Population.IsEqualTo(31000);
+            }
+        }
+
+        public void TestDeleteFromTableWithNonIntPrimaryKey()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                //note - there's not yet support for inserts without a non-int id, so drop down to a normal execute
+                connection.Execute("INSERT INTO CITY (NAME, POPULATION) VALUES ('Fairmont', 18737)");
+                connection.Delete<City>("Fairmont").IsEqualTo(1);
             }
         }
     }
