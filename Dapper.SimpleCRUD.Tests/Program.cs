@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data.SqlClient;
 using System.Data.SqlServerCe;
 using System.IO;
 using System.Reflection;
@@ -18,16 +19,26 @@ namespace Dapper.SimpleCRUD.Tests
             var projLoc = Assembly.GetAssembly(typeof(Program)).Location;
             var projFolder = Path.GetDirectoryName(projLoc);
 
-            if (File.Exists(projFolder + "\\Test.sdf"))
-                File.Delete(projFolder + "\\Test.sdf");
-            var connectionString = "Data Source = " + projFolder + "\\Test.sdf;";
-            var engine = new SqlCeEngine(connectionString);
-            engine.CreateDatabase();
-            using (var connection = new SqlCeConnection(connectionString))
+            using (var connection = new SqlConnection(@"Data Source=(LocalDB)\v11.0;Initial Catalog=Master;Integrated Security=True"))
+            {
+                connection.Open();
+                try
+                {
+                    connection.Execute(@" DROP DATABASE DapperSimpleCrudTestDb; ");
+                }
+                catch {}
+                
+                connection.Execute(@" CREATE DATABASE DapperSimpleCrudTestDb; ");
+            }
+
+            using (var connection = new SqlConnection(@"Data Source = (LocalDB)\v11.0;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True"))
             {
                 connection.Open();
                 connection.Execute(@" create table Users (Id int IDENTITY(1,1) not null, Name nvarchar(100) not null, Age int not null, ScheduledDayOff int null) ");
                 connection.Execute(@" create table Car (CarId int IDENTITY(1,1) not null, Make nvarchar(100) not null, Model nvarchar(100) not null) ");
+                connection.Execute(@" create table City (Name nvarchar(100) not null, Population int not null) ");
+                connection.Execute(@" CREATE SCHEMA Log; ");
+                connection.Execute(@" create table Log.CarLog (Id int IDENTITY(1,1) not null, LogNotes nvarchar(100) NOT NULL) ");
             }
             Console.WriteLine("Created database");
         }
@@ -41,6 +52,18 @@ namespace Dapper.SimpleCRUD.Tests
                 method.Invoke(tester, null);
                 Console.WriteLine(" - OK!");
             }
+
+            using (var connection = new SqlConnection(@"Data Source=(LocalDB)\v11.0;Initial Catalog=Master;Integrated Security=True"))
+            {
+                connection.Open();
+                try
+                {
+                    //drop any remaining connections, then drop the db.
+                    connection.Execute(@" alter database DapperSimpleCrudTestDb set single_user with rollback immediate; DROP DATABASE DapperSimpleCrudTestDb; ");
+                }
+                catch {}
+            }
+
             Console.ReadKey();
         }
 

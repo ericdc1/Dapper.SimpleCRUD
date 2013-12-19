@@ -5,8 +5,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Microsoft.CSharp.RuntimeBinder;
 
-namespace Dapper    
+namespace Dapper
 {
     /// <summary>
     /// Main class for Dapper.SimpleCRUD extensions
@@ -24,7 +25,7 @@ namespace Dapper
         /// <param name="connection"></param>
         /// <param name="id"></param>
         /// <returns>Returns a single entity by a single id from table T.</returns>
-        public static T Get<T>(this IDbConnection connection, int id)
+        public static T Get<T>(this IDbConnection connection, object id)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
@@ -38,13 +39,13 @@ namespace Dapper
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("Select * from [{0}]", name);
+            sb.AppendFormat("Select * from {0}", name);
             sb.Append(" where " + onlyKey.Name + " = @Id");
 
             var dynParms = new DynamicParameters();
             dynParms.Add("@id", id);
-            
-            if(Debugger.IsAttached)
+
+            if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
 
             return connection.Query<T>(sb.ToString(), dynParms).FirstOrDefault();
@@ -63,7 +64,7 @@ namespace Dapper
         public static IEnumerable<T> GetList<T>(this IDbConnection connection, object whereConditions)
         {
             var currenttype = typeof(T);
-            var idProps = GetIdProperties(currenttype).ToList(); 
+            var idProps = GetIdProperties(currenttype).ToList();
 
             if (!idProps.Any())
                 throw new ArgumentException("Entity must have at least one [Key] property");
@@ -72,7 +73,7 @@ namespace Dapper
 
             var sb = new StringBuilder();
             var whereprops = GetAllProperties(whereConditions).ToArray();
-            sb.AppendFormat("Select * from [{0}]", name);
+            sb.AppendFormat("Select * from {0}", name);
 
             if (whereprops.Any())
             {
@@ -96,7 +97,7 @@ namespace Dapper
         /// <returns>Gets a list of all entities</returns>
         public static IEnumerable<T> GetList<T>(this IDbConnection connection)
         {
-            return connection.GetList<T>(new {});
+            return connection.GetList<T>(new { });
         }
 
         /// <summary>
@@ -113,18 +114,18 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The ID (primary key) of the newly inserted record if it is identity, otherwise null</returns>
-        public static int? Insert(this IDbConnection connection, object entityToInsert,IDbTransaction transaction = null,int? commandTimeout =null)
+        public static int? Insert(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var name = GetTableName(entityToInsert);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("insert into [{0}]", name);
+            sb.AppendFormat("insert into {0}", name);
             sb.Append(" (");
             BuildInsertParameters(entityToInsert, sb);
             sb.Append(") values (");
             BuildInsertValues(entityToInsert, sb);
             sb.Append(")");
-         
+
             //sqlce doesn't support scope_identity so we have to dumb it down
             //sb.Append("; select cast(scope_identity() as int)");
             //var newId = connection.Query<int?>(sb.ToString(), entityToInsert).Single();
@@ -133,8 +134,8 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
-            connection.Execute(sb.ToString(), entityToInsert,transaction,commandTimeout);
-            var r = connection.Query("select @@IDENTITY id",null,transaction,true,commandTimeout);
+            connection.Execute(sb.ToString(), entityToInsert, transaction, commandTimeout);
+            var r = connection.Query("select @@IDENTITY id", null, transaction, true, commandTimeout);
             return (int?)r.First().id;
         }
 
@@ -155,14 +156,14 @@ namespace Dapper
         public static int Update(this IDbConnection connection, object entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToUpdate).ToList();
-           
+
             if (!idProps.Any())
                 throw new ArgumentException("Entity must have at least one [Key] or Id property");
 
             var name = GetTableName(entityToUpdate);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("update [{0}]", name);
+            sb.AppendFormat("update {0}", name);
 
             sb.AppendFormat(" set ");
             BuildUpdateSet(entityToUpdate, sb);
@@ -172,7 +173,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Update: {0}", sb));
 
-            return connection.Execute(sb.ToString(), entityToUpdate,transaction,commandTimeout);
+            return connection.Execute(sb.ToString(), entityToUpdate, transaction, commandTimeout);
         }
 
         /// <summary>
@@ -188,7 +189,7 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of records effected</returns>
-        public static int Delete<T>(this IDbConnection connection, T entityToDelete,IDbTransaction transaction = null,int? commandTimeout =null)
+        public static int Delete<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToDelete).ToList();
 
@@ -199,7 +200,7 @@ namespace Dapper
             var name = GetTableName(entityToDelete);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("delete from [{0}]", name);
+            sb.AppendFormat("delete from {0}", name);
 
             sb.Append(" where ");
             BuildWhere(sb, idProps);
@@ -207,7 +208,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete: {0}", sb));
 
-            return connection.Execute(sb.ToString(), entityToDelete,transaction,commandTimeout);
+            return connection.Execute(sb.ToString(), entityToDelete, transaction, commandTimeout);
         }
 
         /// <summary>
@@ -224,7 +225,7 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of records effected</returns>
-        public static int Delete<T>(this IDbConnection connection, int id, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static int Delete<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
@@ -239,16 +240,16 @@ namespace Dapper
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("Delete from [{0}]", name);
+            sb.AppendFormat("Delete from {0}", name);
             sb.Append(" where " + onlyKey.Name + " = @Id");
 
             var dynParms = new DynamicParameters();
             dynParms.Add("@id", id);
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Delete<{0}> {1}",currenttype, sb));
+                Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));
 
-            return connection.Execute(sb.ToString(), dynParms,transaction,commandTimeout);
+            return connection.Execute(sb.ToString(), dynParms, transaction, commandTimeout);
         }
 
         //build update statement based on list on an entity
@@ -282,7 +283,7 @@ namespace Dapper
         //are not marked with the [Key] attribute, and are not named Id
         private static void BuildInsertValues(object entityToInsert, StringBuilder sb)
         {
-            var props = GetScaffoldableProperties(entityToInsert).ToArray(); 
+            var props = GetScaffoldableProperties(entityToInsert).ToArray();
             for (var i = 0; i < props.Count(); i++)
             {
                 var property = props.ElementAt(i);
@@ -294,14 +295,14 @@ namespace Dapper
             }
             if (sb.ToString().EndsWith(", "))
                 sb.Remove(sb.Length - 2, 2);
-            
+
         }
 
         //build insert parameters which include all properties in the class that are not marked with the Editable(false) attribute,
         //are not marked with the [Key] attribute, and are not named Id
         private static void BuildInsertParameters(object entityToInsert, StringBuilder sb)
         {
-            var props = GetScaffoldableProperties(entityToInsert).ToArray(); 
+            var props = GetScaffoldableProperties(entityToInsert).ToArray();
 
             for (var i = 0; i < props.Count(); i++)
             {
@@ -319,7 +320,7 @@ namespace Dapper
         //Get all properties in an entity
         private static IEnumerable<PropertyInfo> GetAllProperties(object entity)
         {
-            if (entity == null) entity = new {};
+            if (entity == null) entity = new { };
             return entity.GetType().GetProperties();
         }
 
@@ -330,7 +331,7 @@ namespace Dapper
             return props.Where(p => p.PropertyType.IsSimpleType() || IsEditable(p));
         }
 
-       //Determine if the Attribute has an AllowEdit key and return its boolean state
+        //Determine if the Attribute has an AllowEdit key and return its boolean state
         //fake the funk and try to mimick EditableAttribute in System.ComponentModel.DataAnnotations 
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
         private static bool IsEditable(PropertyInfo pi)
@@ -338,14 +339,14 @@ namespace Dapper
             object[] attributes = pi.GetCustomAttributes(false);
             if (attributes.Length > 0)
             {
-                dynamic write = attributes.FirstOrDefault(x=> x.GetType().Name=="EditableAttribute");
+                dynamic write = attributes.FirstOrDefault(x => x.GetType().Name == "EditableAttribute");
                 if (write != null)
                 {
                     return write.AllowEdit;
                 }
             }
             return false;
-        } 
+        }
 
 
         //Get all properties that are NOT named Id and DO NOT have the Key attribute
@@ -385,17 +386,30 @@ namespace Dapper
         //Uses class name by default and overrides if the class has a Table attribute
         private static string GetTableName(Type type)
         {
-            var tableName = type.Name;
+            var tableName = String.Format("[{0}]", type.Name);
 
             var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "TableAttribute") as dynamic;
             if (tableattr != null)
-                tableName = tableattr.Name;
+            {
+                tableName = String.Format("[{0}]", tableattr.Name);
+                try
+                {
+                    if (!String.IsNullOrEmpty(tableattr.Schema))
+                    {
+                        tableName = String.Format("[{0}].[{1}]", tableattr.Schema, tableattr.Name);
+                    }
+                }
+                catch (RuntimeBinderException)
+                {
+                    //Schema doesn't exist on this attribute.
+                }
+            }
 
             return tableName;
         }
     }
 
-    
+
 
     /// <summary>
     /// Optional Table attribute.
