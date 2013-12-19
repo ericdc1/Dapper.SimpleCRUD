@@ -5,7 +5,7 @@
 // 
 //     Connection String Name: `testdb`
 //     Provider:               `System.Data.SqlServerCe.4.0`
-//     Connection String:      `Data Source=C:\Users\Eric\Documents\GitHub\Dapper.SimpleCRUD\SampleWebsite\App_Data\Test.sdf;Persist Security Info=False;`
+//     Connection String:      `Data Source=C:\Users\ecoffman\Documents\GitHub\Dapper.SimpleCRUD\SampleWebsite\App_Data\Test.sdf;Persist Security Info=False;`
 //     Include Views:          `True`
 
 using System;

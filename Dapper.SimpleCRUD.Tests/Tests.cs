@@ -10,18 +10,19 @@ using System;
 
 namespace Dapper.SimpleCRUD.Tests
 {
-    //For .Net 4.5> [System.ComponentModel.DataAnnotations.Schema.Table("Users")]
-    [System.Data.Linq.Mapping.Table(Name = "Users")]
+    //For .Net 4.5> [System.ComponentModel.DataAnnotations.Schema.Table("Users")]  or the attribute built into SimpleCRUD
+    [Table("Users")]
     public class User
     {
         public int Id { get; set; }
         public string Name { get; set; }
         public int Age { get; set; }
-        [System.ComponentModel.DataAnnotations.Editable(true)]
+        //Use System.ComponentModel.DataAnnotations or the attribute built into SimpleCRUD
+        [Editable(true)]
         public DayOfWeek? ScheduledDayOff { get; set; }
     }
 
-    [System.Data.Linq.Mapping.Table(Name = "Users")]
+    [Table("Users")]
     public class User1
     {
         public int Id { get; set; }
@@ -34,7 +35,8 @@ namespace Dapper.SimpleCRUD.Tests
     public class Car
     {
         #region DatabaseFields
-        [System.ComponentModel.DataAnnotations.Key]
+        //System.ComponentModel.DataAnnotations.Key
+        [Key]
         public int CarId { get; set; }
         public string Make { get; set; }
         public string Model { get; set; }
@@ -45,13 +47,13 @@ namespace Dapper.SimpleCRUD.Tests
         #endregion
 
         #region AdditionalFields
-        [System.ComponentModel.DataAnnotations.Editable(false)]
+        [Editable(false)]
         public string MakeWithModel{get { return Make + " (" + Model + ")"; }}
         #endregion
 
     }
 
-    [System.ComponentModel.DataAnnotations.Schema.Table("CarLog", Schema = "Log")]
+    [Table("CarLog", Schema = "Log")]
     public class CarLog
     {
         public int Id { get; set; }
@@ -61,7 +63,7 @@ namespace Dapper.SimpleCRUD.Tests
     /// <summary>
     /// This class should be used for failing tests, since no schema is specified and 'CarLog' is not on dbo
     /// </summary>
-    [System.Data.Linq.Mapping.Table(Name = "CarLog")]
+    [Table("CarLog")]
     public class SchemalessCarLog
     {
         public int Id { get; set; }

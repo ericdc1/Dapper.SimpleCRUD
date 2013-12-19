@@ -430,6 +430,10 @@ namespace Dapper
         /// Name of the table
         /// </summary>
         public string Name { get; private set; }
+        /// <summary>
+        /// Name of the schema
+        /// </summary>
+        public string Schema { get; set; }
     }
 
 
@@ -509,6 +513,6 @@ static class TypeExtension
                                    typeof(DateTimeOffset?),
                                    typeof(byte?[])
                                };
-        return simpleTypes.Contains(type);
+        return simpleTypes.Contains(type)||type.IsEnum;
     }
 }
