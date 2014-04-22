@@ -430,6 +430,10 @@ namespace Dapper
         /// Name of the table
         /// </summary>
         public string Name { get; private set; }
+        /// <summary>
+        /// Name of the schema
+        /// </summary>
+        public string Schema { get; set; }
     }
 
 
@@ -470,6 +474,8 @@ static class TypeExtension
     //You can't insert or update complex types. Lets filter them out.
     public static bool IsSimpleType(this Type type)
     {
+        var underlyingType = Nullable.GetUnderlyingType(type);
+        type = underlyingType ?? type;
         var simpleTypes = new List<Type>
                                {
                                    typeof(byte),
@@ -489,26 +495,8 @@ static class TypeExtension
                                    typeof(Guid),
                                    typeof(DateTime),
                                    typeof(DateTimeOffset),
-                                   typeof(byte[]),
-								   typeof(DateTime?),
-								   typeof(byte?),
-                                   typeof(sbyte?),
-                                   typeof(short?),
-                                   typeof(ushort?),
-                                   typeof(int?),
-                                   typeof(uint?),
-                                   typeof(long?),
-                                   typeof(ulong?),
-                                   typeof(float?),
-                                   typeof(double?),
-                                   typeof(decimal?),
-                                   typeof(bool?),
-                                   typeof(char?),
-                                   typeof(Guid?),
-                                   typeof(DateTime?),
-                                   typeof(DateTimeOffset?),
-                                   typeof(byte?[])
+                                   typeof(byte[])
                                };
-        return simpleTypes.Contains(type);
+        return simpleTypes.Contains(type) || type.IsEnum;
     }
 }
