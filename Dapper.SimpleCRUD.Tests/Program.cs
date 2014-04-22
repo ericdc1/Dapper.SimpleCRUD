@@ -63,7 +63,7 @@ namespace Dapper.SimpleCRUD.Tests
                 }
                 catch {}
             }
-
+            Console.Write("Testing complete.");
             Console.ReadKey();
         }
 
