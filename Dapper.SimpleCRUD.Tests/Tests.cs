@@ -17,8 +17,7 @@ namespace Dapper.SimpleCRUD.Tests
         public int Id { get; set; }
         public string Name { get; set; }
         public int Age { get; set; }
-        //Use System.ComponentModel.DataAnnotations or the attribute built into SimpleCRUD
-        [Editable(true)]
+        //we modified so enums were automatically handled, we should also automatically handle nullable enums
         public DayOfWeek? ScheduledDayOff { get; set; }
     }
 
@@ -305,6 +304,17 @@ namespace Dapper.SimpleCRUD.Tests
                 //note - there's not yet support for inserts without a non-int id, so drop down to a normal execute
                 connection.Execute("INSERT INTO CITY (NAME, POPULATION) VALUES ('Fairmont', 18737)");
                 connection.Delete<City>("Fairmont").IsEqualTo(1);
+            }
+        }
+
+        public void TestNullableEnumInsert()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new User { Name = "Enum-y", Age = 10, ScheduledDayOff = DayOfWeek.Thursday });
+                var user = connection.GetList<User>(new { Name = "Enum-y" }).FirstOrDefault() ?? new User();
+                user.ScheduledDayOff.IsEqualTo(DayOfWeek.Thursday);
+                connection.Delete<User>(user.Id);
             }
         }
     }
