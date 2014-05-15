@@ -612,6 +612,7 @@ class SqlServerSchemaReader : SchemaReader
 				 break;
 			case "smalldatetime":
 			case "datetime":
+			case "datetime2":
 			case "date":
 			case "time":
 				sysType=  "DateTime";
