@@ -107,17 +107,45 @@ namespace Dapper
         /// <para>Insert filters out Id column and any columns with the [Key] attribute</para>
         /// <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
         /// <para>Supports transaction and command timeout</para>
-        /// <para>Returns the ID (primary key) of the newly inserted record if it is identity, otherwise null</para>
+        /// <para>Returns the ID (primary key) of the newly inserted record if it is identity using the int? type, otherwise null</para>
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="entityToInsert"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <returns>The ID (primary key) of the newly inserted record if it is identity, otherwise null</returns>
+        /// <returns>The ID (primary key) of the newly inserted record if it is identity using the int? type, otherwise null</returns>
         public static int? Insert(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-            var name = GetTableName(entityToInsert);
+            return Insert<int?>(connection, entityToInsert, transaction, commandTimeout);
+        }
 
+        /// <summary>
+        /// <para>Inserts a row into the database</para>
+        /// <para>By default inserts into the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Insert filters out Id column and any columns with the [Key] attribute</para>
+        /// <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
+        /// <para>Supports transaction and command timeout</para>
+        /// <para>Returns the ID (primary key) of the newly inserted record if it is identity using the defined type, otherwise null</para>
+        /// </summary>
+        /// <param name="connection"></param>
+        /// <param name="entityToInsert"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
+        /// <returns>The ID (primary key) of the newly inserted record if it is identity using the defined type, otherwise null</returns>
+        public static TKey Insert<TKey>(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+            //todo: add support for GUID
+
+            var baseType = typeof(TKey);
+            var underlyingType = Nullable.GetUnderlyingType(baseType);
+            var keytype = underlyingType ?? baseType;
+            if (keytype != typeof (int) && keytype != typeof (uint) && keytype != typeof (long)  && keytype != typeof (ulong)  && keytype != typeof (short)  && keytype != typeof (ushort))
+            {
+                throw new Exception("Invalid return type");
+            }
+
+            var name = GetTableName(entityToInsert);
             var sb = new StringBuilder();
             sb.AppendFormat("insert into {0}", name);
             sb.Append(" (");
@@ -136,8 +164,9 @@ namespace Dapper
 
             connection.Execute(sb.ToString(), entityToInsert, transaction, commandTimeout);
             var r = connection.Query("select @@IDENTITY id", null, transaction, true, commandTimeout);
-            return (int?)r.First().id;
+            return (TKey)r.First().id;             
         }
+
 
         /// <summary>
         ///  <para>Updates a record or records in the database</para>

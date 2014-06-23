@@ -52,6 +52,19 @@ namespace Dapper.SimpleCRUD.Tests
 
     }
 
+    public class BigCar
+    {
+        #region DatabaseFields
+        //System.ComponentModel.DataAnnotations.Key
+        [Key]
+        public long CarId { get; set; }
+        public string Make { get; set; }
+        public string Model { get; set; }
+        #endregion
+
+    }
+
+
     [Table("CarLog", Schema = "Log")]
     public class CarLog
     {
@@ -98,6 +111,14 @@ namespace Dapper.SimpleCRUD.Tests
             }
         }
 
+        public void InsertUsingBigIntPrimaryKey()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.Insert<long>(new BigCar() { Make = "Big", Model = "Car" });
+                id.IsEqualTo(2147483650);
+            }
+        }
 
         public void TestSimpleGet()
         {

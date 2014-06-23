@@ -36,6 +36,7 @@ namespace Dapper.SimpleCRUD.Tests
                 connection.Open();
                 connection.Execute(@" create table Users (Id int IDENTITY(1,1) not null, Name nvarchar(100) not null, Age int not null, ScheduledDayOff int null) ");
                 connection.Execute(@" create table Car (CarId int IDENTITY(1,1) not null, Make nvarchar(100) not null, Model nvarchar(100) not null) ");
+                connection.Execute(@" create table BigCar (CarId bigint IDENTITY(2147483650,1) not null, Make nvarchar(100) not null, Model nvarchar(100) not null) ");
                 connection.Execute(@" create table City (Name nvarchar(100) not null, Population int not null) ");
                 connection.Execute(@" CREATE SCHEMA Log; ");
                 connection.Execute(@" create table Log.CarLog (Id int IDENTITY(1,1) not null, LogNotes nvarchar(100) NOT NULL) ");
