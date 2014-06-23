@@ -12,3 +12,5 @@
 * version 1.1.3: Improved xml comments
 * version 1.2.0: Added changes from YogirajA to support transactions, and changes to avoid multiple enumeration
 * version 1.3.0: Support for multiple schemas, non int primary keys. Fixed issue with editable attribute annotations. Made enums be considered "editable" so you can have integers in the database and represent them as enums in the code and have SimpleCRUD map them without extra pain. 
+* version 1.4.0: Switched to using Nullable.GetUnderlyingType(type) so we don't need to explicitly check for all nullable types. This also has the side effect of fixing checks for nullable enums without the editable attribute. 	  
+* version 1.4.1: Added support for short and long primary key types on insert method
