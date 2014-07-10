@@ -162,9 +162,20 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
-            connection.Execute(sb.ToString(), entityToInsert, transaction, commandTimeout);
-            var r = connection.Query("select @@IDENTITY id", null, transaction, true, commandTimeout);
-            return (TKey)r.First().id;             
+            //to support postgresql 
+            if (connection.GetType().Name == "NpgsqlConnection")
+            {
+                sb.Append("  RETURNING id");
+                var r = connection.Query(sb.ToString() , entityToInsert, transaction, true, commandTimeout);
+                return (TKey) r.First().id;
+            }
+            else
+            {
+                connection.Execute(sb.ToString(), entityToInsert, transaction, commandTimeout);
+                var r = connection.Query("select @@IDENTITY id", null, transaction, true, commandTimeout);
+                return (TKey)r.First().id; 
+            }
+                      
         }
 
 
