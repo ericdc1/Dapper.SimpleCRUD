@@ -36,7 +36,7 @@ namespace Dapper
                 throw new ArgumentException("Get<T> only supports an entity with a single [Key] or Id property");
 
             var onlyKey = idProps.First();
-            var name = GetTableName(currenttype);
+            var name = GetTableName(connection,currenttype);
 
             var sb = new StringBuilder();
             sb.AppendFormat("Select * from {0}", name);
@@ -69,7 +69,7 @@ namespace Dapper
             if (!idProps.Any())
                 throw new ArgumentException("Entity must have at least one [Key] property");
 
-            var name = GetTableName(currenttype);
+            var name = GetTableName(connection,currenttype);
 
             var sb = new StringBuilder();
             var whereprops = GetAllProperties(whereConditions).ToArray();
@@ -78,7 +78,7 @@ namespace Dapper
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops);
+                BuildWhere(connection, sb, whereprops);
             }
 
             if (Debugger.IsAttached)
@@ -145,7 +145,7 @@ namespace Dapper
                 throw new Exception("Invalid return type");
             }
 
-            var name = GetTableName(entityToInsert);
+            var name = GetTableName(connection, entityToInsert);
             var sb = new StringBuilder();
             sb.AppendFormat("insert into {0}", name);
             sb.Append(" (");
@@ -189,7 +189,7 @@ namespace Dapper
             if (!idProps.Any())
                 throw new ArgumentException("Entity must have at least one [Key] or Id property");
 
-            var name = GetTableName(entityToUpdate);
+            var name = GetTableName(connection, entityToUpdate);
 
             var sb = new StringBuilder();
             sb.AppendFormat("update {0}", name);
@@ -197,7 +197,7 @@ namespace Dapper
             sb.AppendFormat(" set ");
             BuildUpdateSet(entityToUpdate, sb);
             sb.Append(" where ");
-            BuildWhere(sb, idProps);
+            BuildWhere(connection, sb, idProps);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Update: {0}", sb));
@@ -226,13 +226,13 @@ namespace Dapper
             if (!idProps.Any())
                 throw new ArgumentException("Entity must have at least one [Key] or Id property");
 
-            var name = GetTableName(entityToDelete);
+            var name = GetTableName(connection, entityToDelete);
 
             var sb = new StringBuilder();
             sb.AppendFormat("delete from {0}", name);
 
             sb.Append(" where ");
-            BuildWhere(sb, idProps);
+            BuildWhere(connection, sb, idProps);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete: {0}", sb));
@@ -266,7 +266,7 @@ namespace Dapper
                 throw new ArgumentException("Delete<T> only supports an entity with a single [Key] or Id property");
 
             var onlyKey = idProps.First();
-            var name = GetTableName(currenttype);
+            var name = GetTableName(connection, currenttype);
 
             var sb = new StringBuilder();
             sb.AppendFormat("Delete from {0}", name);
@@ -297,12 +297,21 @@ namespace Dapper
         }
 
         //build where clause based on list of properties
-        private static void BuildWhere(StringBuilder sb, IEnumerable<PropertyInfo> idProps)
+        private static void BuildWhere(IDbConnection connection,StringBuilder sb, IEnumerable<PropertyInfo> idProps)
         {
             var propertyInfos = idProps.ToArray();
             for (var i = 0; i < propertyInfos.Count(); i++)
             {
-                sb.AppendFormat("[{0}] = @{1}", propertyInfos.ElementAt(i).Name, propertyInfos.ElementAt(i).Name);
+                // to make the postgres sql excuting normal
+                if (connection.GetType().Name == "NpgsqlConnection")
+                {
+                    sb.AppendFormat("{0} = @{1}", propertyInfos.ElementAt(i).Name, propertyInfos.ElementAt(i).Name);
+                }
+                else
+                {
+                    sb.AppendFormat("[{0}] = @{1}", propertyInfos.ElementAt(i).Name, propertyInfos.ElementAt(i).Name);
+                }
+                
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
             }
@@ -403,29 +412,37 @@ namespace Dapper
         //Gets the table name for this entity
         //For Inserts and updates we have a whole entity so this method is used
         //Uses class name by default and overrides if the class has a Table attribute
-        private static string GetTableName(object entity)
+        private static string GetTableName(IDbConnection connection, object entity)
         {
             var type = entity.GetType();
-            return GetTableName(type);
+            var dbtype = connection.GetType();
+            return GetTableName(dbtype,type);
         }
 
         //Gets the table name for this type
         //For Get(id) and Delete(id) we don't have an entity, just the type so this method is used
         //Use dynamic type to be able to handle both our Table-attribute and the DataAnnotation
         //Uses class name by default and overrides if the class has a Table attribute
-        private static string GetTableName(Type type)
+        private static string GetTableName(Type dbType,Type type)
         {
-            var tableName = String.Format("[{0}]", type.Name);
+            // to make the postgres sql excuting normal
+            var connTypeName = dbType.Name;
+
+            var tableName = type.Name; //String.Format("[{0}]", type.Name);
+            var schemaName = string.Empty;
+         
 
             var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "TableAttribute") as dynamic;
             if (tableattr != null)
             {
-                tableName = String.Format("[{0}]", tableattr.Name);
+                tableName = tableattr.Name;// String.Format("[{0}]", tableattr.Name);
+               
                 try
                 {
                     if (!String.IsNullOrEmpty(tableattr.Schema))
                     {
-                        tableName = String.Format("[{0}].[{1}]", tableattr.Schema, tableattr.Name);
+                       // tableName = String.Format("[{0}].[{1}]", tableattr.Schema, tableattr.Name);
+                        schemaName = tableattr.Schema;
                     }
                 }
                 catch (RuntimeBinderException)
@@ -433,6 +450,26 @@ namespace Dapper
                     //Schema doesn't exist on this attribute.
                 }
             }
+
+            if (connTypeName == "NpgsqlConnection")
+            {
+                if (!string.IsNullOrEmpty(schemaName))
+                {
+                    tableName = string.Format(" {0}.{1} ", tableName, schemaName);
+                }
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(schemaName))
+                {
+                    tableName = string.Format("[{0}].[{1}] ", tableName, schemaName);
+                }
+                else
+                {
+                    tableName = String.Format("[{0}]", tableName);
+                }
+            }
+
 
             return tableName;
         }
