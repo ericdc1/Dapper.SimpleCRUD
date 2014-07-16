@@ -14,6 +14,40 @@ namespace Dapper
     /// </summary>
     public static class SimpleCRUD
     {
+        private static string SchemaNameEncapsulation = "[{0}]";
+        private static string TableNameEncapsulation = "[{0}]";
+        private static string ColumnNameEncapsulation = "[{0}]";
+
+        public static void SetSchemaNameEncapsulation(string leftEncapsulation, string rightEncapsulation)
+        {
+            SchemaNameEncapsulation = string.Concat(leftEncapsulation, "{0}", rightEncapsulation);
+        }
+
+        public static void SetTableNameEncapsulation(string leftEncapsulation, string rightEncapsulation)
+        {
+            TableNameEncapsulation = string.Concat(leftEncapsulation, "{0}", rightEncapsulation);
+        }
+
+        public static void SetColumnNameEncapsulation(string leftEncapsulation, string rightEncapsulation)
+        {
+            ColumnNameEncapsulation = string.Concat(leftEncapsulation, "{0}", rightEncapsulation);
+        }
+
+        public static string GetSchemaNameEncapsulation()
+        {
+            return SchemaNameEncapsulation;
+        }
+
+        public static string GetTableNameEncapsulation()
+        {
+            return TableNameEncapsulation;
+        }
+
+        public static string GetColumnNameEncapsulation()
+        {
+            return ColumnNameEncapsulation;
+        }
+
         /// <summary>
         /// <para>By default queries the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
@@ -140,7 +174,7 @@ namespace Dapper
             var baseType = typeof(TKey);
             var underlyingType = Nullable.GetUnderlyingType(baseType);
             var keytype = underlyingType ?? baseType;
-            if (keytype != typeof (int) && keytype != typeof (uint) && keytype != typeof (long)  && keytype != typeof (ulong)  && keytype != typeof (short)  && keytype != typeof (ushort))
+            if (keytype != typeof(int) && keytype != typeof(uint) && keytype != typeof(long) && keytype != typeof(ulong) && keytype != typeof(short) && keytype != typeof(ushort))
             {
                 throw new Exception("Invalid return type");
             }
@@ -164,9 +198,8 @@ namespace Dapper
 
             connection.Execute(sb.ToString(), entityToInsert, transaction, commandTimeout);
             var r = connection.Query("select @@IDENTITY id", null, transaction, true, commandTimeout);
-            return (TKey)r.First().id;             
+            return (TKey)r.First().id;
         }
-
 
         /// <summary>
         ///  <para>Updates a record or records in the database</para>
@@ -222,7 +255,6 @@ namespace Dapper
         {
             var idProps = GetIdProperties(entityToDelete).ToList();
 
-
             if (!idProps.Any())
                 throw new ArgumentException("Entity must have at least one [Key] or Id property");
 
@@ -259,7 +291,6 @@ namespace Dapper
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
 
-
             if (!idProps.Any())
                 throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
             if (idProps.Count() > 1)
@@ -290,7 +321,7 @@ namespace Dapper
             {
                 var property = nonIdProps[i];
 
-                sb.AppendFormat("{0} = @{1}", property.Name, property.Name);
+                sb.AppendFormat("{0} = @{1}", EncapsulateColumnName(property.Name), property.Name);
                 if (i < nonIdProps.Length - 1)
                     sb.AppendFormat(", ");
             }
@@ -302,7 +333,7 @@ namespace Dapper
             var propertyInfos = idProps.ToArray();
             for (var i = 0; i < propertyInfos.Count(); i++)
             {
-                sb.AppendFormat("[{0}] = @{1}", propertyInfos.ElementAt(i).Name, propertyInfos.ElementAt(i).Name);
+                sb.AppendFormat("{0} = @{1}", EncapsulateColumnName(propertyInfos.ElementAt(i).Name), propertyInfos.ElementAt(i).Name);
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
             }
@@ -324,7 +355,6 @@ namespace Dapper
             }
             if (sb.ToString().EndsWith(", "))
                 sb.Remove(sb.Length - 2, 2);
-
         }
 
         //build insert parameters which include all properties in the class that are not marked with the Editable(false) attribute,
@@ -361,7 +391,7 @@ namespace Dapper
         }
 
         //Determine if the Attribute has an AllowEdit key and return its boolean state
-        //fake the funk and try to mimick EditableAttribute in System.ComponentModel.DataAnnotations 
+        //fake the funk and try to mimick EditableAttribute in System.ComponentModel.DataAnnotations
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
         private static bool IsEditable(PropertyInfo pi)
         {
@@ -376,7 +406,6 @@ namespace Dapper
             }
             return false;
         }
-
 
         //Get all properties that are NOT named Id and DO NOT have the Key attribute
         private static IEnumerable<PropertyInfo> GetNonIdProperties(object entity)
@@ -399,7 +428,6 @@ namespace Dapper
             return type.GetProperties().Where(p => p.Name == "Id" || p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute"));
         }
 
-
         //Gets the table name for this entity
         //For Inserts and updates we have a whole entity so this method is used
         //Uses class name by default and overrides if the class has a Table attribute
@@ -415,17 +443,18 @@ namespace Dapper
         //Uses class name by default and overrides if the class has a Table attribute
         private static string GetTableName(Type type)
         {
-            var tableName = String.Format("[{0}]", type.Name);
+            var tableName = EncapsulateTableName(type.Name);
 
             var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "TableAttribute") as dynamic;
             if (tableattr != null)
             {
-                tableName = String.Format("[{0}]", tableattr.Name);
+                tableName = EncapsulateTableName(tableattr.Name);
                 try
                 {
                     if (!String.IsNullOrEmpty(tableattr.Schema))
                     {
-                        tableName = String.Format("[{0}].[{1}]", tableattr.Schema, tableattr.Name);
+                        string schemaName = EncapsulateSchemaName(tableattr.Schema);
+                        tableName = String.Format("{0}.{1}", schemaName, tableName);
                     }
                 }
                 catch (RuntimeBinderException)
@@ -436,9 +465,22 @@ namespace Dapper
 
             return tableName;
         }
+
+        private static string EncapsulateColumnName(string columnName)
+        {
+            return string.Format(ColumnNameEncapsulation, columnName);
+        }
+
+        private static string EncapsulateTableName(string tableName)
+        {
+            return string.Format(TableNameEncapsulation, tableName);
+        }
+
+        private static string EncapsulateSchemaName(string schemaName)
+        {
+            return string.Format(SchemaNameEncapsulation, schemaName);
+        }
     }
-
-
 
     /// <summary>
     /// Optional Table attribute.
@@ -455,16 +497,17 @@ namespace Dapper
         {
             Name = tableName;
         }
+
         /// <summary>
         /// Name of the table
         /// </summary>
         public string Name { get; private set; }
+
         /// <summary>
         /// Name of the schema
         /// </summary>
         public string Schema { get; set; }
     }
-
 
     /// <summary>
     /// Optional Key attribute.
@@ -490,15 +533,15 @@ namespace Dapper
         {
             AllowEdit = iseditable;
         }
+
         /// <summary>
         /// Does this property persist to the database?
         /// </summary>
         public bool AllowEdit { get; private set; }
     }
-
 }
 
-static class TypeExtension
+internal static class TypeExtension
 {
     //You can't insert or update complex types. Lets filter them out.
     public static bool IsSimpleType(this Type type)
