@@ -473,11 +473,11 @@ namespace Dapper
             {
                 if (!string.IsNullOrEmpty(schemaName))
                 {
-                    tableName = string.Format("[{0}].[{1}] ", tableName, schemaName);
+                    tableName = string.Format("{0}.{1} ", tableName, schemaName);
                 }
                 else
                 {
-                    tableName = String.Format("[{0}]", tableName);
+                    tableName = String.Format("{0}", tableName);
                 }
             }
 
