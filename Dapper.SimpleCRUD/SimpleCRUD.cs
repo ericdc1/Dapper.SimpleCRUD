@@ -153,6 +153,7 @@ namespace Dapper
             sb.Append(") values (");
             BuildInsertValues(entityToInsert, sb);
             sb.Append(")");
+            sb.Append(" select SCOPE_IDENTITY() Id");
 
             //sqlce doesn't support scope_identity so we have to dumb it down
             //sb.Append("; select cast(scope_identity() as int)");
@@ -162,9 +163,8 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
-            connection.Execute(sb.ToString(), entityToInsert, transaction, commandTimeout);
-            var r = connection.Query("select @@IDENTITY id", null, transaction, true, commandTimeout);
-            return (TKey)r.First().id;             
+            var r = connection.Query(sb.ToString(), entityToInsert, transaction, true, commandTimeout);
+            return (TKey)r.First().Id;           
         }
 
 
