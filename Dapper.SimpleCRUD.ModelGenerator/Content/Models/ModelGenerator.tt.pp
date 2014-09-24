@@ -464,7 +464,7 @@ Tables LoadTables()
 					{
 						//c.PropertyName = "_" + c.PropertyName;
 						
-						// Replace first character of ClassName instead of putting "_" 
+						// UpperCase first character of ClassName instead of putting "_" for property name doesn't clash with class name
 						t.ClassName = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(t.ClassName);
 						c.PropertyName = c.PropertyName.ToLower();
 						
