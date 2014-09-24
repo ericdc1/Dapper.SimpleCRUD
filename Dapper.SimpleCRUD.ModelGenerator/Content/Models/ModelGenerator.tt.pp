@@ -461,7 +461,14 @@ Tables LoadTables()
 
 					// Make sure property name doesn't clash with class name
 					if (c.PropertyName == t.ClassName)
-						c.PropertyName = "_" + c.PropertyName;
+					{
+						//c.PropertyName = "_" + c.PropertyName;
+						
+						// Replace first character of ClassName instead of putting "_" 
+						t.ClassName = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(t.ClassName);
+						c.PropertyName = c.PropertyName.ToLower();
+						
+					}	
 				}
 			}
 
