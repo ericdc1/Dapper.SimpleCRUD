@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Data.SqlClient;
 using System.Data.SqlServerCe;
 using System.IO;
 using System.Linq;
@@ -9,18 +10,18 @@ using System;
 
 namespace Dapper.SimpleCRUD.Tests
 {
-    //For .Net 4.5> [System.ComponentModel.DataAnnotations.Schema.Table("Users")]
-    [System.Data.Linq.Mapping.Table(Name = "Users")]
+    //For .Net 4.5> [System.ComponentModel.DataAnnotations.Schema.Table("Users")]  or the attribute built into SimpleCRUD
+    [Table("Users")]
     public class User
     {
         public int Id { get; set; }
         public string Name { get; set; }
         public int Age { get; set; }
-        [System.ComponentModel.DataAnnotations.Editable(true)]
+        //we modified so enums were automatically handled, we should also automatically handle nullable enums
         public DayOfWeek? ScheduledDayOff { get; set; }
     }
 
-    [System.Data.Linq.Mapping.Table(Name = "Users")]
+    [Table("Users")]
     public class User1
     {
         public int Id { get; set; }
@@ -33,7 +34,8 @@ namespace Dapper.SimpleCRUD.Tests
     public class Car
     {
         #region DatabaseFields
-        [System.ComponentModel.DataAnnotations.Key]
+        //System.ComponentModel.DataAnnotations.Key
+        [Key]
         public int CarId { get; set; }
         public string Make { get; set; }
         public string Model { get; set; }
@@ -44,10 +46,47 @@ namespace Dapper.SimpleCRUD.Tests
         #endregion
 
         #region AdditionalFields
-        [System.ComponentModel.DataAnnotations.Editable(false)]
+        [Editable(false)]
         public string MakeWithModel{get { return Make + " (" + Model + ")"; }}
         #endregion
 
+    }
+
+    public class BigCar
+    {
+        #region DatabaseFields
+        //System.ComponentModel.DataAnnotations.Key
+        [Key]
+        public long CarId { get; set; }
+        public string Make { get; set; }
+        public string Model { get; set; }
+        #endregion
+
+    }
+
+
+    [Table("CarLog", Schema = "Log")]
+    public class CarLog
+    {
+        public int Id { get; set; }
+        public string LogNotes { get; set; }
+    }
+
+    /// <summary>
+    /// This class should be used for failing tests, since no schema is specified and 'CarLog' is not on dbo
+    /// </summary>
+    [Table("CarLog")]
+    public class SchemalessCarLog
+    {
+        public int Id { get; set; }
+        public string LogNotes { get; set; }
+    }
+
+    public class City
+    {
+        [Key]
+        public string Name { get; set; }
+        public int Population { get; set; }
     }
 
     public class Tests
@@ -57,7 +96,7 @@ namespace Dapper.SimpleCRUD.Tests
             var projLoc = Assembly.GetAssembly(GetType()).Location;
             var projFolder = Path.GetDirectoryName(projLoc);
 
-            var connection = new SqlCeConnection("Data Source = " + projFolder + "\\Test.sdf;");
+            var connection = new SqlConnection(@"Data Source = (LocalDB)\v11.0;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True");
             connection.Open();
             return connection;
         }
@@ -72,6 +111,14 @@ namespace Dapper.SimpleCRUD.Tests
             }
         }
 
+        public void InsertUsingBigIntPrimaryKey()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.Insert<long>(new BigCar() { Make = "Big", Model = "Car" });
+                id.IsEqualTo(2147483650);
+            }
+        }
 
         public void TestSimpleGet()
         {
@@ -180,7 +227,7 @@ namespace Dapper.SimpleCRUD.Tests
         {
             using (var connection = GetOpenConnection())
             {
-                var newid = connection.Insert(new Car { Make = "Honda", Model = "Civic"});
+                var newid = (int)connection.Insert(new Car { Make = "Honda", Model = "Civic"});
                 var newitem = connection.Get<Car>(3);
                 newitem.Make = "Toyota";
                 connection.Update(newitem);
@@ -205,7 +252,7 @@ namespace Dapper.SimpleCRUD.Tests
         {
             using (var connection = GetOpenConnection())
             {
-                var id = connection.Insert(new User { Name = "User", Age=11, ScheduledDayOff = DayOfWeek.Friday});
+                var id = (int)connection.Insert(new User { Name = "User", Age = 11, ScheduledDayOff = DayOfWeek.Friday });
                 var user1 = connection.Get<User>(id);
                 user1.ScheduledDayOff.IsEqualTo(DayOfWeek.Friday);
                 connection.Delete(user1);
@@ -216,12 +263,80 @@ namespace Dapper.SimpleCRUD.Tests
         {
             using (var connection = GetOpenConnection())
             {
-                var id = connection.Insert(new User1 { Name = "User", Age = 11, ScheduledDayOff = 2 });
+                var id = (int)connection.Insert(new User1 { Name = "User", Age = 11, ScheduledDayOff = 2 });
                 var user1 = connection.Get<User1>(id);
                 user1.ScheduledDayOff.IsEqualTo(2);
                 connection.Delete(user1);
             }
         }
 
+        public void TestInsertIntoDifferentSchema()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.Insert(new CarLog { LogNotes = "blah blah blah"});
+                id.IsEqualTo(1);
+            }
+        }
+
+        public void TestGetFromDifferentSchema()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var carlog = connection.Get<CarLog>(1);
+                carlog.LogNotes.IsEqualTo("blah blah blah");
+            }
+        }
+
+        public void TestTryingToGetFromTableInSchemaWithoutDataAnnotationShouldFail()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                try
+                {
+                    connection.Get<SchemalessCarLog>(1);
+                }
+                catch (Exception)
+                {
+                   //we expect to get an exception, so return
+                    return;
+                }
+               
+                //if we get here without throwing an exception, the test failed.
+                throw new ApplicationException("Expected exception");
+            }
+        }
+
+        public void TestGetFromTableWithNonIntPrimaryKey()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                //note - there's not yet support for inserts without a non-int id, so drop down to a normal execute
+                connection.Execute("INSERT INTO CITY (NAME, POPULATION) VALUES ('Morgantown', 31000)");
+                var city = connection.Get<City>("Morgantown");
+                city.Population.IsEqualTo(31000);
+            }
+        }
+
+        public void TestDeleteFromTableWithNonIntPrimaryKey()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                //note - there's not yet support for inserts without a non-int id, so drop down to a normal execute
+                connection.Execute("INSERT INTO CITY (NAME, POPULATION) VALUES ('Fairmont', 18737)");
+                connection.Delete<City>("Fairmont").IsEqualTo(1);
+            }
+        }
+
+        public void TestNullableEnumInsert()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new User { Name = "Enum-y", Age = 10, ScheduledDayOff = DayOfWeek.Thursday });
+                var user = connection.GetList<User>(new { Name = "Enum-y" }).FirstOrDefault() ?? new User();
+                user.ScheduledDayOff.IsEqualTo(DayOfWeek.Thursday);
+                connection.Delete<User>(user.Id);
+            }
+        }
     }
 }

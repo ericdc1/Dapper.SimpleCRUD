@@ -36,6 +36,7 @@ It is based on the T4 template from the PetaPoco project which in turn is based 
 	ClassPrefix = "";
 	ClassSuffix = "";
     IncludeViews = true;
+    IncludeRelationships = true;
 	ExcludeTablePrefixes = new string[]{"aspnet_","webpages_"};
 
     // Read schema
@@ -53,6 +54,7 @@ It is based on the T4 template from the PetaPoco project which in turn is based 
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
 
 namespace <#=Namespace #>
 {
@@ -68,10 +70,20 @@ foreach(Table tbl in from t in tables where !t.Ignore select t){
 	{
 <#foreach(Column col in from c in tbl.Columns where !c.Ignore select c)
 {#>
-	<# if (tbl.PK!=null &&  tbl.PK.Name==col.PropertyName) { #>
+	<# if (tbl.PK!=null && tbl.PK.Name==col.PropertyName) { #>
 	[Key]
 	<#}#>
 	public virtual <#=col.PropertyType #><#=CheckNullable(col)#> <#=col.PropertyName #> { get; set; }
+<#}#>
+<# if (IncludeRelationships) { #>
+<#foreach(Key key in from k in tbl.OuterKeys select k)
+{#>
+		public virtual <#=tables[key.ReferencedTableName].ClassName #> <#=tables[key.ReferencedTableName].ClassName #> { get; set; }
+<#}#>
+<#foreach(Key key in from k in tbl.InnerKeys select k)
+{#>
+		public virtual IEnumerable<<#=tables[key.ReferencingTableName].ClassName #>> <#=tables[key.ReferencingTableName].CleanName #> { get; set; }
+<#}#>
 <#}#>
 	}
 
@@ -97,11 +109,14 @@ string ClassPrefix = "";
 string ClassSuffix = "";
 string SchemaName = null;
 bool IncludeViews;
+bool IncludeRelationships;
 string[] ExcludeTablePrefixes = new string[]{};
 
 public class Table
 {
     public List<Column> Columns;	
+	public List<Key> InnerKeys = new List<Key>();
+    public List<Key> OuterKeys = new List<Key>(); 
     public string Name;
 	public string Schema;
 	public bool IsView;
@@ -142,6 +157,15 @@ public class Column
     public bool IsNullable;
 	public bool IsAutoIncrement;
 	public bool Ignore;
+}
+
+public class Key
+{
+    public string Name;
+    public string ReferencedTableName;
+    public string ReferencedTableColumnName;
+    public string ReferencingTableName;
+    public string ReferencingTableColumnName;
 }
 
 public class Tables : List<Table>
@@ -518,6 +542,21 @@ class SqlServerSchemaReader : SchemaReader
 			{
 				pkColumn.IsPK=true;
 			}
+
+			try
+		    {
+		        tbl.OuterKeys = LoadOuterKeys(tbl);
+		        tbl.InnerKeys = LoadInnerKeys(tbl);
+		    }
+		    catch (Exception x)
+		    {
+		        var error=x.Message.Replace("\r\n", "\n").Replace("\n", " ");
+				WriteLine("");
+				WriteLine("// -----------------------------------------------------------------------------------------");
+				WriteLine(String.Format("// Failed to get relationships for `{0}` - {1}", tbl.Name, error));
+				WriteLine("// -----------------------------------------------------------------------------------------");
+				WriteLine("");
+		    }
 		}
 	    
 
@@ -558,6 +597,66 @@ class SqlServerSchemaReader : SchemaReader
 					col.IsNullable=rdr["IsNullable"].ToString()=="YES";
 					col.IsAutoIncrement=((int)rdr["IsIdentity"])==1;
 					result.Add(col);
+				}
+			}
+
+			return result;
+		}
+	}
+
+	List<Key> LoadOuterKeys(Table tbl)
+	{
+		using (var cmd=_factory.CreateCommand())
+		{
+			cmd.Connection=_connection;
+			cmd.CommandText=OUTER_KEYS_SQL;
+
+			var p = cmd.CreateParameter();
+			p.ParameterName = "@tableName";
+			p.Value=tbl.Name;
+			cmd.Parameters.Add(p);
+
+			var result=new List<Key>();
+			using (IDataReader rdr=cmd.ExecuteReader())
+			{
+				while(rdr.Read())
+				{
+					var key=new Key();
+					key.Name=rdr["FK"].ToString();
+				    key.ReferencedTableName = rdr["Referenced_tbl"].ToString();
+				    key.ReferencedTableColumnName = rdr["Referenced_col"].ToString();
+				    key.ReferencingTableColumnName = rdr["Referencing_col"].ToString();
+					result.Add(key);
+				}
+			}
+
+			return result;
+		}
+	}
+
+	List<Key> LoadInnerKeys(Table tbl)
+	{
+		using (var cmd=_factory.CreateCommand())
+		{
+			cmd.Connection=_connection;
+			cmd.CommandText=INNER_KEYS_SQL;
+
+			var p = cmd.CreateParameter();
+			p.ParameterName = "@tableName";
+			p.Value=tbl.Name;
+			cmd.Parameters.Add(p);
+
+			var result=new List<Key>();
+			using (IDataReader rdr=cmd.ExecuteReader())
+			{
+				while(rdr.Read())
+				{
+					var key=new Key();
+					key.Name=rdr["FK"].ToString();
+				    key.ReferencingTableName = rdr["Referencing_tbl"].ToString();
+				    key.ReferencedTableColumnName = rdr["Referenced_col"].ToString();
+				    key.ReferencingTableColumnName = rdr["Referencing_col"].ToString();
+					result.Add(key);
 				}
 			}
 
@@ -612,6 +711,7 @@ class SqlServerSchemaReader : SchemaReader
 				 break;
 			case "smalldatetime":
 			case "datetime":
+			case "datetime2":
 			case "date":
 			case "time":
 				sysType=  "DateTime";
@@ -671,6 +771,35 @@ class SqlServerSchemaReader : SchemaReader
 		FROM  INFORMATION_SCHEMA.COLUMNS
 		WHERE TABLE_NAME=@tableName AND TABLE_SCHEMA=@schemaName
 		ORDER BY OrdinalPosition ASC";
+
+	const string OUTER_KEYS_SQL = @"SELECT 
+			FK = OBJECT_NAME(pt.constraint_object_id),
+			Referenced_tbl = OBJECT_NAME(pt.referenced_object_id),
+			Referencing_col = pc.name, 
+			Referenced_col = rc.name
+		FROM sys.foreign_key_columns AS pt
+		INNER JOIN sys.columns AS pc
+		ON pt.parent_object_id = pc.[object_id]
+		AND pt.parent_column_id = pc.column_id
+		INNER JOIN sys.columns AS rc
+		ON pt.referenced_column_id = rc.column_id
+		AND pt.referenced_object_id = rc.[object_id]
+		WHERE pt.parent_object_id = OBJECT_ID(@tableName);";
+
+    const string INNER_KEYS_SQL = @"SELECT 
+			[Schema] = OBJECT_SCHEMA_NAME(pt.parent_object_id),
+			Referencing_tbl = OBJECT_NAME(pt.parent_object_id),
+			FK = OBJECT_NAME(pt.constraint_object_id),
+			Referencing_col = pc.name, 
+			Referenced_col = rc.name
+		FROM sys.foreign_key_columns AS pt
+		INNER JOIN sys.columns AS pc
+		ON pt.parent_object_id = pc.[object_id]
+		AND pt.parent_column_id = pc.column_id
+		INNER JOIN sys.columns AS rc
+		ON pt.referenced_column_id = rc.column_id
+		AND pt.referenced_object_id = rc.[object_id]
+		WHERE pt.referenced_object_id = OBJECT_ID(@tableName);";
 	  
 }
 
