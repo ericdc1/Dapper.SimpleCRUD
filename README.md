@@ -1,4 +1,4 @@
-Dapper.SimpleCRUD - simple CRUD helpers for Dapper
+Dapper.SimpleCRUDAsync - simple CRUD helpers for Dapper with Async support
 ========================================
 Features
 --------

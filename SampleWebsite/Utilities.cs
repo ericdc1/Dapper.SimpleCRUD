@@ -1,20 +1,20 @@
 ﻿using System.Configuration;
-using System.Data.SqlServerCe;
+using System.Data.SqlClient;
 
 namespace SampleWebsite
 {
-    public class Utilities
+  public class Utilities
+  {
+    private static readonly ConnectionStringSettings Connection = ConfigurationManager.ConnectionStrings["testdb"];
+    private static readonly string ConnectionString = Connection.ConnectionString;
+
+    public static SqlConnection GetOpenConnection()
     {
-        private static readonly ConnectionStringSettings Connection = ConfigurationManager.ConnectionStrings["testdb"];
-        private static readonly string ConnectionString = Connection.ConnectionString;
-
-        public static SqlCeConnection GetOpenConnection()
-        {
-            var connection = new SqlCeConnection(ConnectionString);
-            connection.Open();
-            return connection;
-        }
-
-
+      var connection = new SqlConnection(ConnectionString);
+      connection.Open();
+      return connection;
     }
+
+
+  }
 }

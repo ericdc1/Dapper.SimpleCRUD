@@ -1,0 +1,38 @@
+﻿<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>Dapper.SimpleCRUD</id>
+    <version>1.4.1</version>
+    <title>Dapper.SimpleCRUDAsyncFork</title>
+    <authors>David Barnes</authors>
+    <owners>David Barnes</owners>
+    <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
+    <projectUrl>https://github.com/dvbarnes/Dapper.SimpleCRUD/</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>
+      Simple Get/GetAsync, GetList/GetListAsync, Insert/InsertAsync, Update/UpdateAsync, and Delete/DeleteAsync extensions for Dapper. Uses smart defaults for attribute free classes but can be overridden as needed.
+      By default uses Id column as the primary key but this can be overridden with an attribute
+      By default queries the table matching the class name but this can be overridden with an attribute
+    </description>
+    <summary>
+     By default uses Id column as the primary key but this can be overridden with an attribute
+	  By default queries the table matching the class name but this can be overridden with an attribute 
+    </summary>
+    <releaseNotes>
+      Full documentation can be found at https://github.com/dvbarnes/Dapper.SimpleCRUD/
+      * version 1.3.0: Support for multiple schemas, non int primary keys. Fixed issue with editable attribute annotations. Made enums be considered "editable" so you can have integers in the database and represent them as enums in the code and have SimpleCRUD map them without extra pain.
+      * version 1.4.0: Switched to using Nullable.GetUnderlyingType(type) so we don't need to explicitly check for all nullable types. This also has the side effect of fixing checks for nullable enums without the editable attribute.
+      * version 1.4.1: Added support for short and long primary key types on insert method
+    </releaseNotes>
+    <copyright>Copyright David Barnes 2014</copyright>
+    <tags>orm dapper micro-orm</tags>
+    <dependencies>
+      <dependency id="Dapper" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="bin\Release\Dapper.SimpleCRUD.dll" target="lib\net45" />
+    <file src="bin\Release\Dapper.SimpleCRUD.pdb" target="lib\net45" />
+    <file src="bin\Release\Dapper.SimpleCRUD.xml" target="lib\net45" />
+  </files>
+</package>
