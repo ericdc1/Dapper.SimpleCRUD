@@ -1,12 +1,11 @@
 ﻿using System.Data;
-using System.Data.SqlClient;
-using System.Data.SqlServerCe;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
 using System;
-
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Data.SqlClient;
 
 namespace Dapper.SimpleCRUD.Tests
 {
