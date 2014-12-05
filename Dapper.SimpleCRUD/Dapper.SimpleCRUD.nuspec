@@ -31,8 +31,8 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\Release\Dapper.SimpleCRUD.dll" target="lib\net40" />
-    <file src="bin\Release\Dapper.SimpleCRUD.pdb" target="lib\net40" />
-    <file src="bin\Release\Dapper.SimpleCRUD.xml" target="lib\net40" />
+    <file src="bin\Release\Dapper.SimpleCRUD.dll" target="lib\net45" />
+    <file src="bin\Release\Dapper.SimpleCRUD.pdb" target="lib\net45" />
+    <file src="bin\Release\Dapper.SimpleCRUD.xml" target="lib\net45" />
   </files>
 </package>
