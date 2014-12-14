@@ -22,13 +22,12 @@ namespace Dapper.SimpleCRUD.Tests
             using (var connection = new SqlConnection(@"Data Source=(LocalDB)\v11.0;Initial Catalog=Master;Integrated Security=True"))
             {
                 connection.Open();
-                try {
+                try
+                {
                     connection.Execute(@" DROP DATABASE DapperSimpleCrudTestDb; ");
                 }
-                catch (Exception ex) {
-                    Console.WriteLine(ex);
-                }
-                
+                catch { }
+
                 connection.Execute(@" CREATE DATABASE DapperSimpleCrudTestDb; ");
             }
 
@@ -64,7 +63,7 @@ namespace Dapper.SimpleCRUD.Tests
                     //drop any remaining connections, then drop the db.
                     connection.Execute(@" alter database DapperSimpleCrudTestDb set single_user with rollback immediate; DROP DATABASE DapperSimpleCrudTestDb; ");
                 }
-                catch {}
+                catch { }
             }
             Console.Write("Testing complete.");
             Console.ReadKey();
