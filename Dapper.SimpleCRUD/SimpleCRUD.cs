@@ -265,12 +265,19 @@ namespace Dapper
             if (idProps.Count() > 1)
                 throw new ArgumentException("Delete<T> only supports an entity with a single [Key] or Id property");
 
-            var onlyKey = idProps.First();
+            var propertyInfo = idProps.First();
+            var keyAttribute = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "KeyAttribute");
+
+            string columnName;
+            if (keyAttribute == null || string.IsNullOrEmpty(((KeyAttribute)keyAttribute).Name)) columnName = propertyInfo.Name;
+            else columnName = ((KeyAttribute)keyAttribute).Name;
+                    
+
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
             sb.AppendFormat("Delete from {0}", name);
-            sb.Append(" where " + onlyKey.Name + " = @Id");
+            sb.Append(" where " + columnName + " = @Id");
 
             var dynParms = new DynamicParameters();
             dynParms.Add("@id", id);
@@ -297,12 +304,19 @@ namespace Dapper
         }
 
         //build where clause based on list of properties
-        private static void BuildWhere(StringBuilder sb, IEnumerable<PropertyInfo> idProps)
+        private static void BuildWhere(StringBuilder sb, IEnumerable<PropertyInfo> whereProps)
         {
-            var propertyInfos = idProps.ToArray();
+            var propertyInfos = whereProps.ToArray();
             for (var i = 0; i < propertyInfos.Count(); i++)
             {
-                sb.AppendFormat("[{0}] = @{1}", propertyInfos.ElementAt(i).Name, propertyInfos.ElementAt(i).Name);
+                PropertyInfo propertyInfo = propertyInfos[i];
+                var keyAttribute = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "KeyAttribute");
+
+                string columnName;
+                if (keyAttribute == null || string.IsNullOrEmpty(((KeyAttribute) keyAttribute).Name)) columnName = propertyInfo.Name;
+                else columnName = ((KeyAttribute) keyAttribute).Name;
+                    
+                sb.AppendFormat("[{0}] = @{1}", columnName, propertyInfo.Name);
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
             }
@@ -473,6 +487,18 @@ namespace Dapper
     [AttributeUsage(AttributeTargets.Property)]
     public class KeyAttribute : Attribute
     {
+        /// <summary>
+        /// 
+        /// </summary>
+        public string Name { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="name"></param>
+        public KeyAttribute(string name = null) {
+            Name = name;
+        }
     }
 
     /// <summary>
