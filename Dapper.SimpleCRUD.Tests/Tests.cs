@@ -89,6 +89,14 @@ namespace Dapper.SimpleCRUD.Tests
         public int Population { get; set; }
     }
 
+    public class Town
+    {
+        [Key("[Key]")]
+        public int Key { get; set; }
+        public string Name { get; set; }
+        public int Population { get; set; }
+    }
+
     public class Tests
     {
         private IDbConnection GetOpenConnection()
@@ -336,6 +344,16 @@ namespace Dapper.SimpleCRUD.Tests
                 var user = connection.GetList<User>(new { Name = "Enum-y" }).FirstOrDefault() ?? new User();
                 user.ScheduledDayOff.IsEqualTo(DayOfWeek.Thursday);
                 connection.Delete<User>(user.Id);
+            }
+        }
+
+        public void TestCustomNamedKeyInsertAndDelete() {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.Insert(new Town { Name = "Allentown", Population = 118577 });
+                id.IsEqualTo(1);
+
+                connection.Delete<Town>(id).IsEqualTo(1);
             }
         }
     }
