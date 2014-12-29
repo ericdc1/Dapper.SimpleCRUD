@@ -320,7 +320,7 @@ namespace Dapper
                 }
                 else
                 {
-                    sb.AppendFormat("[{0}] = @{1}", propertyInfos.ElementAt(i).Name, propertyInfos.ElementAt(i).Name);
+                    sb.AppendFormat("{0} = @{1}", propertyInfos.ElementAt(i).Name, propertyInfos.ElementAt(i).Name);
                 }
                 
                 if (i < propertyInfos.Count() - 1)
@@ -428,6 +428,16 @@ namespace Dapper
             var type = entity.GetType();
             var dbtype = connection.GetType();
             return GetTableName(dbtype,type);
+        }
+
+        //Gets the table name for this entity
+        //For Inserts and updates we have a whole entity so this method is used
+        //Uses class name by default and overrides if the class has a Table attribute
+        private static string GetTableName(IDbConnection connection, Type entityType)
+        {
+            
+            var dbtype = connection.GetType();
+            return GetTableName(dbtype, entityType);
         }
 
         //Gets the table name for this type
