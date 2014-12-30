@@ -262,6 +262,7 @@ Support for Postgres by using the proper identity ID of newly inserted columns a
    Dapper.SimpleCRUD.SetColumnNameEncapsulation("", "");
    Dapper.SimpleCRUD.SetTableNameEncapsulation("", "");
 '''
+
 Do you have a comprehensive list of examples?
 ---------------------
 Dapper.SimpleCRUD has a basic test suite in the [test project](https://github.com/ericdc1/dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD.Tests/Tests.cs)
