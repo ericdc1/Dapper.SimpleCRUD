@@ -22,6 +22,16 @@ This extension adds the following 7 helpers:
 - Delete<Type>(id) - Deletes a record based on primary key
 - Delete(entity) - Deletes a record based on the typed entity
 
+As of version 1.6 in projects targeting .NET 4.5 or later, the following 7 helpers exist for async operations:
+
+- GetAsync(id) - gets one record based on the primary key 
+- GetListAsync<Type>() - gets list of records all records from a table
+- GetListAsync<Type>(anonymous object for where clause) - gets list of all records matching the where options
+- InsertAsync<Type>(entity) - Inserts a record and returns the new primary key
+- UpdateAsync<Type>(entity) - Updates a record
+- DeleteAsync<Type>(id) - Deletes a record based on primary key
+- DeleteAsync(entity) - Deletes a record based on the typed entity
+
 If you need something more complex use Dapper's Query or Execute methods!
 
 Note: all extension methods assume the connection is already open, they will fail if the connection is closed.
