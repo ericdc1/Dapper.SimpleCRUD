@@ -114,7 +114,6 @@
   <ItemGroup>
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
-    <Content Include="App_Data\Test.sdf" />
     <Content Include="Content\Site.css" />
     <Content Include="Global.asax" />
     <Content Include="Models\ModelGenerator.tt">
@@ -155,15 +154,14 @@
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Dapper.SimpleCRUD\Dapper.SimpleCRUD.csproj">
-      <Project>{d88d1d75-0bbd-4e66-abe0-a077c85dc302}</Project>
-      <Name>Dapper.SimpleCRUD</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="Views\Home\Create.cshtml" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\Dapper.SimpleCRUD NET45\Dapper.SimpleCRUD NET45.csproj">
+      <Project>{a54f7ab7-f6de-43aa-9b31-2065cc6f16d8}</Project>
+      <Name>Dapper.SimpleCRUD NET45</Name>
+    </ProjectReference>
+  </ItemGroup>
   <ItemGroup>
     <Content Include="Views\_ViewStart.cshtml" />
   </ItemGroup>
