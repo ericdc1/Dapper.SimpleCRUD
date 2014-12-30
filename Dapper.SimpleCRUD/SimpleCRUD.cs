@@ -14,7 +14,7 @@ namespace Dapper
     /// <summary>
     /// Main class for Dapper.SimpleCRUD extensions
     /// </summary>
-    public static class SimpleCRUD
+    public static partial class SimpleCRUD
     {
 
         private static string _schemaNameEncapsulation = "[{0}]";
@@ -117,7 +117,6 @@ namespace Dapper
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
-
             if (!idProps.Any())
                 throw new ArgumentException("Entity must have at least one [Key] property");
 
@@ -187,22 +186,29 @@ namespace Dapper
         /// <returns>The ID (primary key) of the newly inserted record if it is identity using the defined type, otherwise null</returns>
         public static TKey Insert<TKey>(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-            //todo: add support for GUID
+            var idProps = GetIdProperties(entityToInsert).ToList();
+            if (!idProps.Any())
+                throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
+            if (idProps.Count() > 1)
+                throw new ArgumentException("Get<T> only supports an entity with a single [Key] or Id property");
 
             var baseType = typeof(TKey);
             var underlyingType = Nullable.GetUnderlyingType(baseType);
             var keytype = underlyingType ?? baseType;
-            if (keytype != typeof(int) && keytype != typeof(uint) && keytype != typeof(long) && keytype != typeof(ulong) && keytype != typeof(short) && keytype != typeof(ushort))
+            if (keytype != typeof(int) && keytype != typeof(uint) && keytype != typeof(long) && keytype != typeof(ulong) && keytype != typeof(short) && keytype != typeof(ushort) && keytype != typeof(Guid))
             {
                 throw new Exception("Invalid return type");
             }
-
             var name = GetTableName(entityToInsert);
             var sb = new StringBuilder();
             sb.AppendFormat("insert into {0}", name);
             sb.Append(" (");
             BuildInsertParameters(entityToInsert, sb);
-            sb.Append(") values (");
+            sb.Append(") ");
+            if (keytype == typeof(Guid))
+                sb.Append(" OUTPUT inserted." + idProps.First().Name + " as id ");
+            sb.Append("values");
+            sb.Append(" (");
             BuildInsertValues(entityToInsert, sb);
             sb.Append(")");
 
@@ -216,13 +222,15 @@ namespace Dapper
                         break;
                     }
                 case "SqlCeConnection":
-                    {
+                {
+                        if (keytype == typeof (Guid)) break;
                         sb.Append("; select @@IDENTITY id");
                         break;
                     }
                 default:
                     {
                         //SQL Server 2008+ 
+                        if (keytype == typeof (Guid)) break;
                         sb.Append("; select scope_identity() as id");
                         break;
                     }
@@ -358,7 +366,6 @@ namespace Dapper
             {
                 var property = nonIdProps[i];
 
-                //sb.AppendFormat("{0} = @{1}", property.Name, property.Name);
                 sb.AppendFormat("{0} = @{1}", EncapsulateColumnName(property.Name), property.Name);
                 if (i < nonIdProps.Length - 1)
                     sb.AppendFormat(", ");
