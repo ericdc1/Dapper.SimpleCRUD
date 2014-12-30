@@ -256,7 +256,7 @@ Delete From [User] Where ID = @ID
 
 Postgres support
 ---------------------
-Support for Postgres by using the proper identity ID of newly inserted columns and the option to override schema, table, and column encapsulation. The default setup encapsulates these items with [] characters to work with SQL Server. They can be overridden as such:
+Support for Postgres was added 12/29/2014. The insert method returns the proper identity (id) of newly inserted columns.  There is now an option to override schema, table, and column encapsulation. The default setup encapsulates these items with [] characters to work with SQL Server. They can be overridden as such:
 ```csharp 
    Dapper.SimpleCRUD.SetSchemaNameEncapsulation("", "");
    Dapper.SimpleCRUD.SetColumnNameEncapsulation("", "");
