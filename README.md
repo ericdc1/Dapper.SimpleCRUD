@@ -254,6 +254,14 @@ Results in executing this SQL
 Delete From [User] Where ID = @ID
 ```
 
+Postgres support
+---------------------
+Support for Postgres by using the proper identity ID of newly inserted columns and the option to override schema, table, and column encapsulation. The default setup encapsulates these items with [] characters to work with SQL Server. They can be overridden as such:
+```csharp 
+   Dapper.SimpleCRUD.SetSchemaNameEncapsulation("", "");
+   Dapper.SimpleCRUD.SetColumnNameEncapsulation("", "");
+   Dapper.SimpleCRUD.SetTableNameEncapsulation("", "");
+'''
 Do you have a comprehensive list of examples?
 ---------------------
 Dapper.SimpleCRUD has a basic test suite in the [test project](https://github.com/ericdc1/dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD.Tests/Tests.cs)
