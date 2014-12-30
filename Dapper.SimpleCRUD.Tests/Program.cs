@@ -3,15 +3,21 @@ using System.Data.SqlClient;
 using System.Data.SqlServerCe;
 using System.IO;
 using System.Reflection;
+using Npgsql;
 
-namespace Dapper.SimpleCRUD.Tests
+namespace Dapper.SimpleCRUDTests
 {
     class Program
     {
         static void Main(string[] args)
         {
             Setup();
-            RunTests();
+            RunTests();   
+            
+            //postgres tests assume port 5432 with username postgres and password postgrespass
+            //they are commented out by default since postgres setup is required to run tests
+            //SetupPG(); 
+            //RunTestsPG();    
         }
 
         private static void Setup()
@@ -44,13 +50,55 @@ namespace Dapper.SimpleCRUD.Tests
             Console.WriteLine("Created database");
         }
 
-        private static void RunTests()
+        private static void SetupPG()
         {
-            var tester = new Tests();
+            using (var connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};","localhost", "5432", "postgres","postgrespass", "postgres")))
+            {
+                connection.Open();
+                // drop  database 
+                connection.Execute("DROP DATABASE IF EXISTS  testdb;");
+                connection.Execute("CREATE DATABASE testdb  WITH OWNER = postgres ENCODING = 'UTF8' CONNECTION LIMIT = -1;");
+            }
+            System.Threading.Thread.Sleep(1000);
+
+            using (var connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "5432", "postgres", "postgrespass", "testdb")))
+            {
+                connection.Open(); 
+                connection.Execute(@" create table Users (Id SERIAL, Name varchar not null, Age int not null, ScheduledDayOff int null) ");
+                connection.Execute(@" create table Car (CarId SERIAL, Make varchar not null, Model varchar not null) ");
+                connection.Execute(@" create table BigCar (CarId BIGSERIAL, Make varchar not null, Model varchar not null) ");
+                connection.Execute(@" alter sequence bigcar_carid_seq RESTART WITH 2147483650");
+                connection.Execute(@" create table City (Name varchar not null, Population int not null) ");
+                connection.Execute(@" CREATE SCHEMA Log; ");
+                connection.Execute(@" create table Log.CarLog (Id SERIAL, LogNotes varchar NOT NULL) ");
+
+            }
+          
+        }
+
+
+        private static void RunTestsPG()
+        {
+          
+            var pgtester = new Tests(Dbtypes.Postgres);
             foreach (var method in typeof(Tests).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
-                Console.Write("Running " + method.Name);
-                method.Invoke(tester, null);
+                Console.Write("Running " + method.Name + " in postgres");
+                method.Invoke(pgtester, null);
+                Console.WriteLine(" - OK!");
+            }   
+
+            Console.Write("Postgres testing complete.");
+            Console.ReadKey();
+        }
+
+        private static void RunTests()
+        {
+            var sqltester = new Tests(Dbtypes.Sqlserver);
+            foreach (var method in typeof(Tests).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                Console.Write("Running " + method.Name + " in sql server");
+                method.Invoke(sqltester, null);
                 Console.WriteLine(" - OK!");
             }
 
@@ -64,7 +112,7 @@ namespace Dapper.SimpleCRUD.Tests
                 }
                 catch {}
             }
-            Console.Write("Testing complete.");
+            Console.Write("SQL Server testing complete.");
             Console.ReadKey();
         }
 

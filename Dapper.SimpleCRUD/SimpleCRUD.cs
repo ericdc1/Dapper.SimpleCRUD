@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
 using Microsoft.CSharp.RuntimeBinder;
@@ -14,6 +16,56 @@ namespace Dapper
     /// </summary>
     public static class SimpleCRUD
     {
+
+        private static string _schemaNameEncapsulation = "[{0}]";
+        private static string _tableNameEncapsulation = "[{0}]";
+        private static string _columnNameEncapsulation = "[{0}]";
+
+        /// <summary>
+        /// Override default SQL Server encapsulation of [SchemaName]
+        /// </summary>
+        /// <param name="leftEncapsulation"></param>
+        /// <param name="rightEncapsulation"></param>
+        public static void SetSchemaNameEncapsulation(string leftEncapsulation, string rightEncapsulation)
+        {
+            _schemaNameEncapsulation = string.Concat(leftEncapsulation, "{0}", rightEncapsulation);
+        }
+
+        /// <summary>
+        /// Override default SQL Server encapsulation of [TableName]
+        /// </summary>
+        /// <param name="leftEncapsulation"></param>
+        /// <param name="rightEncapsulation"></param>
+        public static void SetTableNameEncapsulation(string leftEncapsulation, string rightEncapsulation)
+        {
+            _tableNameEncapsulation = string.Concat(leftEncapsulation, "{0}", rightEncapsulation);
+        }
+
+        /// <summary>
+        /// Override default SQL Server encapsulation of [ColumnName]
+        /// </summary>
+        /// <param name="leftEncapsulation"></param>
+        /// <param name="rightEncapsulation"></param>
+        public static void SetColumnNameEncapsulation(string leftEncapsulation, string rightEncapsulation)
+        {
+            _columnNameEncapsulation = string.Concat(leftEncapsulation, "{0}", rightEncapsulation);
+        }
+
+        public static string GetSchemaNameEncapsulation()
+        {
+            return _schemaNameEncapsulation;
+        }
+
+        public static string GetTableNameEncapsulation()
+        {
+            return _tableNameEncapsulation;
+        }
+
+        public static string GetColumnNameEncapsulation()
+        {
+            return _columnNameEncapsulation;
+        }
+
         /// <summary>
         /// <para>By default queries the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
@@ -140,7 +192,7 @@ namespace Dapper
             var baseType = typeof(TKey);
             var underlyingType = Nullable.GetUnderlyingType(baseType);
             var keytype = underlyingType ?? baseType;
-            if (keytype != typeof (int) && keytype != typeof (uint) && keytype != typeof (long)  && keytype != typeof (ulong)  && keytype != typeof (short)  && keytype != typeof (ushort))
+            if (keytype != typeof(int) && keytype != typeof(uint) && keytype != typeof(long) && keytype != typeof(ulong) && keytype != typeof(short) && keytype != typeof(ushort))
             {
                 throw new Exception("Invalid return type");
             }
@@ -154,17 +206,33 @@ namespace Dapper
             BuildInsertValues(entityToInsert, sb);
             sb.Append(")");
 
-            //sqlce doesn't support scope_identity so we have to dumb it down
-            //sb.Append("; select cast(scope_identity() as int)");
-            //var newId = connection.Query<int?>(sb.ToString(), entityToInsert).Single();
-            //return (newId == null) ? 0 : (int)newId;
+
+            switch (connection.GetType().Name)
+            {
+                case "NpgsqlConnection":
+                    {
+                        var id = GetIdProperties(entityToInsert).ToList().First();
+                        sb.Append("  RETURNING " + id.Name + " as id");
+                        break;
+                    }
+                case "SqlCeConnection":
+                    {
+                        sb.Append("; select @@IDENTITY id");
+                        break;
+                    }
+                default:
+                    {
+                        //SQL Server 2008+ 
+                        sb.Append("; select scope_identity() as id");
+                        break;
+                    }
+            }
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
-            connection.Execute(sb.ToString(), entityToInsert, transaction, commandTimeout);
-            var r = connection.Query("select @@IDENTITY id", null, transaction, true, commandTimeout);
-            return (TKey)r.First().id;             
+            var r = connection.Query(sb.ToString(), entityToInsert, transaction, true, commandTimeout);
+            return (TKey)r.First().id;
         }
 
 
@@ -290,7 +358,8 @@ namespace Dapper
             {
                 var property = nonIdProps[i];
 
-                sb.AppendFormat("{0} = @{1}", property.Name, property.Name);
+                //sb.AppendFormat("{0} = @{1}", property.Name, property.Name);
+                sb.AppendFormat("{0} = @{1}", EncapsulateColumnName(property.Name), property.Name);
                 if (i < nonIdProps.Length - 1)
                     sb.AppendFormat(", ");
             }
@@ -302,7 +371,8 @@ namespace Dapper
             var propertyInfos = idProps.ToArray();
             for (var i = 0; i < propertyInfos.Count(); i++)
             {
-                sb.AppendFormat("[{0}] = @{1}", propertyInfos.ElementAt(i).Name, propertyInfos.ElementAt(i).Name);
+                //sb.AppendFormat("[{0}] = @{1}", propertyInfos.ElementAt(i).Name, propertyInfos.ElementAt(i).Name);
+                sb.AppendFormat("{0} = @{1}", EncapsulateColumnName(propertyInfos.ElementAt(i).Name), propertyInfos.ElementAt(i).Name);
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
             }
@@ -415,17 +485,21 @@ namespace Dapper
         //Uses class name by default and overrides if the class has a Table attribute
         private static string GetTableName(Type type)
         {
-            var tableName = String.Format("[{0}]", type.Name);
+            //var tableName = String.Format("[{0}]", type.Name);
+            var tableName = EncapsulateTableName(type.Name);
 
             var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "TableAttribute") as dynamic;
             if (tableattr != null)
             {
-                tableName = String.Format("[{0}]", tableattr.Name);
+                //tableName = String.Format("[{0}]", tableattr.Name);
+                tableName = EncapsulateTableName(tableattr.Name);
                 try
                 {
                     if (!String.IsNullOrEmpty(tableattr.Schema))
                     {
-                        tableName = String.Format("[{0}].[{1}]", tableattr.Schema, tableattr.Name);
+                        //tableName = String.Format("[{0}].[{1}]", tableattr.Schema, tableattr.Name);
+                        string schemaName = EncapsulateSchemaName(tableattr.Schema);
+                        tableName = String.Format("{0}.{1}", schemaName, tableName);
                     }
                 }
                 catch (RuntimeBinderException)
@@ -436,7 +510,23 @@ namespace Dapper
 
             return tableName;
         }
+
+        private static string EncapsulateColumnName(string columnName)
+        {
+            return string.Format(_columnNameEncapsulation, columnName);
+        }
+
+        private static string EncapsulateTableName(string tableName)
+        {
+            return string.Format(_tableNameEncapsulation, tableName);
+        }
+
+        private static string EncapsulateSchemaName(string schemaName)
+        {
+            return string.Format(_schemaNameEncapsulation, schemaName);
+        }
     }
+
 
 
 
@@ -498,7 +588,7 @@ namespace Dapper
 
 }
 
-static class TypeExtension
+internal static class TypeExtension
 {
     //You can't insert or update complex types. Lets filter them out.
     public static bool IsSimpleType(this Type type)

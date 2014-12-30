@@ -6,9 +6,10 @@ using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
 using System;
+using Npgsql;
 
 
-namespace Dapper.SimpleCRUD.Tests
+namespace Dapper.SimpleCRUDTests
 {
     //For .Net 4.5> [System.ComponentModel.DataAnnotations.Schema.Table("Users")]  or the attribute built into SimpleCRUD
     [Table("Users")]
@@ -89,14 +90,42 @@ namespace Dapper.SimpleCRUD.Tests
         public int Population { get; set; }
     }
 
+    public enum Dbtypes
+    {
+        Sqlserver,
+        Postgres
+    }
     public class Tests
     {
+        public Tests(Dbtypes dbtype)
+        {
+            _dbtype = dbtype;
+        }
+        private Dbtypes _dbtype;
+
         private IDbConnection GetOpenConnection()
         {
+
+            IDbConnection connection;
+            if (_dbtype==Dbtypes.Sqlserver)
+            {
+                connection =new SqlConnection(@"Data Source = (LocalDB)\v11.0;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True");
+                Dapper.SimpleCRUD.SetSchemaNameEncapsulation("[", "]");
+                Dapper.SimpleCRUD.SetColumnNameEncapsulation("[", "]");
+                Dapper.SimpleCRUD.SetTableNameEncapsulation("[", "]");
+                
+            }
+            else
+            {
+                connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};","localhost", "5432", "postgres", "postgrespass", "testdb"));
+                Dapper.SimpleCRUD.SetSchemaNameEncapsulation("", "");
+                Dapper.SimpleCRUD.SetColumnNameEncapsulation("", "");
+                Dapper.SimpleCRUD.SetTableNameEncapsulation("", "");
+            }
+
             var projLoc = Assembly.GetAssembly(GetType()).Location;
             var projFolder = Path.GetDirectoryName(projLoc);
 
-            var connection = new SqlConnection(@"Data Source = (LocalDB)\v11.0;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True");
             connection.Open();
             return connection;
         }
@@ -338,5 +367,54 @@ namespace Dapper.SimpleCRUD.Tests
                 connection.Delete<User>(user.Id);
             }
         }
+
+
+        public void TestInsertWithNoEncapsulation()
+        {
+            
+      
+            using (var connection = GetOpenConnection())
+            {
+                Dapper.SimpleCRUD.SetSchemaNameEncapsulation("", "");
+                Dapper.SimpleCRUD.SetColumnNameEncapsulation("", "");
+                Dapper.SimpleCRUD.SetTableNameEncapsulation("", "");
+
+                var id = connection.Insert(new CarLog { LogNotes = "blah blah blah"});
+                id.IsEqualTo(2);
+            }
+
+        }
+
+
+        public void TestInsertWithMalformedEncapsulationShouldFail()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                Dapper.SimpleCRUD.SetSchemaNameEncapsulation("-", "-");
+                Dapper.SimpleCRUD.SetColumnNameEncapsulation("-", "-");
+                Dapper.SimpleCRUD.SetTableNameEncapsulation("-", "-");
+
+                try
+                {
+                    var id = connection.Insert(new CarLog {LogNotes = "blah blah blah"});
+                }
+                catch (Exception)
+                {
+                    //we expect to get an exception, so return
+                    return;
+                }
+                finally
+                {
+                    //resets in getconnection
+                }
+
+                //if we get here without throwing an exception, the test failed.
+                throw new ApplicationException("Expected exception");
+                
+            }
+           
+        }
+
+
     }
 }
