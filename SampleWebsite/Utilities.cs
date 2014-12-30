@@ -1,5 +1,5 @@
 ﻿using System.Configuration;
-using System.Data.SqlServerCe;
+using System.Data.SqlClient;
 
 namespace SampleWebsite
 {
@@ -8,9 +8,9 @@ namespace SampleWebsite
         private static readonly ConnectionStringSettings Connection = ConfigurationManager.ConnectionStrings["testdb"];
         private static readonly string ConnectionString = Connection.ConnectionString;
 
-        public static SqlCeConnection GetOpenConnection()
+        public static SqlConnection GetOpenConnection()
         {
-            var connection = new SqlCeConnection(ConnectionString);
+            var connection = new SqlConnection(ConnectionString);
             connection.Open();
             return connection;
         }

@@ -221,12 +221,6 @@ namespace Dapper
                         sb.Append("  RETURNING " + id.Name + " as id");
                         break;
                     }
-                case "SqlCeConnection":
-                {
-                        if (keytype == typeof (Guid)) break;
-                        sb.Append("; select @@IDENTITY id");
-                        break;
-                    }
                 default:
                     {
                         //SQL Server 2008+ 
