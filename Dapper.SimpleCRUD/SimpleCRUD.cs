@@ -51,16 +51,29 @@ namespace Dapper
             _columnNameEncapsulation = string.Concat(leftEncapsulation, "{0}", rightEncapsulation);
         }
 
+
+        /// <summary>
+        /// View current schema encapsulation string
+        /// </summary>
+        /// <returns></returns>
         public static string GetSchemaNameEncapsulation()
         {
             return _schemaNameEncapsulation;
         }
 
+        /// <summary>
+        /// View current table encapsulation string
+        /// </summary>
+        /// <returns></returns>
         public static string GetTableNameEncapsulation()
         {
             return _tableNameEncapsulation;
         }
 
+        /// <summary>
+        /// View current column encapsulation string
+        /// </summary>
+        /// <returns></returns>
         public static string GetColumnNameEncapsulation()
         {
             return _columnNameEncapsulation;

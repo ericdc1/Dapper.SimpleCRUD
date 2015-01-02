@@ -4,8 +4,8 @@
 // The following connection settings were used to generate this file
 // 
 //     Connection String Name: `testdb`
-//     Provider:               `System.Data.SqlServerCe.4.0`
-//     Connection String:      `Data Source=C:\Users\Eric\Documents\GitHub\Dapper.SimpleCRUD\SampleWebsite\App_Data\Test.sdf;Persist Security Info=False;`
+//     Provider:               `System.Data.SqlClient`
+//     Connection String:      `Data Source = (LocalDB)\v11.0;Initial Catalog=SimplecrudWebsite;Integrated Security=True;`
 //     Include Views:          `True`
 
 using System;
@@ -14,6 +14,19 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SampleWebsite.Models
 {
+    /// <summary>
+    /// A class which represents the Users table.
+    /// </summary>
+	[Table("Users")]
+	public partial class User
+	{
+		[Key]
+		public virtual int Id { get; set; }
+		public virtual string FirstName { get; set; }
+		public virtual string LastName { get; set; }
+		public virtual int Age { get; set; }
+	}
+
     /// <summary>
     /// A class which represents the Car table.
     /// </summary>
@@ -24,18 +37,6 @@ namespace SampleWebsite.Models
 		public virtual int CarId { get; set; }
 		public virtual string Make { get; set; }
 		public virtual string Model { get; set; }
-	}
-
-    /// <summary>
-    /// A class which represents the Users table.
-    /// </summary>
-	[Table("Users")]
-	public partial class User
-	{
-		public virtual int Id { get; set; }
-		public virtual int? Age { get; set; }
-		public virtual string FirstName { get; set; }
-		public virtual string LastName { get; set; }
 	}
 
 }

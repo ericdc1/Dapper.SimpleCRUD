@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Data.SqlClient;
-using System.Data.SqlServerCe;
 using System.IO;
 using System.Reflection;
 using Npgsql;

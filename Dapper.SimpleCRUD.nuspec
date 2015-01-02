@@ -25,7 +25,7 @@
 	   * version 1.4.1: Added support for short and long primary key types on insert method
 	   * version 1.5.0 Target .Net 4.5, support for Postgres, SQL Server now uses scope_identity on insert rather than @@identity 
 	   * version 1.5.1 Add support for GUID primary keys (using default value of NewID())
-	   * version 1.6.0 Target .Net 4.0 and 4.5 and add async support
+	   * version 1.6.0 Target .Net 4.0 and 4.5 and add async support / remove SQLCE support
 	   * Special thanks to https://github.com/Prnda1976 for help with the pull request backlog 
 	 </releaseNotes>
     <copyright>Copyright Eric Coffman 2015</copyright>

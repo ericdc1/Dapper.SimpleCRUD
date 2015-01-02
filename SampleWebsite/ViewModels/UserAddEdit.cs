@@ -18,7 +18,7 @@ namespace SampleWebsite.ViewModels
         [Required]
         public override string LastName { get; set; }
         [Range(0, 130)]
-        public override int? Age { get; set; }
+        public override int Age { get; set; }
 
         [Editable(false)]
         public string FullName

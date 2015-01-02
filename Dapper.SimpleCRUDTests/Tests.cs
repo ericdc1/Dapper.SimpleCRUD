@@ -1,7 +1,6 @@
 ﻿using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
-using System.Data.SqlServerCe;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
