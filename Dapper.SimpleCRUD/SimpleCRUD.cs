@@ -170,6 +170,7 @@ namespace Dapper
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Insert filters out Id column and any columns with the [Key] attribute</para>
         /// <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
+        /// <para>Now ignores members with [NotMapped] - see attribute for details below</para>
         /// <para>Supports transaction and command timeout</para>
         /// <para>Returns the ID (primary key) of the newly inserted record if it is identity using the int? type, otherwise null</para>
         /// </summary>
@@ -189,6 +190,7 @@ namespace Dapper
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Insert filters out Id column and any columns with the [Key] attribute</para>
         /// <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
+        /// <para>Now ignores members with [NotMapped] - see attribute for details below</para>
         /// <para>Supports transaction and command timeout</para>
         /// <para>Returns the ID (primary key) of the newly inserted record if it is identity using the defined type, otherwise null</para>
         /// </summary>
@@ -257,6 +259,7 @@ namespace Dapper
         ///  <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         ///  <para>Updates records where the Id property and properties with the [Key] attribute match those in the database.</para>
         ///  <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
+        ///  <para>Now ignores members with [NotMapped] - see attribute for details below</para>
         ///  <para>Supports transaction and command timeout</para>
         ///  <para>Returns number of rows effected</para>
         ///  </summary>
@@ -401,6 +404,7 @@ namespace Dapper
             {
                 var property = props.ElementAt(i);
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
+                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "NotMappedAttribute")) continue;
                 if (property.Name == "Id") continue;
                 sb.AppendFormat("@{0}", property.Name);
                 if (i < props.Count() - 1)
@@ -421,6 +425,7 @@ namespace Dapper
             {
                 var property = props.ElementAt(i);
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
+                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "NotMappedAttribute")) continue;
                 if (property.Name == "Id") continue;
                 sb.Append(property.Name);
                 if (i < props.Count() - 1)
@@ -465,7 +470,7 @@ namespace Dapper
         //Get all properties that are NOT named Id and DO NOT have the Key attribute
         private static IEnumerable<PropertyInfo> GetNonIdProperties(object entity)
         {
-            return GetScaffoldableProperties(entity).Where(p => p.Name != "Id" && p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute") == false);
+            return GetScaffoldableProperties(entity).Where(p => p.Name != "Id" && p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute" || attr.GetType().Name == "NotMappedAttribute") == false);
         }
 
         //Get all properties that are named Id or have the Key attribute
@@ -576,6 +581,25 @@ namespace Dapper
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
     public class KeyAttribute : Attribute
+    {
+    }
+
+    /// <summary>
+    /// Optional NotMapped attribute.
+    /// Needed specifically to help with Non Id named primary key member in poco for Dapper UserStore in Identity 2.0 User records; 
+    /// ie Client poco to extend IUser<int> has [Key] of ClientId, but must have Id as well
+    /// thus:
+    /// 
+    /// [NotMapped]
+    /// public int Id
+    /// {
+    ///     get { return CloudUserId; }
+    /// }
+    /// 
+    /// You can use the System.ComponentModel.DataAnnotations.Schema version in its place to specify a poco member which should not store or retreive
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property)]
+    public class NotMappedAttribute : Attribute
     {
     }
 
