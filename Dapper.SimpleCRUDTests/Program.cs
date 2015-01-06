@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using Npgsql;
@@ -47,6 +48,8 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute(@" create table Log.CarLog (Id int IDENTITY(1,1) not null, LogNotes nvarchar(100) NOT NULL) ");
                 connection.Execute(@" CREATE TABLE [dbo].[GUIDTest]([guid] [uniqueidentifier] NOT NULL,[name] [varchar](50) NOT NULL, CONSTRAINT [PK_GUIDTest] PRIMARY KEY CLUSTERED ([guid] ASC))");
                 connection.Execute(@" ALTER TABLE [dbo].[GUIDTest] ADD  CONSTRAINT [DF_GUIDTest_guid]  DEFAULT (newid()) FOR [guid]");
+                connection.Execute(@" create table StrangeColumnNames (ItemId int IDENTITY(1,1) not null Primary Key, word nvarchar(100) not null, colstringstrangeword nvarchar(100) not null) ");
+            
             }
             Console.WriteLine("Created database");
         }
@@ -95,13 +98,20 @@ namespace Dapper.SimpleCRUDTests
 
         private static void RunTests()
         {
+            var stopwatch = Stopwatch.StartNew();
             var sqltester = new Tests(Dbtypes.Sqlserver);
             foreach (var method in typeof(Tests).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
+                var testwatch = Stopwatch.StartNew();
                 Console.Write("Running " + method.Name + " in sql server");
                 method.Invoke(sqltester, null);
-                Console.WriteLine(" - OK!");
+                testwatch.Stop();
+                System.Console.WriteLine(" - OK! {0}ms", testwatch.ElapsedMilliseconds);
             }
+            stopwatch.Stop();
+
+            // Write result
+            Console.WriteLine("Time elapsed: {0}",stopwatch.Elapsed);
 
             using (var connection = new SqlConnection(@"Data Source=(LocalDB)\v11.0;Initial Catalog=Master;Integrated Security=True"))
             {

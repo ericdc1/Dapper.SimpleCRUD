@@ -102,9 +102,11 @@ namespace Dapper
 
             var onlyKey = idProps.First();
             var name = GetTableName(currenttype);
-
             var sb = new StringBuilder();
-            sb.AppendFormat("Select * from {0}", name);
+            sb.Append("Select ");
+            //create a new empty instance of the type to get the base properties
+            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            sb.AppendFormat("from {0}", name);
             sb.Append(" where " + onlyKey.Name + " = @Id");
 
             var dynParms = new DynamicParameters();
@@ -137,12 +139,15 @@ namespace Dapper
 
             var sb = new StringBuilder();
             var whereprops = GetAllProperties(whereConditions).ToArray();
-            sb.AppendFormat("Select * from {0}", name);
+            sb.Append("Select ");
+            //create a new empty instance of the type to get the base properties
+            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            sb.AppendFormat("from {0}", name);
 
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops);
+                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
             }
 
             if (Debugger.IsAttached)
@@ -237,7 +242,7 @@ namespace Dapper
                 default:
                     {
                         //SQL Server 2008+ 
-                        if (keytype == typeof (Guid)) break;
+                        if (keytype == typeof(Guid)) break;
                         sb.Append("; select scope_identity() as id");
                         break;
                     }
@@ -252,16 +257,16 @@ namespace Dapper
 
 
         /// <summary>
-        ///  <para>Updates a record or records in the database</para>
-        ///  <para>By default updates records in the table matching the class name</para>
-        ///  <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
-        ///  <para>Updates records where the Id property and properties with the [Key] attribute match those in the database.</para>
-        ///  <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
-        ///  <para>Supports transaction and command timeout</para>
-        ///  <para>Returns number of rows effected</para>
-        ///  </summary>
-        ///  <param name="connection"></param>
-        ///  <param name="entityToUpdate"></param>
+        /// <para>Updates a record or records in the database</para>
+        /// <para>By default updates records in the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Updates records where the Id property and properties with the [Key] attribute match those in the database.</para>
+        /// <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
+        /// <para>Supports transaction and command timeout</para>
+        /// <para>Returns number of rows effected</para>
+        /// </summary>
+        /// <param name="connection"></param>
+        /// <param name="entityToUpdate"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of effected records</returns>
@@ -280,7 +285,7 @@ namespace Dapper
             sb.AppendFormat(" set ");
             BuildUpdateSet(entityToUpdate, sb);
             sb.Append(" where ");
-            BuildWhere(sb, idProps);
+            BuildWhere(sb, idProps, entityToUpdate);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Update: {0}", sb));
@@ -315,7 +320,7 @@ namespace Dapper
             sb.AppendFormat("delete from {0}", name);
 
             sb.Append(" where ");
-            BuildWhere(sb, idProps);
+            BuildWhere(sb, idProps, entityToDelete);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete: {0}", sb));
@@ -373,24 +378,51 @@ namespace Dapper
             {
                 var property = nonIdProps[i];
 
-                sb.AppendFormat("{0} = @{1}", EncapsulateColumnName(property.Name), property.Name);
+                sb.AppendFormat("{0} = @{1}", GetColumnName(property), property.Name);
                 if (i < nonIdProps.Length - 1)
                     sb.AppendFormat(", ");
             }
         }
 
+        //build select clause based on list of properties
+        private static void BuildSelect(StringBuilder sb, IEnumerable<PropertyInfo> props)
+        {
+            for (var i = 0; i < props.Count(); i++)
+            {
+                sb.Append(GetColumnName(props.ElementAt(i)));
+                //if there is a custom column name add an "as customcolumnname" to the item so it maps properly
+                if (props.ElementAt(i).GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "ColumnAttribute") != null)
+                    sb.Append(" as " + props.ElementAt(i).Name + " ");
+                if (i < props.Count() - 1)
+                    sb.Append(",");
+            }
+        }
+
         //build where clause based on list of properties
-        private static void BuildWhere(StringBuilder sb, IEnumerable<PropertyInfo> idProps)
+        private static void BuildWhere(StringBuilder sb, IEnumerable<PropertyInfo> idProps, object sourceEntity)
         {
             var propertyInfos = idProps.ToArray();
             for (var i = 0; i < propertyInfos.Count(); i++)
             {
-                //sb.AppendFormat("[{0}] = @{1}", propertyInfos.ElementAt(i).Name, propertyInfos.ElementAt(i).Name);
-                sb.AppendFormat("{0} = @{1}", EncapsulateColumnName(propertyInfos.ElementAt(i).Name), propertyInfos.ElementAt(i).Name);
+                //match up generic properties to source entity properties to allow fetching of the column attribute
+                //the anonymous object used for search doesn't have the custom attributes attached to them so this allows us to build the correct where clause
+                //by converting the model type to the database column name via the column attribute
+                var propertyToUse = propertyInfos.ElementAt(i);
+                var sourceProperties = GetScaffoldableProperties(sourceEntity).ToArray();
+                for (var x = 0; x < sourceProperties.Count(); x++)
+                {
+                    if (sourceProperties.ElementAt(x).Name == propertyInfos.ElementAt(i).Name)
+                    {
+                        propertyToUse = sourceProperties.ElementAt(x);
+                    }
+                }
+
+                sb.AppendFormat("{0} = @{1}", GetColumnName(propertyToUse), propertyInfos.ElementAt(i).Name);
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
             }
         }
+
 
         //build insert values which include all properties in the class that are not marked with the Editable(false) attribute,
         //are not marked with the [Key] attribute, and are not named Id
@@ -401,6 +433,7 @@ namespace Dapper
             {
                 var property = props.ElementAt(i);
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
+
                 if (property.Name == "Id") continue;
                 sb.AppendFormat("@{0}", property.Name);
                 if (i < props.Count() - 1)
@@ -422,7 +455,7 @@ namespace Dapper
                 var property = props.ElementAt(i);
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
                 if (property.Name == "Id") continue;
-                sb.Append(property.Name);
+                sb.Append(GetColumnName(property));
                 if (i < props.Count() - 1)
                     sb.Append(", ");
             }
@@ -525,6 +558,19 @@ namespace Dapper
             return tableName;
         }
 
+        private static string GetColumnName(PropertyInfo propertyInfo)
+        {
+            var columnName = EncapsulateColumnName(propertyInfo.Name);
+
+            var columnattr = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "ColumnAttribute") as dynamic;
+            if (columnattr != null)
+            {
+                columnName = EncapsulateColumnName(columnattr.Name);            
+                Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
+            }
+            return columnName;
+        }
+
         private static string EncapsulateColumnName(string columnName)
         {
             return string.Format(_columnNameEncapsulation, columnName);
@@ -540,8 +586,6 @@ namespace Dapper
             return string.Format(_schemaNameEncapsulation, schemaName);
         }
     }
-
-
 
 
     /// <summary>
@@ -569,6 +613,26 @@ namespace Dapper
         public string Schema { get; set; }
     }
 
+    /// <summary>
+    /// Optional Column attribute.
+    /// You can use the System.ComponentModel.DataAnnotations version in its place to specify the table name of a poco
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property)]
+    public class ColumnAttribute : Attribute
+    {
+        /// <summary>
+        /// Optional Column attribute.
+        /// </summary>
+        /// <param name="columnName"></param>
+        public ColumnAttribute(string columnName)
+        {
+            Name = columnName;
+        }
+        /// <summary>
+        /// Name of the column
+        /// </summary>
+        public string Name { get; private set; }
+    }
 
     /// <summary>
     /// Optional Key attribute.

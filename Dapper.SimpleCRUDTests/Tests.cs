@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.Common;
+using System.Data.Linq.Mapping;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
@@ -13,6 +14,7 @@ using Npgsql;
 
 namespace Dapper.SimpleCRUDTests
 {
+    #region DTOClasses
     //For .Net 4.5> [System.ComponentModel.DataAnnotations.Schema.Table("Users")]  or the attribute built into SimpleCRUD
     [Table("Users")]
     public class User
@@ -50,7 +52,7 @@ namespace Dapper.SimpleCRUDTests
 
         #region AdditionalFields
         [Editable(false)]
-        public string MakeWithModel{get { return Make + " (" + Model + ")"; }}
+        public string MakeWithModel { get { return Make + " (" + Model + ")"; } }
         #endregion
 
     }
@@ -99,11 +101,22 @@ namespace Dapper.SimpleCRUDTests
         public string Name { get; set; }
     }
 
-    public enum Dbtypes
+
+    public class StrangeColumnNames
     {
-        Sqlserver,
-        Postgres
+        [Key]
+        public int ItemId { get; set; }
+        public string Word { get; set; }
+        [Column("colstringstrangeword")]
+        public string StrangeWord { get; set; }
+        [Editable(false)]
+        public string ExtraProperty { get; set; }
+
     }
+
+    #endregion
+
+
     public class Tests
     {
         public Tests(Dbtypes dbtype)
@@ -116,17 +129,17 @@ namespace Dapper.SimpleCRUDTests
         {
 
             IDbConnection connection;
-            if (_dbtype==Dbtypes.Sqlserver)
+            if (_dbtype == Dbtypes.Sqlserver)
             {
-                connection =new SqlConnection(@"Data Source = (LocalDB)\v11.0;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True;MultipleActiveResultSets=true;");
+                connection = new SqlConnection(@"Data Source = (LocalDB)\v11.0;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True;MultipleActiveResultSets=true;");
                 Dapper.SimpleCRUD.SetSchemaNameEncapsulation("[", "]");
                 Dapper.SimpleCRUD.SetColumnNameEncapsulation("[", "]");
                 Dapper.SimpleCRUD.SetTableNameEncapsulation("[", "]");
-                
+
             }
             else
             {
-                connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};","localhost", "5432", "postgres", "postgrespass", "testdb"));
+                connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "5432", "postgres", "postgrespass", "testdb"));
                 Dapper.SimpleCRUD.SetSchemaNameEncapsulation("", "");
                 Dapper.SimpleCRUD.SetColumnNameEncapsulation("", "");
                 Dapper.SimpleCRUD.SetTableNameEncapsulation("", "");
@@ -135,10 +148,11 @@ namespace Dapper.SimpleCRUDTests
             var projLoc = Assembly.GetAssembly(GetType()).Location;
             var projFolder = Path.GetDirectoryName(projLoc);
 
-            connection.Open();        
+            connection.Open();
             return connection;
         }
 
+        //basic tests
         public void InsertWithSpecifiedTableName()
         {
             using (var connection = GetOpenConnection())
@@ -199,7 +213,6 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-
         public void TestFilteredGetList()
         {
             using (var connection = GetOpenConnection())
@@ -240,7 +253,6 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-
         public void InsertWithSpecifiedKey()
         {
             using (var connection = GetOpenConnection())
@@ -249,7 +261,6 @@ namespace Dapper.SimpleCRUDTests
                 id.IsEqualTo(1);
             }
         }
-
 
         public void InsertWithExtraPropertiesShouldSkipNonSimpleTypesAndPropertiesMarkedEditableFalse()
         {
@@ -264,8 +275,8 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                var newid = (int)connection.Insert(new Car { Make = "Honda", Model = "Civic"});
-                var newitem = connection.Get<Car>(3);
+                var newid = (int)connection.Insert(new Car { Make = "Honda", Model = "Civic" });
+                var newitem = connection.Get<Car>(newid);
                 newitem.Make = "Toyota";
                 connection.Update(newitem);
                 var updateditem = connection.Get<Car>(newid);
@@ -278,7 +289,7 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.Insert(new Car { Make = "Honda", Model ="Civic" });
+                connection.Insert(new Car { Make = "Honda", Model = "Civic" });
                 var car = connection.Get<Car>(4);
                 connection.Delete(car);
                 connection.Get<Car>(4).IsNull();
@@ -311,7 +322,7 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                var id = connection.Insert(new CarLog { LogNotes = "blah blah blah"});
+                var id = connection.Insert(new CarLog { LogNotes = "blah blah blah" });
                 id.IsEqualTo(1);
             }
         }
@@ -335,10 +346,10 @@ namespace Dapper.SimpleCRUDTests
                 }
                 catch (Exception)
                 {
-                   //we expect to get an exception, so return
+                    //we expect to get an exception, so return
                     return;
                 }
-               
+
                 //if we get here without throwing an exception, the test failed.
                 throw new ApplicationException("Expected exception");
             }
@@ -376,18 +387,19 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+        //column_table_schema encapsulation tests
 
         public void TestInsertWithNoEncapsulation()
         {
-            
-      
+
+
             using (var connection = GetOpenConnection())
             {
                 Dapper.SimpleCRUD.SetSchemaNameEncapsulation("", "");
                 Dapper.SimpleCRUD.SetColumnNameEncapsulation("", "");
                 Dapper.SimpleCRUD.SetTableNameEncapsulation("", "");
 
-                var id = connection.Insert(new CarLog { LogNotes = "blah blah blah"});
+                var id = connection.Insert(new CarLog { LogNotes = "blah blah blah" });
                 id.IsEqualTo(2);
             }
 
@@ -403,7 +415,7 @@ namespace Dapper.SimpleCRUDTests
 
                 try
                 {
-                    var id = connection.Insert(new CarLog {LogNotes = "blah blah blah"});
+                    var id = connection.Insert(new CarLog { LogNotes = "blah blah blah" });
                 }
                 catch (Exception)
                 {
@@ -417,10 +429,12 @@ namespace Dapper.SimpleCRUDTests
 
                 //if we get here without throwing an exception, the test failed.
                 throw new ApplicationException("Expected exception");
-                
+
             }
-           
+
         }
+
+        //GUID primary key tests
 
         public void InsertIntoTableWithGUIDKey()
         {
@@ -451,33 +465,104 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+        //async  tests
+
         public void TestMultiInsertSync()
         {
             using (var connection = GetOpenConnection())
             {
-                var watch = Stopwatch.StartNew();
                 connection.Insert(new User { Name = "AsyncUser1", Age = 14 });
                 connection.Insert(new User { Name = "AsyncUser2", Age = 14 });
                 connection.Insert(new User { Name = "AsyncUser3", Age = 14 });
                 connection.Insert(new User { Name = "AsyncUser4", Age = 14 });
-                watch.Stop();
-                System.Console.Write(" {0}ms", watch.ElapsedMilliseconds);
             }
         }
 
-        public  void MultiInsertAsync()
+        public void MultiInsertAsync()
         {
             using (var connection = GetOpenConnection())
             {
-                var watch = Stopwatch.StartNew();
                 var t1 = connection.InsertAsync<Int32>(new User { Name = "AsyncUser5", Age = 14 });
                 var t2 = connection.InsertAsync<Int32>(new User { Name = "AsyncUser6", Age = 14 });
                 var t3 = connection.InsertAsync<Int32>(new User { Name = "AsyncUser7", Age = 14 });
                 var t4 = connection.InsertAsync<Int32>(new User { Name = "AsyncUser8", Age = 14 });
-               Task.WhenAll(t1, t2,t3, t4);
-               watch.Stop();
-               System.Console.Write(" {0}ms", watch.ElapsedMilliseconds);
+                Task.WhenAll(t1, t2, t3, t4);
             }
         }
+
+        //column attribute tests
+
+        public void InsertWithSpecifiedColumnName()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var itemId = connection.Insert(new StrangeColumnNames() { Word = "Word 1", StrangeWord = "Strange 1", });
+                itemId.IsEqualTo(1);
+            }
+        }
+
+        public void TestDeleteByObjectWithSpecifiedColumnName()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var strange = connection.Get<StrangeColumnNames>(1);
+                connection.Delete(strange);
+                connection.Get<StrangeColumnNames>(1).IsNull();
+            }
+        }
+
+        public void TestSimpleGetListWithSpecifiedColumnName()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new StrangeColumnNames() { Word = "Word 2", StrangeWord = "Strange 2", });
+                connection.Insert(new StrangeColumnNames() { Word = "Word 3", StrangeWord = "Strange 3", });
+                var strange = connection.GetList<StrangeColumnNames>(new { });
+                strange.First().StrangeWord.IsEqualTo("Strange 2");
+                strange.Count().IsEqualTo(2);
+                connection.Delete<StrangeColumnNames>(2);
+                connection.Delete<StrangeColumnNames>(3);
+            }
+        }
+
+        public void TestUpdateWithSpecifiedColumnName()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var newid = (int)connection.Insert(new StrangeColumnNames { Word = "Word Insert", StrangeWord = "Strange Insert" });
+                var newitem = connection.Get<StrangeColumnNames>(newid);
+                newitem.Word = "Word Update";
+                connection.Update(newitem);
+                var updateditem = connection.Get<StrangeColumnNames>(newid);
+                updateditem.Word.IsEqualTo("Word Update");
+                connection.Delete<StrangeColumnNames>(newid);
+            }
+        }
+
+        public void TestFilteredGetListWithSpecifiedColumnName()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new StrangeColumnNames() { Word = "Word 5", StrangeWord = "Strange 1", });
+                connection.Insert(new StrangeColumnNames() { Word = "Word 6", StrangeWord = "Strange 2", });
+                connection.Insert(new StrangeColumnNames() { Word = "Word 7", StrangeWord = "Strange 2", });
+                connection.Insert(new StrangeColumnNames() { Word = "Word 8", StrangeWord = "Strange 2", });
+
+                var strange = connection.GetList<StrangeColumnNames>(new { StrangeWord = "Strange 2" });
+                strange.Count().IsEqualTo(3);
+                connection.Delete<User>(5);
+                connection.Delete<User>(6);
+                connection.Delete<User>(7);
+                connection.Delete<User>(8);
+            }
+        }
+
+
+    }
+
+    public enum Dbtypes
+    {
+        Sqlserver,
+        Postgres
     }
 }
