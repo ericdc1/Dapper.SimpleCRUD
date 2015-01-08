@@ -90,6 +90,7 @@ Notes:
 - The [Key] attribute can be used from the Dapper namespace or from System.ComponentModel.DataAnnotations
 - The [Table] attribute can be used from the Dapper namespace, System.ComponentModel.DataAnnotations.Schema, or System.Data.Linq.Mapping - By default the database table name will match the model name but it can be overridden with this.
 - The [Column] attribute can be used from the Dapper namespace, System.ComponentModel.DataAnnotations.Schema, or System.Data.Linq.Mapping - By default the column table name will match the property name but it can be overridden with this. You can even use the model property names in the where clause anonymous object and SimpleCRUD will generate a proper where clause to match the database based on the column attribute
+- GUID (uniqueidentifier) primary keys are supported (using default value of NewID() or NewSequentialID() to autopopulate the key)
 
 Execute a query and map the results to a strongly typed List
 ------------------------------------------------------------
