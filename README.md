@@ -279,3 +279,11 @@ Postgres support
 Do you have a comprehensive list of examples?
 ---------------------
 Dapper.SimpleCRUD has a basic test suite in the [test project](https://github.com/ericdc1/dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD.Tests/Tests.cs)
+
+Future
+---------------------
+I am considering the following based on feedback:
+* Count methods
+* More complex WHERE clauses for things like <>, IN, etc. as the current WHERE clause system is limited to column=value and multiple WHERE items are anded together
+* Add paged getlist method for paging long lists
+* Support for more database types (Firebird, SQLCe, etc) by formalizing a way to determine the nuances of each database platform with a setting (dbtype=Dapper.SimpleCRUD.SetDBType(dbtypes.Postgres))
