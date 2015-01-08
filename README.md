@@ -2,7 +2,7 @@ Dapper.SimpleCRUD - simple CRUD helpers for Dapper
 ========================================
 Features
 --------
-Dapper.SimpleCRUD is a [single file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD/SimpleCRUD.cs) you can drop in to your project that will extend your IDbConnection interface.
+Dapper.SimpleCRUD is a [single file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD/SimpleCRUD.cs) you can drop in to your project that will extend your IDbConnection interface. (If you want dynamic support you need an [additional file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD%20NET45/SimpleCRUDAsync.cs).)
 
 Who wants to write basic read/insert/update/delete statements? 
 
@@ -61,7 +61,7 @@ var user = connection.Get<User>(1);
 ```
 Results in executing this SQL 
 ```sql
-Select * from [User] where Id = 1 
+Select Id, Name, Age from [User] where Id = 1 
 ```
 
 More complex example: 
@@ -71,6 +71,7 @@ More complex example:
     {
         [Key]
         public int UserId { get; set; }
+        [Column("strFirstName"]
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public int Age { get; set; }
@@ -81,15 +82,14 @@ More complex example:
 
 Results in executing this SQL 
 ```sql
-Select * from [Users] where UserId = @UserID
+Select UserId, strFirstName as FirstName, LastName, Age from [Users] where UserId = @UserID
 ```
 
 Notes:
 
 - The [Key] attribute can be used from the Dapper namespace or from System.ComponentModel.DataAnnotations
-- The [Table] attribute can be used from the Dapper namespace, System.ComponentModel.DataAnnotations.Schema, or System.Data.Linq.Mapping
-
-
+- The [Table] attribute can be used from the Dapper namespace, System.ComponentModel.DataAnnotations.Schema, or System.Data.Linq.Mapping - By default the database table name will match the model name but it can be overridden with this.
+- The [Column] attribute can be used from the Dapper namespace, System.ComponentModel.DataAnnotations.Schema, or System.Data.Linq.Mapping - By default the column table name will match the property name but it can be overridden with this. You can even use the model property names in the where clause anonymous object and SimpleCRUD will generate a proper where clause to match the database based on the column attribute
 
 Execute a query and map the results to a strongly typed List
 ------------------------------------------------------------
@@ -201,6 +201,7 @@ public class User
 {
    [Key]
    public int UserId { get; set; }
+   [Column("strFirstName")]
    public string FirstName { get; set; }
    public string LastName { get; set; }
    public int Age { get; set; }
@@ -215,7 +216,7 @@ connection.Update(entity);
 ```
 Results in executing this SQL  
 ```sql
-Update [Users] Set (FirstName=@FirstName, LastName=@LastName, Age=@Age) Where ID = @ID
+Update [Users] Set (strFirstName=@FirstName, LastName=@LastName, Age=@Age) Where ID = @ID
 ```
 
 
@@ -266,7 +267,8 @@ Delete From [User] Where ID = @ID
 
 Postgres support
 ---------------------
-Support for Postgres was added 12/29/2014. The insert method returns the proper identity (id) of newly inserted columns.  There is now an option to override schema, table, and column encapsulation. The default setup encapsulates these items with [] characters to work with SQL Server. They can be overridden as such:
+* The insert method returns the proper identity (id) of newly inserted columns.  
+* There is an option to override schema, table, and column encapsulation. The default setup encapsulates these items with [] characters to work with SQL Server. They can be overridden as such:
 ```csharp 
    Dapper.SimpleCRUD.SetSchemaNameEncapsulation("", "");
    Dapper.SimpleCRUD.SetColumnNameEncapsulation("", "");
