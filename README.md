@@ -22,7 +22,7 @@ This extension adds the following 7 helpers:
 - Delete<Type>(id) - Deletes a record based on primary key
 - Delete(entity) - Deletes a record based on the typed entity
 
-As of version 1.6 in projects targeting .NET 4.5 or later, the following 7 helpers exist for async operations:
+For projects targeting .NET 4.5 or later, the following 7 helpers exist for async operations:
 
 - GetAsync(id) - gets one record based on the primary key 
 - GetListAsync<Type>() - gets list of records all records from a table
