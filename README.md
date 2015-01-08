@@ -287,3 +287,4 @@ I am considering the following based on feedback:
 * More complex WHERE clauses for things like <>, IN, etc. as the current WHERE clause system is limited to column=value and multiple WHERE items are anded together
 * Add paged getlist method for paging long lists
 * Support for more database types (Firebird, SQLCe, etc) by formalizing a way to determine the nuances of each database platform with a setting (dbtype=Dapper.SimpleCRUD.SetDBType(dbtypes.Postgres))
+* Autogenerate GUID unless a value is passed in rather than relying on the database to do it
