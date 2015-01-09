@@ -277,6 +277,8 @@ Do you have a comprehensive list of examples?
 ---------------------
 Dapper.SimpleCRUD has a basic test suite in the [test project](https://github.com/ericdc1/dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD.Tests/Tests.cs)
 
+There is also a sample website showing working examples of the the core functionality in the [demo website](https://github.com/ericdc1/Dapper.SimpleCRUD/tree/master/DemoWebsite)
+
 Future
 ---------------------
 I am considering the following based on feedback:
