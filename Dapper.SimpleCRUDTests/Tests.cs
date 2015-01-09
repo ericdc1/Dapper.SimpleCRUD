@@ -1,11 +1,8 @@
-﻿using System.Data;
+﻿using System.Collections;
+using System.Data;
 using System.Data.Common;
-using System.Data.Linq.Mapping;
 using System.Data.SqlClient;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Collections.Generic;
 using System;
 using System.Threading.Tasks;
@@ -116,37 +113,28 @@ namespace Dapper.SimpleCRUDTests
 
     #endregion
 
-
     public class Tests
     {
-        public Tests(Dbtypes dbtype)
+        public Tests(SimpleCRUD.Dialect dbtype)
         {
             _dbtype = dbtype;
         }
-        private Dbtypes _dbtype;
+        private SimpleCRUD.Dialect _dbtype;
 
         private IDbConnection GetOpenConnection()
         {
 
             IDbConnection connection;
-            if (_dbtype == Dbtypes.Sqlserver)
+            if (_dbtype == SimpleCRUD.Dialect.PostgreSQL)
             {
-                connection = new SqlConnection(@"Data Source = (LocalDB)\v11.0;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True;MultipleActiveResultSets=true;");
-                Dapper.SimpleCRUD.SetSchemaNameEncapsulation("[", "]");
-                Dapper.SimpleCRUD.SetColumnNameEncapsulation("[", "]");
-                Dapper.SimpleCRUD.SetTableNameEncapsulation("[", "]");
-
+                connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "5432", "postgres", "postgrespass", "testdb"));
+                SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
             }
             else
             {
-                connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "5432", "postgres", "postgrespass", "testdb"));
-                Dapper.SimpleCRUD.SetSchemaNameEncapsulation("", "");
-                Dapper.SimpleCRUD.SetColumnNameEncapsulation("", "");
-                Dapper.SimpleCRUD.SetTableNameEncapsulation("", "");
+                connection = new SqlConnection(@"Data Source = (LocalDB)\v11.0;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True;MultipleActiveResultSets=true;");
+                SimpleCRUD.SetDialect(SimpleCRUD.Dialect.SQLServer);
             }
-
-            var projLoc = Assembly.GetAssembly(GetType()).Location;
-            var projFolder = Path.GetDirectoryName(projLoc);
 
             connection.Open();
             return connection;
@@ -166,7 +154,7 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                var id = connection.Insert<long>(new BigCar() { Make = "Big", Model = "Car" });
+                var id = connection.Insert<long>(new BigCar { Make = "Big", Model = "Car" });
                 id.IsEqualTo(2147483650);
             }
         }
@@ -359,7 +347,7 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                //note - there's not yet support for inserts without a non-int id, so drop down to a normal execute
+                //note - there's not support for inserts without a non-int id, so drop down to a normal execute
                 connection.Execute("INSERT INTO CITY (NAME, POPULATION) VALUES ('Morgantown', 31000)");
                 var city = connection.Get<City>("Morgantown");
                 city.Population.IsEqualTo(31000);
@@ -370,7 +358,7 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                //note - there's not yet support for inserts without a non-int id, so drop down to a normal execute
+                //note - there's not support for inserts without a non-int id, so drop down to a normal execute
                 connection.Execute("INSERT INTO CITY (NAME, POPULATION) VALUES ('Fairmont', 18737)");
                 connection.Delete<City>("Fairmont").IsEqualTo(1);
             }
@@ -387,56 +375,19 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-        //column_table_schema encapsulation tests
+        //dialect test 
 
-        public void TestInsertWithNoEncapsulation()
+        public void ChangeDialect()
         {
-
-
-            using (var connection = GetOpenConnection())
-            {
-                Dapper.SimpleCRUD.SetSchemaNameEncapsulation("", "");
-                Dapper.SimpleCRUD.SetColumnNameEncapsulation("", "");
-                Dapper.SimpleCRUD.SetTableNameEncapsulation("", "");
-
-                var id = connection.Insert(new CarLog { LogNotes = "blah blah blah" });
-                id.IsEqualTo(2);
-            }
-
-        }
-
-        public void TestInsertWithMalformedEncapsulationShouldFail()
-        {
-            using (var connection = GetOpenConnection())
-            {
-                Dapper.SimpleCRUD.SetSchemaNameEncapsulation("-", "-");
-                Dapper.SimpleCRUD.SetColumnNameEncapsulation("-", "-");
-                Dapper.SimpleCRUD.SetTableNameEncapsulation("-", "-");
-
-                try
-                {
-                    var id = connection.Insert(new CarLog { LogNotes = "blah blah blah" });
-                }
-                catch (Exception)
-                {
-                    //we expect to get an exception, so return
-                    return;
-                }
-                finally
-                {
-                    //resets in getconnection
-                }
-
-                //if we get here without throwing an exception, the test failed.
-                throw new ApplicationException("Expected exception");
-
-            }
-
+            SimpleCRUD.SetDialect(SimpleCRUD.Dialect.SQLServer);
+            SimpleCRUD.GetDialect().IsEqualTo(SimpleCRUD.Dialect.SQLServer.ToString());
+            SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
+            SimpleCRUD.GetDialect().IsEqualTo(SimpleCRUD.Dialect.PostgreSQL.ToString());
         }
 
         //GUID primary key tests
 
-        public void InsertIntoTableWithGUIDKey()
+        public void InsertIntoTableWithUnspecifiedGuidKey()
         {
             using (var connection = GetOpenConnection())
             {
@@ -445,7 +396,17 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-        public void GetRecordWithGUIDKey()
+        public void InsertIntoTableWithGuidKey()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var guid = new Guid("2a6fb33d-7141-47a0-b9fa-86a1a1945da9");
+                var id = connection.Insert<Guid>(new GUIDTest { Name = "GuidUser", Guid = guid });
+                id.IsEqualTo(guid);
+            }
+        }
+
+        public void GetRecordWithGuidKey()
         {
             using (var connection = GetOpenConnection())
             {
@@ -455,7 +416,7 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-        public void DeleteRecordWithGUIDKey()
+        public void DeleteRecordWithGuidKey()
         {
             using (var connection = GetOpenConnection())
             {
@@ -467,26 +428,33 @@ namespace Dapper.SimpleCRUDTests
 
         //async  tests
 
-        public void TestMultiInsertSync()
+        public void TestMultiInsertASync()
         {
             using (var connection = GetOpenConnection())
             {
-                connection.Insert(new User { Name = "AsyncUser1", Age = 14 });
-                connection.Insert(new User { Name = "AsyncUser2", Age = 14 });
-                connection.Insert(new User { Name = "AsyncUser3", Age = 14 });
-                connection.Insert(new User { Name = "AsyncUser4", Age = 14 });
+                connection.InsertAsync(new User {Name = "AsyncUser1", Age = 10});
+                connection.InsertAsync(new User {Name = "AsyncUser2", Age = 10});
+                connection.InsertAsync(new User {Name = "AsyncUser3", Age = 10});
+                connection.InsertAsync(new User {Name = "AsyncUser4", Age = 11});
+                System.Threading.Thread.Sleep(300);
+                //tiny wait to let the inserts happen
+                var list = connection.GetList<User>(new { Age = 10 });
+                list.Count().IsEqualTo(3);
             }
         }
 
-        public void MultiInsertAsync()
+        public void MultiInsertWithGuidAsync()
         {
             using (var connection = GetOpenConnection())
             {
-                var t1 = connection.InsertAsync<Int32>(new User { Name = "AsyncUser5", Age = 14 });
-                var t2 = connection.InsertAsync<Int32>(new User { Name = "AsyncUser6", Age = 14 });
-                var t3 = connection.InsertAsync<Int32>(new User { Name = "AsyncUser7", Age = 14 });
-                var t4 = connection.InsertAsync<Int32>(new User { Name = "AsyncUser8", Age = 14 });
-                Task.WhenAll(t1, t2, t3, t4);
+                connection.InsertAsync<Guid>(new GUIDTest {Name = "AsyncGUIDUser"});
+                connection.InsertAsync<Guid>(new GUIDTest {Name = "AsyncGUIDUser"});
+                connection.InsertAsync<Guid>(new GUIDTest {Name = "AsyncGUIDUser"});
+                connection.InsertAsync<Guid>(new GUIDTest {Name = "AsyncGUIDUser"});
+                //tiny wait to let the inserts happen
+                System.Threading.Thread.Sleep(300); 
+                var list = connection.GetList<GUIDTest>(new { Name = "AsyncGUIDUser" });
+                list.Count().IsEqualTo(4);
             }
         }
 
@@ -496,7 +464,7 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                var itemId = connection.Insert(new StrangeColumnNames() { Word = "Word 1", StrangeWord = "Strange 1", });
+                var itemId = connection.Insert(new StrangeColumnNames { Word = "Word 1", StrangeWord = "Strange 1", });
                 itemId.IsEqualTo(1);
             }
         }
@@ -515,8 +483,8 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.Insert(new StrangeColumnNames() { Word = "Word 2", StrangeWord = "Strange 2", });
-                connection.Insert(new StrangeColumnNames() { Word = "Word 3", StrangeWord = "Strange 3", });
+                connection.Insert(new StrangeColumnNames { Word = "Word 2", StrangeWord = "Strange 2", });
+                connection.Insert(new StrangeColumnNames { Word = "Word 3", StrangeWord = "Strange 3", });
                 var strange = connection.GetList<StrangeColumnNames>(new { });
                 strange.First().StrangeWord.IsEqualTo("Strange 2");
                 strange.Count().IsEqualTo(2);
@@ -543,10 +511,10 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.Insert(new StrangeColumnNames() { Word = "Word 5", StrangeWord = "Strange 1", });
-                connection.Insert(new StrangeColumnNames() { Word = "Word 6", StrangeWord = "Strange 2", });
-                connection.Insert(new StrangeColumnNames() { Word = "Word 7", StrangeWord = "Strange 2", });
-                connection.Insert(new StrangeColumnNames() { Word = "Word 8", StrangeWord = "Strange 2", });
+                connection.Insert(new StrangeColumnNames { Word = "Word 5", StrangeWord = "Strange 1", });
+                connection.Insert(new StrangeColumnNames { Word = "Word 6", StrangeWord = "Strange 2", });
+                connection.Insert(new StrangeColumnNames { Word = "Word 7", StrangeWord = "Strange 2", });
+                connection.Insert(new StrangeColumnNames { Word = "Word 8", StrangeWord = "Strange 2", });
 
                 var strange = connection.GetList<StrangeColumnNames>(new { StrangeWord = "Strange 2" });
                 strange.Count().IsEqualTo(3);
@@ -558,11 +526,5 @@ namespace Dapper.SimpleCRUDTests
         }
 
 
-    }
-
-    public enum Dbtypes
-    {
-        Sqlserver,
-        Postgres
     }
 }

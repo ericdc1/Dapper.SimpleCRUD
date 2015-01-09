@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.Linq;
-using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
 using Microsoft.CSharp.RuntimeBinder;
@@ -17,66 +15,42 @@ namespace Dapper
     public static partial class SimpleCRUD
     {
 
-        private static string _schemaNameEncapsulation = "[{0}]";
-        private static string _tableNameEncapsulation = "[{0}]";
-        private static string _columnNameEncapsulation = "[{0}]";
-
-        /// <summary>
-        /// Override default SQL Server encapsulation of [SchemaName]
-        /// </summary>
-        /// <param name="leftEncapsulation"></param>
-        /// <param name="rightEncapsulation"></param>
-        public static void SetSchemaNameEncapsulation(string leftEncapsulation, string rightEncapsulation)
+        static SimpleCRUD()
         {
-            _schemaNameEncapsulation = string.Concat(leftEncapsulation, "{0}", rightEncapsulation);
+            SetDialect(_dialect);
         }
+     
+        private static Dialect _dialect = Dialect.SQLServer;
+        private static string _encapsulation;
+        private static string _getIdentitySql;
 
         /// <summary>
-        /// Override default SQL Server encapsulation of [TableName]
-        /// </summary>
-        /// <param name="leftEncapsulation"></param>
-        /// <param name="rightEncapsulation"></param>
-        public static void SetTableNameEncapsulation(string leftEncapsulation, string rightEncapsulation)
-        {
-            _tableNameEncapsulation = string.Concat(leftEncapsulation, "{0}", rightEncapsulation);
-        }
-
-        /// <summary>
-        /// Override default SQL Server encapsulation of [ColumnName]
-        /// </summary>
-        /// <param name="leftEncapsulation"></param>
-        /// <param name="rightEncapsulation"></param>
-        public static void SetColumnNameEncapsulation(string leftEncapsulation, string rightEncapsulation)
-        {
-            _columnNameEncapsulation = string.Concat(leftEncapsulation, "{0}", rightEncapsulation);
-        }
-
-
-        /// <summary>
-        /// View current schema encapsulation string
+        /// Returns the current dialect name
         /// </summary>
         /// <returns></returns>
-        public static string GetSchemaNameEncapsulation()
+        public static string GetDialect()
         {
-            return _schemaNameEncapsulation;
+            return _dialect.ToString();
         }
-
         /// <summary>
-        /// View current table encapsulation string
+        /// Sets the database dialect 
         /// </summary>
-        /// <returns></returns>
-        public static string GetTableNameEncapsulation()
+        /// <param name="dialect"></param>
+        public static void SetDialect(Dialect dialect)
         {
-            return _tableNameEncapsulation;
-        }
-
-        /// <summary>
-        /// View current column encapsulation string
-        /// </summary>
-        /// <returns></returns>
-        public static string GetColumnNameEncapsulation()
-        {
-            return _columnNameEncapsulation;
+            switch (dialect)
+            {
+                case Dialect.PostgreSQL:
+                    _dialect = Dialect.PostgreSQL;
+                    _encapsulation = "{0}";
+                    _getIdentitySql = string.Format("SELECT LASTVAL() AS id");
+                    break;
+                default:
+                    _dialect = Dialect.SQLServer;
+                    _encapsulation = "[{0}]";
+                    _getIdentitySql = string.Format("SELECT CAST(SCOPE_IDENTITY()  AS BIGINT) AS [id]");
+                    break;
+            }
         }
 
         /// <summary>
@@ -106,7 +80,7 @@ namespace Dapper
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
-            sb.AppendFormat("from {0}", name);
+            sb.AppendFormat(" from {0}", name);
             sb.Append(" where " + onlyKey.Name + " = @Id");
 
             var dynParms = new DynamicParameters();
@@ -142,7 +116,7 @@ namespace Dapper
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
-            sb.AppendFormat("from {0}", name);
+            sb.AppendFormat(" from {0}", name);
 
             if (whereprops.Any())
             {
@@ -206,9 +180,9 @@ namespace Dapper
         {
             var idProps = GetIdProperties(entityToInsert).ToList();
             if (!idProps.Any())
-                throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
+                throw new ArgumentException("Insert<T> only supports an entity with a [Key] or Id property");
             if (idProps.Count() > 1)
-                throw new ArgumentException("Get<T> only supports an entity with a single [Key] or Id property");
+                throw new ArgumentException("Insert<T> only supports an entity with a single [Key] or Id property");
 
             var baseType = typeof(TKey);
             var underlyingType = Nullable.GetUnderlyingType(baseType);
@@ -217,41 +191,45 @@ namespace Dapper
             {
                 throw new Exception("Invalid return type");
             }
+            if (keytype == typeof (Guid))
+            {
+               var guidvalue = (Guid)idProps.First().GetValue(entityToInsert,null);
+                if (guidvalue == Guid.Empty)
+                {
+                    var newguid = SequentialGuid();
+                    idProps.First().SetValue(entityToInsert, newguid, null);
+                }
+            }
+
             var name = GetTableName(entityToInsert);
             var sb = new StringBuilder();
             sb.AppendFormat("insert into {0}", name);
             sb.Append(" (");
             BuildInsertParameters(entityToInsert, sb);
             sb.Append(") ");
-            if (keytype == typeof(Guid))
-                sb.Append(" OUTPUT inserted." + idProps.First().Name + " as id ");
             sb.Append("values");
             sb.Append(" (");
             BuildInsertValues(entityToInsert, sb);
             sb.Append(")");
 
-
-            switch (connection.GetType().Name)
+            if (keytype == typeof (Guid))
             {
-                case "NpgsqlConnection":
-                    {
-                        var id = GetIdProperties(entityToInsert).ToList().First();
-                        sb.Append("  RETURNING " + id.Name + " as id");
-                        break;
-                    }
-                default:
-                    {
-                        //SQL Server 2008+ 
-                        if (keytype == typeof(Guid)) break;
-                        sb.Append("; select scope_identity() as id");
-                        break;
-                    }
+                sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
             }
-
+            else
+            {
+               sb.Append(";" +  _getIdentitySql);     
+            }
+    
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
             var r = connection.Query(sb.ToString(), entityToInsert, transaction, true, commandTimeout);
+            
+            if (keytype == typeof(Guid))
+            {
+                return (TKey)idProps.First().GetValue(entityToInsert, null);
+            }
             return (TKey)r.First().id;
         }
 
@@ -387,13 +365,14 @@ namespace Dapper
         //build select clause based on list of properties
         private static void BuildSelect(StringBuilder sb, IEnumerable<PropertyInfo> props)
         {
-            for (var i = 0; i < props.Count(); i++)
+            var propertyInfos = props as IList<PropertyInfo> ?? props.ToList();
+            for (var i = 0; i < propertyInfos.Count(); i++)
             {
-                sb.Append(GetColumnName(props.ElementAt(i)));
+                sb.Append(GetColumnName(propertyInfos.ElementAt(i)));
                 //if there is a custom column name add an "as customcolumnname" to the item so it maps properly
-                if (props.ElementAt(i).GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "ColumnAttribute") != null)
-                    sb.Append(" as " + props.ElementAt(i).Name + " ");
-                if (i < props.Count() - 1)
+                if (propertyInfos.ElementAt(i).GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "ColumnAttribute") != null)
+                    sb.Append(" as " + propertyInfos.ElementAt(i).Name + " ");
+                if (i < propertyInfos.Count() - 1)
                     sb.Append(",");
             }
         }
@@ -432,7 +411,7 @@ namespace Dapper
             for (var i = 0; i < props.Count(); i++)
             {
                 var property = props.ElementAt(i);
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
+                if (property.PropertyType != typeof(Guid) && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
 
                 if (property.Name == "Id") continue;
                 sb.AppendFormat("@{0}", property.Name);
@@ -453,7 +432,7 @@ namespace Dapper
             for (var i = 0; i < props.Count(); i++)
             {
                 var property = props.ElementAt(i);
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
+                if (property.PropertyType != typeof(Guid) && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
                 if (property.Name == "Id") continue;
                 sb.Append(GetColumnName(property));
                 if (i < props.Count() - 1)
@@ -482,7 +461,7 @@ namespace Dapper
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
         private static bool IsEditable(PropertyInfo pi)
         {
-            object[] attributes = pi.GetCustomAttributes(false);
+            var attributes = pi.GetCustomAttributes(false);
             if (attributes.Length > 0)
             {
                 dynamic write = attributes.FirstOrDefault(x => x.GetType().Name == "EditableAttribute");
@@ -533,19 +512,19 @@ namespace Dapper
         private static string GetTableName(Type type)
         {
             //var tableName = String.Format("[{0}]", type.Name);
-            var tableName = EncapsulateTableName(type.Name);
+            var tableName = Encapsulate(type.Name);
 
             var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "TableAttribute") as dynamic;
             if (tableattr != null)
             {
                 //tableName = String.Format("[{0}]", tableattr.Name);
-                tableName = EncapsulateTableName(tableattr.Name);
+                tableName = Encapsulate(tableattr.Name);
                 try
                 {
                     if (!String.IsNullOrEmpty(tableattr.Schema))
                     {
                         //tableName = String.Format("[{0}].[{1}]", tableattr.Schema, tableattr.Name);
-                        string schemaName = EncapsulateSchemaName(tableattr.Schema);
+                        string schemaName = Encapsulate(tableattr.Schema);
                         tableName = String.Format("{0}.{1}", schemaName, tableName);
                     }
                 }
@@ -560,33 +539,50 @@ namespace Dapper
 
         private static string GetColumnName(PropertyInfo propertyInfo)
         {
-            var columnName = EncapsulateColumnName(propertyInfo.Name);
+            var columnName = Encapsulate(propertyInfo.Name);
 
             var columnattr = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "ColumnAttribute") as dynamic;
             if (columnattr != null)
             {
-                columnName = EncapsulateColumnName(columnattr.Name);            
+                columnName = Encapsulate(columnattr.Name);
                 Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
             }
             return columnName;
         }
 
-        private static string EncapsulateColumnName(string columnName)
+        private static string Encapsulate(string databaseword)
         {
-            return string.Format(_columnNameEncapsulation, columnName);
+            return string.Format(_encapsulation, databaseword);
+        }
+        /// <summary>
+        /// Generates a guid based on the current date/time
+        /// http://stackoverflow.com/questions/1752004/sequential-guid-generator-c-sharp
+        /// </summary>
+        /// <returns></returns>
+        public static Guid SequentialGuid()
+        {
+            var tempGuid = Guid.NewGuid();
+            var bytes = tempGuid.ToByteArray();
+            var time = DateTime.Now;
+            bytes[3] = (byte)time.Year;
+            bytes[2] = (byte)time.Month;
+            bytes[1] = (byte)time.Day;
+            bytes[0] = (byte)time.Hour;
+            bytes[5] = (byte)time.Minute;
+            bytes[4] = (byte)time.Second;
+            return new Guid(bytes);
         }
 
-        private static string EncapsulateTableName(string tableName)
+        /// <summary>
+        /// Database server dialects
+        /// </summary>
+        public enum Dialect
         {
-            return string.Format(_tableNameEncapsulation, tableName);
+            SQLServer,
+            PostgreSQL
         }
 
-        private static string EncapsulateSchemaName(string schemaName)
-        {
-            return string.Format(_schemaNameEncapsulation, schemaName);
-        }
     }
-
 
     /// <summary>
     /// Optional Table attribute.

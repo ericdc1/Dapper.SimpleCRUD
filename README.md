@@ -89,8 +89,8 @@ Notes:
 
 - The [Key] attribute can be used from the Dapper namespace or from System.ComponentModel.DataAnnotations
 - The [Table] attribute can be used from the Dapper namespace, System.ComponentModel.DataAnnotations.Schema, or System.Data.Linq.Mapping - By default the database table name will match the model name but it can be overridden with this.
-- The [Column] attribute can be used from the Dapper namespace, System.ComponentModel.DataAnnotations.Schema, or System.Data.Linq.Mapping - By default the column table name will match the property name but it can be overridden with this. You can even use the model property names in the where clause anonymous object and SimpleCRUD will generate a proper where clause to match the database based on the column attribute
-- GUID (uniqueidentifier) primary keys are supported (using default value of NewID() or NewSequentialID() to autopopulate the key)
+- The [Column] attribute can be used from the Dapper namespace, System.ComponentModel.DataAnnotations.Schema, or System.Data.Linq.Mapping - By default the column name will match the property name but it can be overridden with this. You can even use the model property names in the where clause anonymous object and SimpleCRUD will generate a proper where clause to match the database based on the column attribute
+- GUID (uniqueidentifier) primary keys are supported (autopopulates if no value is passed in)
 
 Execute a query and map the results to a strongly typed List
 ------------------------------------------------------------
@@ -266,14 +266,11 @@ Results in executing this SQL
 Delete From [User] Where ID = @ID
 ```
 
-Postgres support
+PostgreSQL support
 ---------------------
-* The insert method returns the proper identity (id) of newly inserted columns.  
-* There is an option to override schema, table, and column encapsulation. The default setup encapsulates these items with [] characters to work with SQL Server. They can be overridden as such:
+* There is an option to change database dialect. Default is SQL Server but can be changed to PostgreSQL and possibly others down the road. 
 ```csharp 
-   Dapper.SimpleCRUD.SetSchemaNameEncapsulation("", "");
-   Dapper.SimpleCRUD.SetColumnNameEncapsulation("", "");
-   Dapper.SimpleCRUD.SetTableNameEncapsulation("", "");
+   SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
 ```
 
 Do you have a comprehensive list of examples?
@@ -286,5 +283,4 @@ I am considering the following based on feedback:
 * Count methods
 * More complex WHERE clauses for things like <>, IN, etc. as the current WHERE clause system is limited to column=value and multiple WHERE items are anded together
 * Add paged getlist method for paging long lists
-* Support for more database types (Firebird, SQLCe, etc) by formalizing a way to determine the nuances of each database platform with a setting (dbtype=Dapper.SimpleCRUD.SetDBType(dbtypes.Postgres))
-* Autogenerate GUID unless a value is passed in rather than relying on the database to do it
+* Support for more database types (Firebird, SQLCe, etc) 

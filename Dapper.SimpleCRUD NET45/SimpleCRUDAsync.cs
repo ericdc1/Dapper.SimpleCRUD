@@ -1,14 +1,11 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.Linq;
-using System.Net.Sockets;
-using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.CSharp.RuntimeBinder;
+using Microsoft.Win32.SafeHandles;
 
 namespace Dapper
 {
@@ -46,7 +43,7 @@ namespace Dapper
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
-            sb.AppendFormat("from {0}", name);
+            sb.AppendFormat(" from {0}", name);
 
             var dynParms = new DynamicParameters();
             dynParms.Add("@id", id);
@@ -83,7 +80,7 @@ namespace Dapper
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
-            sb.AppendFormat("from {0}", name);
+            sb.AppendFormat(" from {0}", name);
 
             if (whereprops.Any())
             {
@@ -124,7 +121,7 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The ID (primary key) of the newly inserted record if it is identity using the int? type, otherwise null</returns>
-        public static  Task<int?> InsertAsync(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static Task<int?> InsertAsync(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             return InsertAsync<int?>(connection, entityToInsert, transaction, commandTimeout);
         }
@@ -147,9 +144,9 @@ namespace Dapper
         {
             var idProps = GetIdProperties(entityToInsert).ToList();
             if (!idProps.Any())
-                throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
+                throw new ArgumentException("Insert<T> only supports an entity with a [Key] or Id property");
             if (idProps.Count() > 1)
-                throw new ArgumentException("Get<T> only supports an entity with a single [Key] or Id property");
+                throw new ArgumentException("Insert<T> only supports an entity with a single [Key] or Id property");
 
             var baseType = typeof(TKey);
             var underlyingType = Nullable.GetUnderlyingType(baseType);
@@ -158,6 +155,15 @@ namespace Dapper
             {
                 throw new Exception("Invalid return type");
             }
+            if (keytype == typeof(Guid))
+            {
+                var guidvalue = (Guid)idProps.First().GetValue(entityToInsert, null);
+                if (guidvalue == Guid.Empty)
+                {
+                    var newguid = SequentialGuid();
+                    idProps.First().SetValue(entityToInsert, newguid, null);
+                }
+            }
 
             var name = GetTableName(entityToInsert);
             var sb = new StringBuilder();
@@ -165,35 +171,27 @@ namespace Dapper
             sb.Append(" (");
             BuildInsertParameters(entityToInsert, sb);
             sb.Append(") ");
-            if (keytype == typeof(Guid))
-                sb.Append(" OUTPUT inserted." + idProps.First().Name + " as id ");
             sb.Append("values");
             sb.Append(" (");
             BuildInsertValues(entityToInsert, sb);
             sb.Append(")");
 
-
-            switch (connection.GetType().Name)
+            if (keytype == typeof(Guid))
             {
-                case "NpgsqlConnection":
-                    {
-                        var id = GetIdProperties(entityToInsert).ToList().First();
-                        sb.Append("  RETURNING " + id.Name + " as id");
-                        break;
-                    }
-                default:
-                    {
-                        //SQL Server 2008+ 
-                        if (keytype == typeof(Guid)) break;
-                        sb.Append("; select scope_identity() as id");
-                        break;
-                    }
+                sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
             }
-
+            else
+            {
+                sb.Append(";" + _getIdentitySql);
+            }
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
-
             var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
+
+            if (keytype == typeof(Guid))
+            {
+                return (TKey)idProps.First().GetValue(entityToInsert, null);
+            }
             return (TKey)r.First().id;
         }
 

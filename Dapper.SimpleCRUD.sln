@@ -7,8 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapper.SimpleCRUD", "Dapper
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapper.SimpleCRUDTests", "Dapper.SimpleCRUDTests\Dapper.SimpleCRUDTests.csproj", "{A4F4A06E-D179-4251-A232-AEF4CE9AD9B5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleWebsite", "SampleWebsite\SampleWebsite.csproj", "{94247CF1-C24F-4060-821D-C09857D41121}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{4C0A1156-5B42-4415-9306-39E265A360EC}"
 	ProjectSection(SolutionItems) = preProject
 		.nuget\NuGet.Config = .nuget\NuGet.Config
@@ -17,6 +15,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{4C0A11
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapper.SimpleCRUD NET45", "Dapper.SimpleCRUD NET45\Dapper.SimpleCRUD NET45.csproj", "{A54F7AB7-F6DE-43AA-9B31-2065CC6F16D8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoWebsite", "DemoWebsite\DemoWebsite.csproj", "{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -48,16 +48,6 @@ Global
 		{A4F4A06E-D179-4251-A232-AEF4CE9AD9B5}.Release|Mixed Platforms.Build.0 = Release|x86
 		{A4F4A06E-D179-4251-A232-AEF4CE9AD9B5}.Release|x86.ActiveCfg = Release|x86
 		{A4F4A06E-D179-4251-A232-AEF4CE9AD9B5}.Release|x86.Build.0 = Release|x86
-		{94247CF1-C24F-4060-821D-C09857D41121}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{94247CF1-C24F-4060-821D-C09857D41121}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{94247CF1-C24F-4060-821D-C09857D41121}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{94247CF1-C24F-4060-821D-C09857D41121}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{94247CF1-C24F-4060-821D-C09857D41121}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{94247CF1-C24F-4060-821D-C09857D41121}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{94247CF1-C24F-4060-821D-C09857D41121}.Release|Any CPU.Build.0 = Release|Any CPU
-		{94247CF1-C24F-4060-821D-C09857D41121}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{94247CF1-C24F-4060-821D-C09857D41121}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{94247CF1-C24F-4060-821D-C09857D41121}.Release|x86.ActiveCfg = Release|Any CPU
 		{A54F7AB7-F6DE-43AA-9B31-2065CC6F16D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A54F7AB7-F6DE-43AA-9B31-2065CC6F16D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A54F7AB7-F6DE-43AA-9B31-2065CC6F16D8}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
@@ -68,6 +58,16 @@ Global
 		{A54F7AB7-F6DE-43AA-9B31-2065CC6F16D8}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{A54F7AB7-F6DE-43AA-9B31-2065CC6F16D8}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{A54F7AB7-F6DE-43AA-9B31-2065CC6F16D8}.Release|x86.ActiveCfg = Release|Any CPU
+		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

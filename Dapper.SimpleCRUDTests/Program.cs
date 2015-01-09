@@ -14,7 +14,7 @@ namespace Dapper.SimpleCRUDTests
             Setup();
             RunTests();   
             
-            //postgres tests assume port 5432 with username postgres and password postgrespass
+            //PostgreSQL tests assume port 5432 with username postgres and password postgrespass
             //they are commented out by default since postgres setup is required to run tests
             //SetupPG(); 
             //RunTestsPG();    
@@ -47,7 +47,6 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute(@" CREATE SCHEMA Log; ");
                 connection.Execute(@" create table Log.CarLog (Id int IDENTITY(1,1) not null, LogNotes nvarchar(100) NOT NULL) ");
                 connection.Execute(@" CREATE TABLE [dbo].[GUIDTest]([guid] [uniqueidentifier] NOT NULL,[name] [varchar](50) NOT NULL, CONSTRAINT [PK_GUIDTest] PRIMARY KEY CLUSTERED ([guid] ASC))");
-                connection.Execute(@" ALTER TABLE [dbo].[GUIDTest] ADD  CONSTRAINT [DF_GUIDTest_guid]  DEFAULT (newid()) FOR [guid]");
                 connection.Execute(@" create table StrangeColumnNames (ItemId int IDENTITY(1,1) not null Primary Key, word nvarchar(100) not null, colstringstrangeword nvarchar(100) not null) ");
             
             }
@@ -56,7 +55,7 @@ namespace Dapper.SimpleCRUDTests
 
         private static void SetupPG()
         {
-            using (var connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};","localhost", "5432", "postgres","postgrespass", "postgres")))
+            using (var connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "5432", "postgres", "postgrespass", "postgres")))
             {
                 connection.Open();
                 // drop  database 
@@ -67,39 +66,41 @@ namespace Dapper.SimpleCRUDTests
 
             using (var connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "5432", "postgres", "postgrespass", "testdb")))
             {
-                connection.Open(); 
-                connection.Execute(@" create table Users (Id SERIAL, Name varchar not null, Age int not null, ScheduledDayOff int null) ");
-                connection.Execute(@" create table Car (CarId SERIAL, Make varchar not null, Model varchar not null) ");
-                connection.Execute(@" create table BigCar (CarId BIGSERIAL, Make varchar not null, Model varchar not null) ");
+                connection.Open();
+                connection.Execute(@" create table Users (Id SERIAL PRIMARY KEY, Name varchar not null, Age int not null, ScheduledDayOff int null) ");
+                connection.Execute(@" create table Car (CarId SERIAL PRIMARY KEY, Make varchar not null, Model varchar not null) ");
+                connection.Execute(@" create table BigCar (CarId BIGSERIAL PRIMARY KEY, Make varchar not null, Model varchar not null) ");
                 connection.Execute(@" alter sequence bigcar_carid_seq RESTART WITH 2147483650");
                 connection.Execute(@" create table City (Name varchar not null, Population int not null) ");
                 connection.Execute(@" CREATE SCHEMA Log; ");
-                connection.Execute(@" create table Log.CarLog (Id SERIAL, LogNotes varchar NOT NULL) ");
+                connection.Execute(@" create table Log.CarLog (Id SERIAL PRIMARY KEY, LogNotes varchar NOT NULL) ");
+                connection.Execute(@" CREATE TABLE GUIDTest(guid uuid PRIMARY KEY,name varchar NOT NULL)");
+                connection.Execute(@" create table StrangeColumnNames (ItemId Serial PRIMARY KEY, word varchar not null, colstringstrangeword varchar) ");
+
 
             }
           
         }
 
-
         private static void RunTestsPG()
         {
           
-            var pgtester = new Tests(Dbtypes.Postgres);
+            var pgtester = new Tests(SimpleCRUD.Dialect.PostgreSQL);
             foreach (var method in typeof(Tests).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
-                Console.Write("Running " + method.Name + " in postgres");
+                Console.Write("Running " + method.Name + " in PostgreSQL");
                 method.Invoke(pgtester, null);
                 Console.WriteLine(" - OK!");
-            }   
+            }
 
-            Console.Write("Postgres testing complete.");
+            Console.Write("PostgreSQL testing complete.");
             Console.ReadKey();
         }
 
         private static void RunTests()
         {
             var stopwatch = Stopwatch.StartNew();
-            var sqltester = new Tests(Dbtypes.Sqlserver);
+            var sqltester = new Tests(SimpleCRUD.Dialect.SQLServer);
             foreach (var method in typeof(Tests).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
                 var testwatch = Stopwatch.StartNew();
