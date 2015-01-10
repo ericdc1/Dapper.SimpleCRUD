@@ -26,6 +26,16 @@ namespace DemoWebsite.Controllers
             return View(result);
         }
 
+        public ActionResult Details(int id)
+        {
+            UserViewModel result;
+            using (_connection = Utilities.GetOpenConnection())
+            {
+                result = _connection.Get<UserViewModel>(id);
+            }
+            return View(result);
+        }
+
         public ActionResult Create()
         {
             return View();

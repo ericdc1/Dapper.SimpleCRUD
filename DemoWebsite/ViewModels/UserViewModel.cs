@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using DemoWebsite.Models;
@@ -12,8 +13,10 @@ namespace DemoWebsite.ViewModels
     public partial class UserViewModel : User
     {
         [Required]
+        [DisplayName("First Name")]
         public override string FirstName { get; set; }
         [Required]
+        [DisplayName("Last Name")]
         public override string LastName { get; set; }
 
         [Range(0, 130)]
@@ -21,6 +24,7 @@ namespace DemoWebsite.ViewModels
         public override int Age { get; set; }
 
         [Editable(false)]
+        [DisplayName("Full Name")]
         public string FullName
         {
             get { return string.Format("{0} {1}", FirstName, LastName); }

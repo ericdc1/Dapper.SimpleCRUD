@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 namespace DemoWebsite.ViewModels
 {
@@ -12,7 +13,8 @@ namespace DemoWebsite.ViewModels
         public override string Make { get; set; }
         [Required]
         [StringLength(50)]
-        public override string Model { get; set; }
+        [DisplayName("Model")]
+        public override string ModelName { get; set; }
     }
 
 }

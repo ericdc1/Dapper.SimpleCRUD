@@ -197,6 +197,8 @@
     <Content Include="Views\GUIDTest\Create.cshtml" />
     <Content Include="Views\GUIDTest\Edit.cshtml" />
     <Content Include="Views\GUIDTest\Details.cshtml" />
+    <Content Include="Views\Car\Details.cshtml" />
+    <Content Include="Views\User\Details.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

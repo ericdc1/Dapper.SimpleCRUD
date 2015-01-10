@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using DemoWebsite.Models;
 
@@ -11,6 +12,7 @@ namespace DemoWebsite.ViewModels
     public partial class GUIDTestViewModel : GUIDTest
     {
         [Required]
+        [DisplayName("Name")]
         public override string name { get; set; }
 
        
