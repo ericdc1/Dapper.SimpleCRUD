@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>Dapper.SimpleCRUD</id>
-    <version>1.8.0</version>
+    <version>1.8.1</version>
     <title>Dapper.SimpleCRUD</title>
     <authors>Eric Coffman</authors>
     <owners>Eric Coffman</owners>
