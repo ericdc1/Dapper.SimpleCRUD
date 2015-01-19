@@ -296,9 +296,9 @@ Results in executing this SQL
 Delete From [User] Where ID = @ID
 ```
 
-PostgreSQL support
+Database support
 ---------------------
-* There is an option to change database dialect. Default is SQL Server but can be changed to PostgreSQL or SQLite and possibly others down the road. 
+* There is an option to change database dialect. Default is Microsoft SQL Server but can be changed to PostgreSQL or SQLite and possibly others down the road. 
 ```csharp 
    SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
    
