@@ -14,8 +14,8 @@
       Uses core .Net attributes so the generator could be used for other ORMs. 
     </description>
     <summary>
-     By default uses Id column as the primary key but this can be overridden with an attribute
-	  By default queries the table matching the class name but this can be overridden with an attribute 
+      T4 template generates database models from a database for use with Dapper.SimpleCRUD.
+      Uses core .Net attributes so the generator could be used for other ORMs. 
     </summary>
     <releaseNotes>
       Documentation can be found at https://github.com/ericdc1/Dapper.SimpleCRUD/wiki/T4-Template
@@ -24,7 +24,7 @@
 	  * version 1.0.2: Added datetime2 support
           * version 1.0.3: Remove SQL CE support
     </releaseNotes>
-    <copyright>Copyright Eric Coffman 2013</copyright>
+    <copyright>Copyright Eric Coffman 2015</copyright>
     <tags>orm dapper micro-orm t4 template</tags>
   </metadata>
   <files>

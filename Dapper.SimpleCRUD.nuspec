@@ -12,11 +12,13 @@
     <description>
       Simple Get, GetList, Insert, Update, and Delete extensions for Dapper. Uses smart defaults for attribute free classes but can be overridden as needed.
 	  By default uses Id column as the primary key but this can be overridden with an attribute
-	  By default queries the table matching the class name but this can be overridden with an attribute 
+	  By default queries the table matching the class name but this can be overridden with an attribute
+          By default queries the column matching the property name but this can be overridden with an attribute  
+          - Supports SQL Server, PostgreSQL, and SQLite 
+          - Includes async methods when targeting .Net 4.5
     </description>
     <summary>
-     By default uses Id column as the primary key but this can be overridden with an attribute
-	  By default queries the table matching the class name but this can be overridden with an attribute 
+    	Simple Get, GetList, Insert, Update, and Delete extensions for Dapper. Uses smart defaults for attribute free classes but can be overridden as needed. 
     </summary>
     <releaseNotes>
 	Full documentation can be found at http://github.com/ericdc1/Dapper.SimpleCRUD/ 
