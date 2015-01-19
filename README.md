@@ -17,7 +17,7 @@ This extension adds the following 8 helpers:
 - Get(id) - gets one record based on the primary key 
 - GetList<Type>() - gets list of records all records from a table
 - GetList<Type>(anonymous object for where clause) - gets list of all records matching the where options
-- GetList<Type>(string for where clause) - gets list of all records matching the where clause
+- GetList<Type>(string for conditions) - gets list of all records matching the conditions
 - Insert<Type>(entity) - Inserts a record and returns the new primary key
 - Update<Type>(entity) - Updates a record
 - Delete<Type>(id) - Deletes a record based on primary key
@@ -28,7 +28,7 @@ For projects targeting .NET 4.5 or later, the following 8 helpers exist for asyn
 - GetAsync(id) - gets one record based on the primary key 
 - GetListAsync<Type>() - gets list of records all records from a table
 - GetListAsync<Type>(anonymous object for where clause) - gets list of all records matching the where options
-- GetListAsync<Type>(string for where clause) - gets list of all records matching the where clause
+- GetListAsync<Type>(string for conditions) - gets list of all records matching the conditions
 - InsertAsync<Type>(entity) - Inserts a record and returns the new primary key
 - UpdateAsync<Type>(entity) - Updates a record
 - DeleteAsync<Type>(id) - Deletes a record based on primary key
@@ -153,7 +153,7 @@ Execute a query with a where clause and map the results to a strongly typed List
 ------------------------------------------------------------
 
 ```csharp
-public static IEnumerable<T> GetList<T>(this IDbConnection connection, string whereConditions)
+public static IEnumerable<T> GetList<T>(this IDbConnection connection, string conditions)
 ```
 
 Example usage: 
