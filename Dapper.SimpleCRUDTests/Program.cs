@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data.SqlClient;
+using System.Data.SQLite;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -12,12 +13,15 @@ namespace Dapper.SimpleCRUDTests
         static void Main(string[] args)
         {
             Setup();
-            RunTests();   
-            
+            RunTests();
+
             //PostgreSQL tests assume port 5432 with username postgres and password postgrespass
             //they are commented out by default since postgres setup is required to run tests
             //SetupPG(); 
-            //RunTestsPG();    
+            //RunTestsPG();   
+
+            SetupSQLite();
+            RunTestsSQLite();
         }
 
         private static void Setup()
@@ -32,8 +36,8 @@ namespace Dapper.SimpleCRUDTests
                 {
                     connection.Execute(@" DROP DATABASE DapperSimpleCrudTestDb; ");
                 }
-                catch {}
-                
+                catch { }
+
                 connection.Execute(@" CREATE DATABASE DapperSimpleCrudTestDb; ");
             }
 
@@ -48,7 +52,7 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute(@" create table Log.CarLog (Id int IDENTITY(1,1) not null, LogNotes nvarchar(100) NOT NULL) ");
                 connection.Execute(@" CREATE TABLE [dbo].[GUIDTest]([guid] [uniqueidentifier] NOT NULL,[name] [varchar](50) NOT NULL, CONSTRAINT [PK_GUIDTest] PRIMARY KEY CLUSTERED ([guid] ASC))");
                 connection.Execute(@" create table StrangeColumnNames (ItemId int IDENTITY(1,1) not null Primary Key, word nvarchar(100) not null, colstringstrangeword nvarchar(100) not null) ");
-            
+
             }
             Console.WriteLine("Created database");
         }
@@ -79,22 +83,26 @@ namespace Dapper.SimpleCRUDTests
 
 
             }
-          
+
         }
 
-        private static void RunTestsPG()
+        private static void SetupSQLite()
         {
-          
-            var pgtester = new Tests(SimpleCRUD.Dialect.PostgreSQL);
-            foreach (var method in typeof(Tests).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            System.IO.File.Delete(Directory.GetCurrentDirectory() + "\\MyDatabase.sqlite");
+            SQLiteConnection.CreateFile("MyDatabase.sqlite");
+            var connection = new SQLiteConnection("Data Source=MyDatabase.sqlite;Version=3;");
+            using (connection)
             {
-                Console.Write("Running " + method.Name + " in PostgreSQL");
-                method.Invoke(pgtester, null);
-                Console.WriteLine(" - OK!");
-            }
+                connection.Open();
 
-            Console.Write("PostgreSQL testing complete.");
-            Console.ReadKey();
+                connection.Execute(@" create table Users (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name nvarchar(100) not null, Age int not null, ScheduledDayOff int null) ");
+                connection.Execute(@" create table Car (CarId INTEGER PRIMARY KEY AUTOINCREMENT, Make nvarchar(100) not null, Model nvarchar(100) not null) ");
+                connection.Execute(@" create table BigCar (CarId INTEGER PRIMARY KEY AUTOINCREMENT, Make nvarchar(100) not null, Model nvarchar(100) not null) ");
+                connection.Execute(@" insert into BigCar (CarId,Make,Model) Values (2147483649,'car','car') ");
+                connection.Execute(@" create table City (Name nvarchar(100) not null, Population int not null) ");
+                connection.Execute(@" CREATE TABLE GUIDTest([guid] [uniqueidentifier] NOT NULL,[name] [varchar](50) NOT NULL, CONSTRAINT [PK_GUIDTest] PRIMARY KEY  ([guid] ASC))");
+                connection.Execute(@" create table StrangeColumnNames (ItemId INTEGER PRIMARY KEY AUTOINCREMENT, word nvarchar(100) not null, colstringstrangeword nvarchar(100) not null) ");
+            }
         }
 
         private static void RunTests()
@@ -112,7 +120,7 @@ namespace Dapper.SimpleCRUDTests
             stopwatch.Stop();
 
             // Write result
-            Console.WriteLine("Time elapsed: {0}",stopwatch.Elapsed);
+            Console.WriteLine("Time elapsed: {0}", stopwatch.Elapsed);
 
             using (var connection = new SqlConnection(@"Data Source=(LocalDB)\v11.0;Initial Catalog=Master;Integrated Security=True"))
             {
@@ -122,9 +130,43 @@ namespace Dapper.SimpleCRUDTests
                     //drop any remaining connections, then drop the db.
                     connection.Execute(@" alter database DapperSimpleCrudTestDb set single_user with rollback immediate; DROP DATABASE DapperSimpleCrudTestDb; ");
                 }
-                catch {}
+                catch { }
             }
             Console.Write("SQL Server testing complete.");
+            Console.ReadKey();
+        }
+
+        private static void RunTestsPG()
+        {
+
+            var pgtester = new Tests(SimpleCRUD.Dialect.PostgreSQL);
+            foreach (var method in typeof(Tests).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                Console.Write("Running " + method.Name + " in PostgreSQL");
+                method.Invoke(pgtester, null);
+                Console.WriteLine(" - OK!");
+            }
+
+            Console.Write("PostgreSQL testing complete.");
+            Console.ReadKey();
+        }
+
+        private static void RunTestsSQLite()
+        {
+
+
+            var pgtester = new Tests(SimpleCRUD.Dialect.SQLite);
+            foreach (var method in typeof(Tests).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                //skip schema tests
+                if(method.Name.Contains("Schema")) continue;
+               
+                Console.Write("Running " + method.Name + " in SQLite");
+                method.Invoke(pgtester, null);
+                Console.WriteLine(" - OK!");
+            }
+
+            Console.Write("SQLite testing complete.");
             Console.ReadKey();
         }
 

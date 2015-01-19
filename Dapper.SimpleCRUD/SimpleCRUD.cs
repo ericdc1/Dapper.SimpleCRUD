@@ -45,6 +45,11 @@ namespace Dapper
                     _encapsulation = "{0}";
                     _getIdentitySql = string.Format("SELECT LASTVAL() AS id");
                     break;
+                case Dialect.SQLite:
+                    _dialect = Dialect.SQLite;
+                    _encapsulation = "{0}";
+                    _getIdentitySql = string.Format("SELECT LAST_INSERT_ROWID() AS id");
+                    break;
                 default:
                     _dialect = Dialect.SQLServer;
                     _encapsulation = "[{0}]";
@@ -129,6 +134,41 @@ namespace Dapper
 
             return connection.Query<T>(sb.ToString(), whereConditions);
         }
+
+        /// <summary>
+        /// <para>By default queries the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>whereConditions is an SQL where clause ex: "where name='bob'"</para>
+        /// <para>Returns a list of entities that match where conditions</para>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="whereConditions"></param>
+        /// <returns>Gets a list of entities with optional SQL where conditions</returns>
+        public static IEnumerable<T> GetList<T>(this IDbConnection connection, string whereConditions)
+        {
+            var currenttype = typeof(T);
+            var idProps = GetIdProperties(currenttype).ToList();
+            if (!idProps.Any())
+                throw new ArgumentException("Entity must have at least one [Key] property");
+
+            var name = GetTableName(currenttype);
+
+            var sb = new StringBuilder();
+            var whereprops = GetAllProperties(whereConditions).ToArray();
+            sb.Append("Select ");
+            //create a new empty instance of the type to get the base properties
+            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            sb.AppendFormat(" from {0}", name);
+
+            sb.Append(" " + whereConditions);
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb));
+
+            return connection.Query<T>(sb.ToString());
+        }
+
 
         /// <summary>
         /// <para>By default queries the table matching the class name</para>
@@ -579,7 +619,8 @@ namespace Dapper
         public enum Dialect
         {
             SQLServer,
-            PostgreSQL
+            PostgreSQL,
+            SQLite
         }
 
     }

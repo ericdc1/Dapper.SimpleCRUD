@@ -2,9 +2,11 @@
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
+using System.Data.SQLite;
 using System.Linq;
 using System.Collections.Generic;
 using System;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using Npgsql;
 
@@ -31,7 +33,6 @@ namespace Dapper.SimpleCRUDTests
         public int Age { get; set; }
         public int? ScheduledDayOff { get; set; }
     }
-
 
     public class Car
     {
@@ -66,7 +67,6 @@ namespace Dapper.SimpleCRUDTests
 
     }
 
-
     [Table("CarLog", Schema = "Log")]
     public class CarLog
     {
@@ -98,7 +98,6 @@ namespace Dapper.SimpleCRUDTests
         public string Name { get; set; }
     }
 
-
     public class StrangeColumnNames
     {
         [Key]
@@ -129,6 +128,11 @@ namespace Dapper.SimpleCRUDTests
             {
                 connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "5432", "postgres", "postgrespass", "testdb"));
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
+            }
+            else if (_dbtype == SimpleCRUD.Dialect.SQLite)
+            {
+                connection = new SQLiteConnection("Data Source=MyDatabase.sqlite;Version=3;");
+                SimpleCRUD.SetDialect(SimpleCRUD.Dialect.SQLite);
             }
             else
             {
@@ -196,8 +200,7 @@ namespace Dapper.SimpleCRUDTests
                 connection.Insert(new User { Name = "User4", Age = 10 });
                 var user = connection.GetList<User>(new { });
                 user.Count().IsEqualTo(2);
-                connection.Delete<User>(3);
-                connection.Delete<User>(4);
+                connection.Execute("Delete from Users");
             }
         }
 
@@ -212,10 +215,22 @@ namespace Dapper.SimpleCRUDTests
 
                 var user = connection.GetList<User>(new { Age = 10 });
                 user.Count().IsEqualTo(3);
-                connection.Delete<User>(5);
-                connection.Delete<User>(6);
-                connection.Delete<User>(7);
-                connection.Delete<User>(8);
+                connection.Execute("Delete from Users");
+            }
+        }
+
+        public void TestFilteredWithSQLGetList()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new User { Name = "User5", Age = 10 });
+                connection.Insert(new User { Name = "User6", Age = 10 });
+                connection.Insert(new User { Name = "User7", Age = 10 });
+                connection.Insert(new User { Name = "User8", Age = 11 });
+
+                var user = connection.GetList<User>("where Name like 'User%' and Age = 10");
+                user.Count().IsEqualTo(3);
+                connection.Execute("Delete from Users");
             }
         }
 
@@ -226,7 +241,7 @@ namespace Dapper.SimpleCRUDTests
                 connection.Insert(new User { Name = "User9", Age = 10 });
                 var user = connection.GetList<User>(null);
                 user.Count().IsEqualTo(1);
-                connection.Delete<User>(9);
+                connection.Execute("Delete from Users");
             }
         }
 
@@ -237,7 +252,7 @@ namespace Dapper.SimpleCRUDTests
                 connection.Insert(new User { Name = "User10", Age = 10 });
                 var user = connection.GetList<User>();
                 user.Count().IsEqualTo(1);
-                connection.Delete<User>(10);
+                connection.Execute("Delete from Users");
             }
         }
 
@@ -427,15 +442,14 @@ namespace Dapper.SimpleCRUDTests
         }
 
         //async  tests
-
         public void TestMultiInsertASync()
         {
             using (var connection = GetOpenConnection())
             {
-                connection.InsertAsync(new User {Name = "AsyncUser1", Age = 10});
-                connection.InsertAsync(new User {Name = "AsyncUser2", Age = 10});
-                connection.InsertAsync(new User {Name = "AsyncUser3", Age = 10});
-                connection.InsertAsync(new User {Name = "AsyncUser4", Age = 11});
+                connection.InsertAsync(new User { Name = "AsyncUser1", Age = 10 });
+                connection.InsertAsync(new User { Name = "AsyncUser2", Age = 10 });
+                connection.InsertAsync(new User { Name = "AsyncUser3", Age = 10 });
+                connection.InsertAsync(new User { Name = "AsyncUser4", Age = 11 });
                 System.Threading.Thread.Sleep(300);
                 //tiny wait to let the inserts happen
                 var list = connection.GetList<User>(new { Age = 10 });
@@ -447,12 +461,12 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.InsertAsync<Guid>(new GUIDTest {Name = "AsyncGUIDUser"});
-                connection.InsertAsync<Guid>(new GUIDTest {Name = "AsyncGUIDUser"});
-                connection.InsertAsync<Guid>(new GUIDTest {Name = "AsyncGUIDUser"});
-                connection.InsertAsync<Guid>(new GUIDTest {Name = "AsyncGUIDUser"});
+                connection.InsertAsync<Guid>(new GUIDTest { Name = "AsyncGUIDUser" });
+                connection.InsertAsync<Guid>(new GUIDTest { Name = "AsyncGUIDUser" });
+                connection.InsertAsync<Guid>(new GUIDTest { Name = "AsyncGUIDUser" });
+                connection.InsertAsync<Guid>(new GUIDTest { Name = "AsyncGUIDUser" });
                 //tiny wait to let the inserts happen
-                System.Threading.Thread.Sleep(300); 
+                System.Threading.Thread.Sleep(300);
                 var list = connection.GetList<GUIDTest>(new { Name = "AsyncGUIDUser" });
                 list.Count().IsEqualTo(4);
             }
@@ -518,13 +532,9 @@ namespace Dapper.SimpleCRUDTests
 
                 var strange = connection.GetList<StrangeColumnNames>(new { StrangeWord = "Strange 2" });
                 strange.Count().IsEqualTo(3);
-                connection.Delete<User>(5);
-                connection.Delete<User>(6);
-                connection.Delete<User>(7);
-                connection.Delete<User>(8);
+                connection.Execute("Delete from Users");
             }
         }
-
 
     }
 }

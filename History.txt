@@ -17,3 +17,4 @@
 * version 1.5.0 Target .Net 4.5, support for PostgreSQL, SQL Server now uses scope_identity on insert rather than @@identity Add support for GUID primary keys
 * version 1.6.0 Target .Net 4.0 and 4.5 and add async support
 * version 1.7.0 Added column attribute and made gets specify column names rather than select * . Changed GUID to autogenerate when the property value is empty. Ability to change database dialect from SQL Server to PostgreSQL.
+* version 1.8.0 Added support and tests for SQLite. Added additional GetList method that accepts a raw SQL where clause for more advanced queries. 
