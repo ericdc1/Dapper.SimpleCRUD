@@ -12,21 +12,23 @@ I wanted the primary key column to be Id in most cases but allow overriding with
 
 Finally, I wanted the table name to match the class name by default but allow overriding with an attribute. 
 
-This extension adds the following 7 helpers: 
+This extension adds the following 8 helpers: 
 
 - Get(id) - gets one record based on the primary key 
 - GetList<Type>() - gets list of records all records from a table
 - GetList<Type>(anonymous object for where clause) - gets list of all records matching the where options
+- GetList<Type>(string for where clause) - gets list of all records matching the where clause
 - Insert<Type>(entity) - Inserts a record and returns the new primary key
 - Update<Type>(entity) - Updates a record
 - Delete<Type>(id) - Deletes a record based on primary key
 - Delete(entity) - Deletes a record based on the typed entity
 
-For projects targeting .NET 4.5 or later, the following 7 helpers exist for async operations:
+For projects targeting .NET 4.5 or later, the following 8 helpers exist for async operations:
 
 - GetAsync(id) - gets one record based on the primary key 
 - GetListAsync<Type>() - gets list of records all records from a table
 - GetListAsync<Type>(anonymous object for where clause) - gets list of all records matching the where options
+- GetListAsync<Type>(string for where clause) - gets list of all records matching the where clause
 - InsertAsync<Type>(entity) - Inserts a record and returns the new primary key
 - UpdateAsync<Type>(entity) - Updates a record
 - DeleteAsync<Type>(id) - Deletes a record based on primary key
@@ -141,11 +143,39 @@ Results in
 ```sql
 Select * from [User] where Age = @Age
 ```
-
 Notes:
 - To get all records use an empty anonymous object - new{}
 - The where options are mapped as "where [name] = [value]"
-- If you need > < like, etc simply use Dapper's Query method
+- If you need > < like, etc simply use the manual where clause method or Dapper's Query method
+
+ 
+Execute a query with a where clause and map the results to a strongly typed List
+------------------------------------------------------------
+
+```csharp
+public static IEnumerable<T> GetList<T>(this IDbConnection connection, string whereConditions)
+```
+
+Example usage: 
+
+```csharp
+public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public int Age { get; set; }
+}
+  
+var user = connection.GetList<User>("where age = 10 or Name like '%Smith%'");  
+```
+Results in 
+```sql
+Select * from [User] where age = 10 or Name like '%Smith%'
+```
+
+Notes:
+- This uses your raw SQL so be careful to not create SQL injection holes
+- There is nothing stopping you from adding an order by clause using this method 
 
 
 Insert a record
@@ -268,9 +298,11 @@ Delete From [User] Where ID = @ID
 
 PostgreSQL support
 ---------------------
-* There is an option to change database dialect. Default is SQL Server but can be changed to PostgreSQL and possibly others down the road. 
+* There is an option to change database dialect. Default is SQL Server but can be changed to PostgreSQL or SQLite and possibly others down the road. 
 ```csharp 
    SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
+   
+   SimpleCRUD.SetDialect(SimpleCRUD.Dialect.SQLite);
 ```
 
 Do you have a comprehensive list of examples?
@@ -283,6 +315,6 @@ Future
 ---------------------
 I am considering the following based on feedback:
 * Count methods
-* More complex WHERE clauses for things like <>, IN, etc. as the current WHERE clause system is limited to column=value and multiple WHERE items are anded together
-* Add paged getlist method for paging long lists
 * Support for more database types (Firebird, SQLCe, etc) 
+* Add paged getlist method for paging long lists
+
