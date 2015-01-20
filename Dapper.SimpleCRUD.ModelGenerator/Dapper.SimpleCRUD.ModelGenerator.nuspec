@@ -20,9 +20,9 @@
     <releaseNotes>
       Documentation can be found at https://github.com/ericdc1/Dapper.SimpleCRUD/wiki/T4-Template
       * version 1.0:  Initial Release
-	  * version 1.0.1:  Normalize line endings
-	  * version 1.0.2: Added datetime2 support
-          * version 1.0.3: Remove SQL CE support
+      * version 1.0.1:  Normalize line endings
+      * version 1.0.2: Added datetime2 support
+      * version 1.0.3: Remove SQL CE support
     </releaseNotes>
     <copyright>Copyright Eric Coffman 2015</copyright>
     <tags>orm dapper micro-orm t4 template</tags>
