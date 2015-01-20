@@ -31,7 +31,8 @@
 	* version 1.8.0 Added support and tests for SQLite. Added additional GetList method that accepts a raw SQL where clause for more advanced queries. 
 	 </releaseNotes>
     <copyright>Copyright Eric Coffman 2015</copyright>
-    <tags>orm dapper micro-orm</tags>
+    <tags>orm dapper micro-orm CRUD</tags>
+  <iconUrl>https://raw.githubusercontent.com/ericdc1/Dapper.SimpleCRUD/master/images/SimpleCRUD-200x200.png</iconUrl>
     <dependencies>
       <dependency id="Dapper" version="[1.38,2.0)" />
     </dependencies>
