@@ -44,6 +44,7 @@ namespace Dapper
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
             sb.AppendFormat(" from {0}", name);
+            sb.Append(" where " + onlyKey.Name + " = @Id");
 
             var dynParms = new DynamicParameters();
             dynParms.Add("@id", id);
