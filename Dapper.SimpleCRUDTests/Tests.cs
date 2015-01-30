@@ -151,6 +151,8 @@ namespace Dapper.SimpleCRUDTests
             {
                 var id = connection.Insert(new User { Name = "User1", Age = 10 });
                 id.IsEqualTo(1);
+                connection.Delete<User>(id);
+
             }
         }
 
@@ -160,6 +162,8 @@ namespace Dapper.SimpleCRUDTests
             {
                 var id = connection.Insert<long>(new BigCar { Make = "Big", Model = "Car" });
                 id.IsEqualTo(2147483650);
+                connection.Delete<BigCar>(id);
+
             }
         }
 
@@ -167,8 +171,11 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                var user = connection.Get<User>(1);
-                user.Name.IsEqualTo("User1");
+                var id = connection.Insert(new User { Name = "UserTestSimpleGet", Age = 10 });
+                var user = connection.Get<User>(id);
+                user.Name.IsEqualTo("UserTestSimpleGet");
+                connection.Delete<User>(id);
+
             }
         }
 
@@ -176,8 +183,9 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.Delete<User>(1);
-                connection.Get<User>(1).IsNull();
+                var id = connection.Insert(new User { Name = "UserTestDeleteById", Age = 10 });
+                connection.Delete<User>(id);
+                connection.Get<User>(id).IsNull();
             }
         }
 
@@ -185,10 +193,10 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.Insert(new User { Name = "User2", Age = 10 });
-                var user = connection.Get<User>(2);
+                var id = connection.Insert(new User { Name = "TestDeleteByObject", Age = 10 });
+                var user = connection.Get<User>(id);
                 connection.Delete(user);
-                connection.Get<User>(2).IsNull();
+                connection.Get<User>(id).IsNull();
             }
         }
 
@@ -196,8 +204,8 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.Insert(new User { Name = "User3", Age = 10 });
-                connection.Insert(new User { Name = "User4", Age = 10 });
+                connection.Insert(new User { Name = "TestSimpleGetList1", Age = 10 });
+                connection.Insert(new User { Name = "TestSimpleGetList2", Age = 10 });
                 var user = connection.GetList<User>(new { });
                 user.Count().IsEqualTo(2);
                 connection.Execute("Delete from Users");
@@ -208,10 +216,10 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.Insert(new User { Name = "User5", Age = 10 });
-                connection.Insert(new User { Name = "User6", Age = 10 });
-                connection.Insert(new User { Name = "User7", Age = 10 });
-                connection.Insert(new User { Name = "User8", Age = 11 });
+                connection.Insert(new User { Name = "TestFilteredGetList1", Age = 10 });
+                connection.Insert(new User { Name = "TestFilteredGetList2", Age = 10 });
+                connection.Insert(new User { Name = "TestFilteredGetList3", Age = 10 });
+                connection.Insert(new User { Name = "TestFilteredGetList4", Age = 11 });
 
                 var user = connection.GetList<User>(new { Age = 10 });
                 user.Count().IsEqualTo(3);
@@ -223,12 +231,12 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.Insert(new User { Name = "User5", Age = 10 });
-                connection.Insert(new User { Name = "User6", Age = 10 });
-                connection.Insert(new User { Name = "User7", Age = 10 });
-                connection.Insert(new User { Name = "User8", Age = 11 });
+                connection.Insert(new User { Name = "TestFilteredWithSQLGetList1", Age = 10 });
+                connection.Insert(new User { Name = "TestFilteredWithSQLGetList2", Age = 10 });
+                connection.Insert(new User { Name = "TestFilteredWithSQLGetList3", Age = 10 });
+                connection.Insert(new User { Name = "TestFilteredWithSQLGetList4", Age = 11 });
 
-                var user = connection.GetList<User>("where Name like 'User%' and Age = 10");
+                var user = connection.GetList<User>("where Name like 'TestFilteredWithSQLGetList%' and Age = 10");
                 user.Count().IsEqualTo(3);
                 connection.Execute("Delete from Users");
             }
@@ -238,7 +246,7 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.Insert(new User { Name = "User9", Age = 10 });
+                connection.Insert(new User { Name = "TestGetListWithNullWhere", Age = 10 });
                 var user = connection.GetList<User>(null);
                 user.Count().IsEqualTo(1);
                 connection.Execute("Delete from Users");
@@ -249,7 +257,7 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.Insert(new User { Name = "User10", Age = 10 });
+                connection.Insert(new User { Name = "TestGetListWithoutWhere", Age = 10 });
                 var user = connection.GetList<User>();
                 user.Count().IsEqualTo(1);
                 connection.Execute("Delete from Users");
@@ -292,10 +300,10 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.Insert(new Car { Make = "Honda", Model = "Civic" });
-                var car = connection.Get<Car>(4);
+               var id = connection.Insert(new Car { Make = "Honda", Model = "Civic" });
+                var car = connection.Get<Car>(id);
                 connection.Delete(car);
-                connection.Get<Car>(4).IsNull();
+                connection.Get<Car>(id).IsNull();
             }
         }
 
@@ -327,6 +335,8 @@ namespace Dapper.SimpleCRUDTests
             {
                 var id = connection.Insert(new CarLog { LogNotes = "blah blah blah" });
                 id.IsEqualTo(1);
+                connection.Delete<CarLog>(id);
+
             }
         }
 
@@ -334,8 +344,10 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                var carlog = connection.Get<CarLog>(1);
-                carlog.LogNotes.IsEqualTo("blah blah blah");
+                var id = connection.Insert(new CarLog { LogNotes = "TestGetFromDifferentSchema" });
+                var carlog = connection.Get<CarLog>(id);
+                carlog.LogNotes.IsEqualTo("TestGetFromDifferentSchema");
+                connection.Delete<CarLog>(id);
             }
         }
 
@@ -408,6 +420,7 @@ namespace Dapper.SimpleCRUDTests
             {
                 var id = connection.Insert<Guid>(new GUIDTest { Name = "GuidUser" });
                 id.GetType().Name.IsEqualTo("Guid");
+                connection.Delete<GUIDTest>(id);
             }
         }
 
@@ -415,9 +428,10 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                var guid = new Guid("2a6fb33d-7141-47a0-b9fa-86a1a1945da9");
-                var id = connection.Insert<Guid>(new GUIDTest { Name = "GuidUser", Guid = guid });
+                var guid = new Guid("1a6fb33d-7141-47a0-b9fa-86a1a1945da9");
+                var id = connection.Insert<Guid>(new GUIDTest { Name = "InsertIntoTableWithGuidKey", Guid = guid });
                 id.IsEqualTo(guid);
+                connection.Delete<GUIDTest>(id);
             }
         }
 
@@ -425,9 +439,13 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
+                var guid = new Guid("2a6fb33d-7141-47a0-b9fa-86a1a1945da9");
+                connection.Insert<Guid>(new GUIDTest { Name = "GetRecordWithGuidKey", Guid = guid });
                 var id = connection.GetList<GUIDTest>().First().Guid;
                 var record = connection.Get<GUIDTest>(id);
-                record.Name.IsEqualTo("GuidUser");
+                record.Name.IsEqualTo("GetRecordWithGuidKey");
+                connection.Delete<GUIDTest>(id);
+
             }
         }
 
@@ -435,6 +453,8 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
+                var guid = new Guid("3a6fb33d-7141-47a0-b9fa-86a1a1945da9");
+                connection.Insert<Guid>(new GUIDTest { Name = "DeleteRecordWithGuidKey", Guid = guid });
                 var id = connection.GetList<GUIDTest>().First().Guid;
                 connection.Delete<GUIDTest>(id);
                 connection.Get<GUIDTest>(id).IsNull();
@@ -446,14 +466,16 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.InsertAsync(new User { Name = "AsyncUser1", Age = 10 });
-                connection.InsertAsync(new User { Name = "AsyncUser2", Age = 10 });
-                connection.InsertAsync(new User { Name = "AsyncUser3", Age = 10 });
-                connection.InsertAsync(new User { Name = "AsyncUser4", Age = 11 });
+                connection.InsertAsync(new User { Name = "TestMultiInsertASync1", Age = 10 });
+                connection.InsertAsync(new User { Name = "TestMultiInsertASync2", Age = 10 });
+                connection.InsertAsync(new User { Name = "TestMultiInsertASync3", Age = 10 });
+                connection.InsertAsync(new User { Name = "TestMultiInsertASync4", Age = 11 });
                 System.Threading.Thread.Sleep(300);
                 //tiny wait to let the inserts happen
                 var list = connection.GetList<User>(new { Age = 10 });
                 list.Count().IsEqualTo(3);
+                connection.Execute("Delete from Users");
+
             }
         }
 
@@ -461,16 +483,80 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.InsertAsync<Guid>(new GUIDTest { Name = "AsyncGUIDUser" });
-                connection.InsertAsync<Guid>(new GUIDTest { Name = "AsyncGUIDUser" });
-                connection.InsertAsync<Guid>(new GUIDTest { Name = "AsyncGUIDUser" });
-                connection.InsertAsync<Guid>(new GUIDTest { Name = "AsyncGUIDUser" });
+                connection.InsertAsync<Guid>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
+                connection.InsertAsync<Guid>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
+                connection.InsertAsync<Guid>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
+                connection.InsertAsync<Guid>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
                 //tiny wait to let the inserts happen
                 System.Threading.Thread.Sleep(300);
-                var list = connection.GetList<GUIDTest>(new { Name = "AsyncGUIDUser" });
+                var list = connection.GetList<GUIDTest>(new { Name = "MultiInsertWithGuidAsync" });
                 list.Count().IsEqualTo(4);
+                connection.Execute("Delete from GUIDTest");
             }
         }
+
+        public void TestSimpleGetAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.Insert(new User { Name = "TestSimpleGetAsync", Age = 10 });
+                var user = connection.GetAsync<User>(id);
+                user.Result.Name.IsEqualTo("TestSimpleGetAsync");
+                connection.Delete<User>(id);
+            }
+        }
+
+        public void TestDeleteByIdAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.Insert(new User { Name = "UserAsyncDelete", Age = 10 });
+                connection.DeleteAsync<User>(id);
+                //tiny wait to let the delete happen
+                System.Threading.Thread.Sleep(300);
+                connection.Get<User>(id).IsNull();
+            }
+        }
+
+        public void TestDeleteByObjectAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.Insert(new User { Name = "TestDeleteByObjectAsync", Age = 10 });
+                var user = connection.Get<User>(id);
+                connection.DeleteAsync(user);
+                connection.Get<User>(id).IsNull();
+                connection.Delete<User>(id);
+            }
+        }
+
+        public void TestSimpleGetListAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new User { Name = "TestSimpleGetListAsync1", Age = 10 });
+                connection.Insert(new User { Name = "TestSimpleGetListAsync2", Age = 10 });
+                var user = connection.GetListAsync<User>(new { });
+                user.Result.Count().IsEqualTo(2);
+                connection.Execute("Delete from Users");
+            }
+        }
+
+        public void TestFilteredGetListAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new User { Name = "TestFilteredGetListAsync1", Age = 10 });
+                connection.Insert(new User { Name = "TestFilteredGetListAsync2", Age = 10 });
+                connection.Insert(new User { Name = "TestFilteredGetListAsync3", Age = 10 });
+                connection.Insert(new User { Name = "TestFilteredGetListAsync4", Age = 11 });
+
+                var user = connection.GetListAsync<User>(new { Age = 10 });
+                user.Result.Count().IsEqualTo(3);
+                connection.Execute("Delete from Users");
+            }
+        }
+
 
         //column attribute tests
 
@@ -478,8 +564,10 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                var itemId = connection.Insert(new StrangeColumnNames { Word = "Word 1", StrangeWord = "Strange 1", });
+                var itemId = connection.Insert(new StrangeColumnNames { Word = "InsertWithSpecifiedColumnName", StrangeWord = "Strange 1", });
                 itemId.IsEqualTo(1);
+                connection.Delete<StrangeColumnNames>(itemId);
+
             }
         }
 
@@ -487,9 +575,10 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                var strange = connection.Get<StrangeColumnNames>(1);
+                var itemId = connection.Insert(new StrangeColumnNames { Word = "TestDeleteByObjectWithSpecifiedColumnName", StrangeWord = "Strange 1", });
+                var strange = connection.Get<StrangeColumnNames>(itemId);
                 connection.Delete(strange);
-                connection.Get<StrangeColumnNames>(1).IsNull();
+                connection.Get<StrangeColumnNames>(itemId).IsNull();
             }
         }
 
@@ -497,13 +586,13 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.Insert(new StrangeColumnNames { Word = "Word 2", StrangeWord = "Strange 2", });
-                connection.Insert(new StrangeColumnNames { Word = "Word 3", StrangeWord = "Strange 3", });
+                var id1 = connection.Insert(new StrangeColumnNames { Word = "TestSimpleGetListWithSpecifiedColumnName1", StrangeWord = "Strange 2", });
+                var id2 = connection.Insert(new StrangeColumnNames { Word = "TestSimpleGetListWithSpecifiedColumnName2", StrangeWord = "Strange 3", });
                 var strange = connection.GetList<StrangeColumnNames>(new { });
                 strange.First().StrangeWord.IsEqualTo("Strange 2");
                 strange.Count().IsEqualTo(2);
-                connection.Delete<StrangeColumnNames>(2);
-                connection.Delete<StrangeColumnNames>(3);
+                connection.Delete<StrangeColumnNames>(id1);
+                connection.Delete<StrangeColumnNames>(id2);
             }
         }
 
@@ -532,7 +621,7 @@ namespace Dapper.SimpleCRUDTests
 
                 var strange = connection.GetList<StrangeColumnNames>(new { StrangeWord = "Strange 2" });
                 strange.Count().IsEqualTo(3);
-                connection.Execute("Delete from Users");
+                connection.Execute("Delete from StrangeColumnNames");
             }
         }
 
