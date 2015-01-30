@@ -312,6 +312,53 @@ namespace Dapper
         }
 
         /// <summary>
+        /// <para>Updates or inserts a record in the database</para>
+        /// <para>Based off Insert and Update methods</para>
+        /// </summary>
+        /// <param name="connection"></param>
+        /// <param name="entityToUpsert"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
+        /// <returns>Number of rows affected</returns>
+        public static int Upsert(this IDbConnection connection, object entityToUpsert, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+            var idProps = GetIdProperties(entityToUpsert).ToList();
+            if (!idProps.Any())
+                throw new ArgumentException("Entity must have at least one [Key] or Id property");
+            if (idProps.Count() > 1)
+                throw new ArgumentException("Insert<T> only supports an entity with a single [Key] or Id property");
+
+            var name = GetTableName(entityToUpsert);
+            var sb = new StringBuilder();
+
+
+            //UPDATE
+            sb.AppendFormat("update {0}", name);
+            sb.AppendFormat(" set ");
+            BuildUpdateSet(entityToUpsert, sb);
+            sb.Append(" where ");
+            BuildWhere(sb, idProps, entityToUpsert);
+
+            // If UPDATE failed
+            sb.Append(" IF @@ROWCOUNT = 0 ");
+
+            // INSERT
+            sb.AppendFormat("insert into {0}", name);
+            sb.Append(" (");
+            BuildInsertParameters(entityToUpsert, sb);
+            sb.Append(") ");
+            sb.Append("values");
+            sb.Append(" (");
+            BuildInsertValues(entityToUpsert, sb);
+            sb.Append(")");
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("Upsert: {0}", sb));
+
+            return connection.Execute(sb.ToString(), entityToUpsert, transaction, commandTimeout);
+        }
+
+        /// <summary>
         /// <para>Deletes a record or records in the database that match the object passed in</para>
         /// <para>-By default deletes records in the table matching the class name</para>
         /// <para>Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>

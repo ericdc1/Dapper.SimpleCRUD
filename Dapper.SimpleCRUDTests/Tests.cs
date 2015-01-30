@@ -296,6 +296,31 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+        public void TestUpsert()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.GetList<Car>("WHERE Make = 'McLaren' AND Model = 'F1'").Count().IsEqualTo(0);
+
+                var car = new Car { Make = "McLaren", Model = "F1" };
+                connection.Upsert(car).IsEqualTo(1);
+                connection.GetList<Car>("WHERE Make = 'McLaren' AND Model = 'F1'").Count().IsEqualTo(1);
+                car = connection.GetList<Car>("WHERE Make = 'McLaren' AND Model = 'F1'").ToList()[0];
+                car.Make.IsEqualTo("McLaren");
+                car.Model.IsEqualTo("F1");
+
+                car.Make = "Bugatti";
+                connection.Upsert(car).IsEqualTo(1);
+                connection.GetList<Car>("WHERE Make = 'McLaren' AND Model = 'F1'").Count().IsEqualTo(0);
+                connection.GetList<Car>("WHERE Make = 'Bugatti' AND Model = 'F1'").Count().IsEqualTo(1);
+                car = connection.Get<Car>(car.CarId);
+                car.Make.IsEqualTo("Bugatti");
+                car.Model.IsEqualTo("F1");
+
+                connection.Delete<Car>(car.CarId);
+            }
+        }
+
         public void TestDeleteByObjectWithAttributes()
         {
             using (var connection = GetOpenConnection())
@@ -492,6 +517,28 @@ namespace Dapper.SimpleCRUDTests
                 var list = connection.GetList<GUIDTest>(new { Name = "MultiInsertWithGuidAsync" });
                 list.Count().IsEqualTo(4);
                 connection.Execute("Delete from GUIDTest");
+            }
+        }
+
+        public void TestMultiUpsertASync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.UpsertAsync(new User { Name = "TestMultiUpsertASync1", Age = 10 });
+                connection.UpsertAsync(new User { Name = "TestMultiUpsertASync2", Age = 10 });
+                connection.UpsertAsync(new User { Name = "TestMultiUpsertASync3", Age = 10 });
+                connection.UpsertAsync(new User { Name = "TestMultiUpsertASync4", Age = 11 });
+                System.Threading.Thread.Sleep(300);
+                //tiny wait to let the inserts happen
+                var list = connection.GetList<User>(new { Age = 10 }).ToList();
+                list.Count().IsEqualTo(3);
+                list[0].Age = 8;
+                list[1].Age = 9;
+                connection.UpsertAsync(list[0]);
+                connection.UpsertAsync(list[1]);
+                list = connection.GetList<User>(new { Age = 10 }).ToList();
+                list.Count().IsEqualTo(1);
+                connection.Execute("Delete from Users");
             }
         }
 
