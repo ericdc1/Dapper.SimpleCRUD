@@ -44,7 +44,7 @@ namespace Dapper
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
             sb.AppendFormat(" from {0}", name);
-            sb.Append(" where " + onlyKey.Name + " = @Id");
+            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
 
             var dynParms = new DynamicParameters();
             dynParms.Add("@id", id);
@@ -332,7 +332,7 @@ namespace Dapper
 
             var sb = new StringBuilder();
             sb.AppendFormat("Delete from {0}", name);
-            sb.Append(" where " + onlyKey.Name + " = @Id");
+            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
 
             var dynParms = new DynamicParameters();
             dynParms.Add("@id", id);

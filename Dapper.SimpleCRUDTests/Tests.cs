@@ -1,13 +1,9 @@
-﻿using System.Collections;
-using System.Data;
-using System.Data.Common;
+﻿using System.Data;
 using System.Data.SqlClient;
 using System.Data.SQLite;
 using System.Linq;
 using System.Collections.Generic;
 using System;
-using System.Linq.Expressions;
-using System.Threading.Tasks;
 using Npgsql;
 
 
@@ -101,7 +97,8 @@ namespace Dapper.SimpleCRUDTests
     public class StrangeColumnNames
     {
         [Key]
-        public int ItemId { get; set; }
+        [Column("ItemId")]
+        public int Id { get; set; }
         public string Word { get; set; }
         [Column("colstringstrangeword")]
         public string StrangeWord { get; set; }
