@@ -93,6 +93,7 @@ Notes:
 - The [Key] attribute can be used from the Dapper namespace or from System.ComponentModel.DataAnnotations
 - The [Table] attribute can be used from the Dapper namespace, System.ComponentModel.DataAnnotations.Schema, or System.Data.Linq.Mapping - By default the database table name will match the model name but it can be overridden with this.
 - The [Column] attribute can be used from the Dapper namespace, System.ComponentModel.DataAnnotations.Schema, or System.Data.Linq.Mapping - By default the column name will match the property name but it can be overridden with this. You can even use the model property names in the where clause anonymous object and SimpleCRUD will generate a proper where clause to match the database based on the column attribute
+
 - GUID (uniqueidentifier) primary keys are supported (autopopulates if no value is passed in)
 
 Execute a query and map the results to a strongly typed List
@@ -202,6 +203,8 @@ public class User
    [Editable(false)]
    public string FullName { get { return string.Format("{0} {1}", FirstName, LastName); } }
    public List<User> Friends { get; set; }
+   [ReadOnly(true)]
+   public DateTime CreatedDate { get; set; }
 }
 
 var newId = connection.Insert<User>(new User { Name = "User", Age = 10 });  
@@ -214,7 +217,8 @@ Insert into [Users] (FirstName, LastName, Age) VALUES (@FirstName, @LastName, @A
 Notes:
 - Default table name would match the class name - The Table attribute overrides this
 - Default primary key would be Id - The Key attribute overrides this
-- By default the insert statement would include all properties in the class - The Editable(false) attribute removes item from the insert statement
+- By default the insert statement would include all properties in the class - The Editable(false) and ReadOnly(true) attributes remove items from the insert statement
+- Properties decorated with ReadOnly(true) are only used for selects
 - Complex types are not included in the insert statement - This keeps the List<User> out of the insert even without the Editable attribute. You can include complex types if you decorate them with Editable(true). This is useful for enumerators.
 
 

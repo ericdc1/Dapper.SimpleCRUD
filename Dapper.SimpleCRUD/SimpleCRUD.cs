@@ -390,7 +390,7 @@ namespace Dapper
         //build update statement based on list on an entity
         private static void BuildUpdateSet(object entityToUpdate, StringBuilder sb)
         {
-            var nonIdProps = GetNonIdProperties(entityToUpdate).ToArray();
+            var nonIdProps = GetUpdateableProperties(entityToUpdate).ToArray();
 
             for (var i = 0; i < nonIdProps.Length; i++)
             {
@@ -452,6 +452,7 @@ namespace Dapper
             {
                 var property = props.ElementAt(i);
                 if (property.PropertyType != typeof(Guid) && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
+                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "ReadOnlyAttribute" && IsReadOnly(property))) continue;
 
                 if (property.Name == "Id") continue;
                 sb.AppendFormat("@{0}", property.Name);
@@ -473,6 +474,7 @@ namespace Dapper
             {
                 var property = props.ElementAt(i);
                 if (property.PropertyType != typeof(Guid) && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
+                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "ReadOnlyAttribute" && IsReadOnly(property))) continue;
                 if (property.Name == "Id") continue;
                 sb.Append(GetColumnName(property));
                 if (i < props.Count() - 1)
@@ -514,10 +516,35 @@ namespace Dapper
         }
 
 
-        //Get all properties that are NOT named Id and DO NOT have the Key attribute
-        private static IEnumerable<PropertyInfo> GetNonIdProperties(object entity)
+        //Determine if the Attribute has an IsReadOnly key and return its boolean state
+        //fake the funk and try to mimick ReadOnlyAttribute in System.ComponentModel 
+        //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
+        private static bool IsReadOnly(PropertyInfo pi)
         {
-            return GetScaffoldableProperties(entity).Where(p => p.Name != "Id" && p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute") == false);
+            var attributes = pi.GetCustomAttributes(false);
+            if (attributes.Length > 0)
+            {
+                dynamic write = attributes.FirstOrDefault(x => x.GetType().Name == "ReadOnlyAttribute");
+                if (write != null)
+                {
+                    return write.IsReadOnly;
+                }
+            }
+            return false;
+        }
+
+        //Get all properties that are NOT named Id, DO NOT have the Key attribute, and are not marked ReadOnly
+        private static IEnumerable<PropertyInfo> GetUpdateableProperties(object entity)
+        {
+            var updateableProperties =  GetScaffoldableProperties(entity);
+            //remove ones with ID
+            updateableProperties = updateableProperties.Where(p => p.Name != "Id");
+            //remove ones with key attribute
+            updateableProperties = updateableProperties.Where(p=> p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute") == false);
+            //remove ones that are readonly
+            updateableProperties = updateableProperties.Where(p=> p.GetCustomAttributes(true).Any(attr => (attr.GetType().Name == "ReadOnlyAttribute") &&  IsReadOnly(p)) == false);
+
+            return updateableProperties;
         }
 
         //Get all properties that are named Id or have the Key attribute
@@ -699,6 +726,27 @@ namespace Dapper
         /// Does this property persist to the database?
         /// </summary>
         public bool AllowEdit { get; private set; }
+    }
+
+    /// <summary>
+    /// Optional Readonly attribute.
+    /// You can use the System.ComponentModel version in its place to specify the properties that are editable
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property)]
+    public class ReadOnlyAttribute : Attribute
+    {
+        /// <summary>
+        /// Optional ReadOnly attribute.
+        /// </summary>
+        /// <param name="isReadOnly"></param>
+        public ReadOnlyAttribute(bool isReadOnly)
+        {
+            IsReadOnly = isReadOnly;
+        }
+        /// <summary>
+        /// Does this property persist to the database?
+        /// </summary>
+        public bool IsReadOnly { get; private set; }
     }
 
 }
