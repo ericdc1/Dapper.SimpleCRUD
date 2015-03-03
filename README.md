@@ -16,7 +16,7 @@ Finally, I wanted the table name to match the class name by default but allow ov
 This extension adds the following 8 helpers: 
 
 - Get(id) - gets one record based on the primary key 
-- GetList<Type>() - gets list of records all records from a table
+- GetList&lt;Type&gt;() - gets list of records all records from a table
 - GetList<Type>(anonymous object for where clause) - gets list of all records matching the where options
 - GetList<Type>(string for conditions) - gets list of all records matching the conditions
 - Insert(entity) - Inserts a record and returns the new primary key
