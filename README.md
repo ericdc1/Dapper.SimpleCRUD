@@ -19,8 +19,8 @@ This extension adds the following 8 helpers:
 - GetList<Type>() - gets list of records all records from a table
 - GetList<Type>(anonymous object for where clause) - gets list of all records matching the where options
 - GetList<Type>(string for conditions) - gets list of all records matching the conditions
-- Insert<Type>(entity) - Inserts a record and returns the new primary key
-- Update<Type>(entity) - Updates a record
+- Insert(entity) - Inserts a record and returns the new primary key
+- Update(entity) - Updates a record
 - Delete<Type>(id) - Deletes a record based on primary key
 - Delete(entity) - Deletes a record based on the typed entity
 
@@ -30,8 +30,8 @@ For projects targeting .NET 4.5 or later, the following 8 helpers exist for asyn
 - GetListAsync<Type>() - gets list of records all records from a table
 - GetListAsync<Type>(anonymous object for where clause) - gets list of all records matching the where options
 - GetListAsync<Type>(string for conditions) - gets list of all records matching the conditions
-- InsertAsync<Type>(entity) - Inserts a record and returns the new primary key
-- UpdateAsync<Type>(entity) - Updates a record
+- InsertAsync(entity) - Inserts a record and returns the new primary key
+- UpdateAsync(entity) - Updates a record
 - DeleteAsync<Type>(id) - Deletes a record based on primary key
 - DeleteAsync(entity) - Deletes a record based on the typed entity
 
@@ -207,7 +207,7 @@ public class User
    public DateTime CreatedDate { get; set; }
 }
 
-var newId = connection.Insert<User>(new User { Name = "User", Age = 10 });  
+var newId = connection.Insert(new User { Name = "User", Age = 10 });  
 ```
 Results in executing this SQL 
 ```sql
