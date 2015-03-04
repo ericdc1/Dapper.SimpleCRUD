@@ -18,7 +18,7 @@ This extension adds the following 8 helpers:
 - Get(id) - gets one record based on the primary key 
 - GetList&lt;Type&gt;() - gets list of records all records from a table
 - GetList&lt;Type&gt;(anonymous object for where clause) - gets list of all records matching the where options
-- GetList&lt;Type&gt;>(string for conditions) - gets list of all records matching the conditions
+- GetList&lt;Type&gt;(string for conditions) - gets list of all records matching the conditions
 - Insert(entity) - Inserts a record and returns the new primary key
 - Update(entity) - Updates a record
 - Delete&lt;Type&gt;(id) - Deletes a record based on primary key
