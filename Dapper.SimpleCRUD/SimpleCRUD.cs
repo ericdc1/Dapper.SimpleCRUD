@@ -454,7 +454,7 @@ namespace Dapper
                 if (property.PropertyType != typeof(Guid) && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "ReadOnlyAttribute" && IsReadOnly(property))) continue;
 
-                if (property.Name == "Id") continue;
+                if (property.Name == "Id" && property.PropertyType != typeof(Guid)) continue;
                 sb.AppendFormat("@{0}", property.Name);
                 if (i < props.Count() - 1)
                     sb.Append(", ");
@@ -475,7 +475,7 @@ namespace Dapper
                 var property = props.ElementAt(i);
                 if (property.PropertyType != typeof(Guid) && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "ReadOnlyAttribute" && IsReadOnly(property))) continue;
-                if (property.Name == "Id") continue;
+                if (property.Name == "Id" && property.PropertyType != typeof(Guid)) continue;
                 sb.Append(GetColumnName(property));
                 if (i < props.Count() - 1)
                     sb.Append(", ");
