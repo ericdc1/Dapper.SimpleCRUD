@@ -40,6 +40,7 @@ namespace Dapper.SimpleCRUDTests
         //System.ComponentModel.DataAnnotations.Key
         [Key]
         public int CarId { get; set; }
+        public int? Id { get; set; }
         public string Make { get; set; }
         public string Model { get; set; }
         #endregion

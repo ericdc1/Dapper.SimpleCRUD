@@ -559,7 +559,8 @@ namespace Dapper
         //For Get(id) and Delete(id) we don't have an entity, just the type so this method is used
         private static IEnumerable<PropertyInfo> GetIdProperties(Type type)
         {
-            return type.GetProperties().Where(p => p.Name == "Id" || p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute"));
+            var tp = type.GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")).ToList();
+            return tp.Any() ? tp : type.GetProperties().Where(p => p.Name == "Id");
         }
 
 
