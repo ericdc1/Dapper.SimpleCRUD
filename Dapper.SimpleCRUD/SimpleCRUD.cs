@@ -411,7 +411,7 @@ namespace Dapper
                 sb.Append(GetColumnName(propertyInfos.ElementAt(i)));
                 //if there is a custom column name add an "as customcolumnname" to the item so it maps properly
                 if (propertyInfos.ElementAt(i).GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "ColumnAttribute") != null)
-                    sb.Append(" as " + propertyInfos.ElementAt(i).Name + " ");
+                    sb.Append(" as " + propertyInfos.ElementAt(i).Name);
                 if (i < propertyInfos.Count() - 1)
                     sb.Append(",");
             }

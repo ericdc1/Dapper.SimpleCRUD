@@ -50,7 +50,7 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute(@" create table City (Name nvarchar(100) not null, Population int not null) ");
                 connection.Execute(@" CREATE SCHEMA Log; ");
                 connection.Execute(@" create table Log.CarLog (Id int IDENTITY(1,1) not null, LogNotes nvarchar(100) NOT NULL) ");
-                connection.Execute(@" CREATE TABLE [dbo].[GUIDTest]([guid] [uniqueidentifier] NOT NULL,[name] [varchar](50) NOT NULL, CONSTRAINT [PK_GUIDTest] PRIMARY KEY CLUSTERED ([guid] ASC))");
+                connection.Execute(@" CREATE TABLE [dbo].[GUIDTest]([Id] [uniqueidentifier] NOT NULL,[name] [varchar](50) NOT NULL, CONSTRAINT [PK_GUIDTest] PRIMARY KEY CLUSTERED ([Id] ASC))");
                 connection.Execute(@" create table StrangeColumnNames (ItemId int IDENTITY(1,1) not null Primary Key, word nvarchar(100) not null, colstringstrangeword nvarchar(100) not null) ");
 
             }
@@ -78,7 +78,7 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute(@" create table City (Name varchar not null, Population int not null) ");
                 connection.Execute(@" CREATE SCHEMA Log; ");
                 connection.Execute(@" create table Log.CarLog (Id SERIAL PRIMARY KEY, LogNotes varchar NOT NULL) ");
-                connection.Execute(@" CREATE TABLE GUIDTest(guid uuid PRIMARY KEY,name varchar NOT NULL)");
+                connection.Execute(@" CREATE TABLE GUIDTest(Id uuid PRIMARY KEY,name varchar NOT NULL)");
                 connection.Execute(@" create table StrangeColumnNames (ItemId Serial PRIMARY KEY, word varchar not null, colstringstrangeword varchar) ");
 
 
@@ -100,7 +100,7 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute(@" create table BigCar (CarId INTEGER PRIMARY KEY AUTOINCREMENT, Make nvarchar(100) not null, Model nvarchar(100) not null) ");
                 connection.Execute(@" insert into BigCar (CarId,Make,Model) Values (2147483649,'car','car') ");
                 connection.Execute(@" create table City (Name nvarchar(100) not null, Population int not null) ");
-                connection.Execute(@" CREATE TABLE GUIDTest([guid] [uniqueidentifier] NOT NULL,[name] [varchar](50) NOT NULL, CONSTRAINT [PK_GUIDTest] PRIMARY KEY  ([guid] ASC))");
+                connection.Execute(@" CREATE TABLE GUIDTest([Id] [uniqueidentifier] NOT NULL,[name] [varchar](50) NOT NULL, CONSTRAINT [PK_GUIDTest] PRIMARY KEY  ([Id] ASC))");
                 connection.Execute(@" create table StrangeColumnNames (ItemId INTEGER PRIMARY KEY AUTOINCREMENT, word nvarchar(100) not null, colstringstrangeword nvarchar(100) not null) ");
             }
         }
