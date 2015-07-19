@@ -22,4 +22,5 @@
 * version 1.8.4 Fix for custom column name on primary key in get and delete methods
 * version 1.8.5 Added support for ReadOnly attribute on properties which allows selecting it from the database but ignores it on inserts and updates
 * version 1.8.6 Allow a column named Id column to not be considered a key when another [Key] is specified
+* version 1.8.7 Fix for GUID primary key named Id
 
