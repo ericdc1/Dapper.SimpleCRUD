@@ -757,6 +757,9 @@ namespace Dapper.SimpleCRUDTests
                 resultlist.Count().IsEqualTo(30);
                 connection.RecordCount<User>().IsEqualTo(30);
 
+                connection.RecordCount<User>("where age = 10 or age = 11").IsEqualTo(2);
+
+
                 connection.Execute("Delete from Users");
             }
         }
