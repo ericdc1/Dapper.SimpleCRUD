@@ -2,6 +2,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using System.Data.SQLite;
+using System.Diagnostics;
 using System.Linq;
 using System.Collections.Generic;
 using System;
@@ -681,6 +682,85 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute("Delete from StrangeColumnNames");
             }
         }
+
+
+        public void TestGetListPaged()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                int x = 0;
+                do
+                {
+                    connection.Insert(new User { Name = "Person " + x, Age = x, CreatedDate = DateTime.Now, ScheduledDayOff = DayOfWeek.Thursday });
+                    x++;
+                } while (x < 30);
+
+                var resultlist = connection.GetListPaged<User>(2,10,null,null);
+                resultlist.Count().IsEqualTo(10);
+                resultlist.Skip(4).First().Name.IsEqualTo("Person 14");
+                connection.Execute("Delete from Users");
+            }
+        }
+
+        public void TestGetListPagedWithWhereClause()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                int x = 0;
+                do
+                {
+                    connection.Insert(new User { Name = "Person " + x, Age = x, CreatedDate = DateTime.Now, ScheduledDayOff = DayOfWeek.Thursday });
+                    x++;
+                } while (x < 30);
+
+                var resultlist1 = connection.GetListPaged<User>(1, 3, "Where Name LIKE 'Person 2%'", "age desc");
+                resultlist1.Count().IsEqualTo(3);
+
+                var resultlist = connection.GetListPaged<User>(2, 3, "Where Name LIKE 'Person 2%'", "age desc");
+                resultlist.Count().IsEqualTo(3);
+                resultlist.Skip(1).First().Name.IsEqualTo("Person 25");
+
+                connection.Execute("Delete from Users");
+            }
+        }
+
+        public void TestDeleteList()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                int x = 0;
+                do
+                {
+                    connection.Insert(new User { Name = "Person " + x, Age = x, CreatedDate = DateTime.Now, ScheduledDayOff = DayOfWeek.Thursday });
+                    x++;
+                } while (x < 30);
+
+                connection.DeleteList<User>("Where age > 9");
+                var resultlist = connection.GetList<User>();
+                resultlist.Count().IsEqualTo(10);
+                connection.Execute("Delete from Users");
+            }
+        }
+
+        public void TestRecordCount()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                int x = 0;
+                do
+                {
+                    connection.Insert(new User { Name = "Person " + x, Age = x, CreatedDate = DateTime.Now, ScheduledDayOff = DayOfWeek.Thursday });
+                    x++;
+                } while (x < 30);
+
+                var resultlist = connection.GetList<User>();
+                resultlist.Count().IsEqualTo(30);
+                connection.RecordCount<User>().IsEqualTo(30);
+
+                connection.Execute("Delete from Users");
+            }
+        }
+
 
     }
 }

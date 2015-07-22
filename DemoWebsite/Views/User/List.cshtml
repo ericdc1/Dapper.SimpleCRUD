@@ -3,7 +3,25 @@
 @{
     ViewBag.Title = "List";
 }
+<style>
+    .pager a {
+        border: 1px solid #aaa;
+        padding: 3px 5px;
+        text-align: center;
+        text-decoration: none;
+        margin: 4px 3px;
+    }
 
+    .pager .current {
+        background-color: #0094ff;
+        border: 1px solid #4800ff;
+        color: #fff;
+        font-weight: bold;
+        margin-top: 4px;
+        padding: 3px 5px;
+        text-align: center;
+    }
+</style>
 <h2>List</h2>
 
 <p>
@@ -29,29 +47,32 @@
         <th></th>
     </tr>
 
-@foreach (var item in Model) {
-    <tr>
-        <td>
-            @Html.DisplayFor(modelItem => item.UserId)
-        </td>
-        <td>
-            @Html.DisplayFor(modelItem => item.FirstName)
-        </td>
-        <td>
-            @Html.DisplayFor(modelItem => item.LastName)
-        </td>
-        <td>
-            @Html.DisplayFor(modelItem => item.Age)
-        </td>
-        <td>
-            @Html.DisplayFor(modelItem => item.FullName)
-        </td>
-        <td>
-            @Html.ActionLink("Edit", "Edit", new { id = item.UserId }) |
-            @Html.ActionLink("Details", "Details", new { id = item.UserId }) |
-            @Html.ActionLink("Delete", "Delete", new { id = item.UserId })
-        </td>
-    </tr>
-}
-
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.UserId)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.FirstName)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LastName)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Age)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.FullName)
+            </td>
+            <td>
+                @Html.ActionLink("Edit", "Edit", new { id = item.UserId }) |
+                @Html.ActionLink("Details", "Details", new { id = item.UserId }) |
+                @Html.ActionLink("Delete", "Delete", new { id = item.UserId })
+            </td>
+        </tr>
+    }
 </table>
+<div class="pager">
+    @Html.Pager((int)ViewBag.ItemsPerPage, (int)ViewBag.Page, (int)ViewBag.TotalRecords)
+</div>

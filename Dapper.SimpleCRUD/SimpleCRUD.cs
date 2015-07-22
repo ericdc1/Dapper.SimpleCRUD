@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.Diagnostics;
 using System.Linq;
@@ -19,10 +20,11 @@ namespace Dapper
         {
             SetDialect(_dialect);
         }
-     
+
         private static Dialect _dialect = Dialect.SQLServer;
         private static string _encapsulation;
         private static string _getIdentitySql;
+        private static string _getPagedListSql;
 
         /// <summary>
         /// Returns the current dialect name
@@ -44,16 +46,19 @@ namespace Dapper
                     _dialect = Dialect.PostgreSQL;
                     _encapsulation = "{0}";
                     _getIdentitySql = string.Format("SELECT LASTVAL() AS id");
+                    _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
                     break;
                 case Dialect.SQLite:
                     _dialect = Dialect.SQLite;
                     _encapsulation = "{0}";
                     _getIdentitySql = string.Format("SELECT LAST_INSERT_ROWID() AS id");
+                    _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
                     break;
                 default:
                     _dialect = Dialect.SQLServer;
                     _encapsulation = "[{0}]";
                     _getIdentitySql = string.Format("SELECT CAST(SCOPE_IDENTITY()  AS BIGINT) AS [id]");
+                    _getPagedListSql = "SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY {OrderBy}) AS PagedNumber, {SelectColumns} FROM {TableName} {WhereClause}) AS u WHERE PagedNUMBER BETWEEN (({PageNumber} - 1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
                     break;
             }
         }
@@ -155,7 +160,6 @@ namespace Dapper
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            var whereprops = GetAllProperties(conditions).ToArray();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
@@ -169,7 +173,6 @@ namespace Dapper
             return connection.Query<T>(sb.ToString());
         }
 
-
         /// <summary>
         /// <para>By default queries the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
@@ -181,6 +184,56 @@ namespace Dapper
         public static IEnumerable<T> GetList<T>(this IDbConnection connection)
         {
             return connection.GetList<T>(new { });
+        }
+
+        /// <summary>
+        /// <para>By default queries the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>conditions is an SQL where clause ex: "where name='bob'" - not required </para>
+        /// <para>orderby is a column or list of columns to order by ex: "lastname, age desc" - not required - default is by primary key</para>
+        /// <para>Returns a list of entities that match where conditions</para>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="pageNumber"></param>
+        /// <param name="rowsPerPage"></param>
+        /// <param name="conditions"></param>
+        /// <param name="orderby"></param>
+        /// <returns>Gets a paged list of entities with optional exact match where conditions</returns>
+        public static IEnumerable<T> GetListPaged<T>(this IDbConnection connection, int pageNumber, int rowsPerPage, string conditions, string orderby)
+        {
+            if (string.IsNullOrEmpty(_getPagedListSql))
+                throw new Exception("GetListPage is not supported with the current SQL Dialect");
+
+            if (pageNumber<1)
+                throw new Exception("Page must be greater than 0");
+
+            var currenttype = typeof(T);
+            var idProps = GetIdProperties(currenttype).ToList();
+            if (!idProps.Any())
+                throw new ArgumentException("Entity must have at least one [Key] property");
+
+            var name = GetTableName(currenttype);
+            var sb = new StringBuilder();
+            var query = _getPagedListSql;
+            if (string.IsNullOrEmpty(orderby))
+            {
+                orderby = idProps.First().Name;
+            }
+
+            //create a new empty instance of the type to get the base properties
+            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            query = query.Replace("{SelectColumns}", sb.ToString());
+            query = query.Replace("{TableName}", name);
+            query = query.Replace("{PageNumber}", pageNumber.ToString());
+            query = query.Replace("{RowsPerPage}", rowsPerPage.ToString());
+            query = query.Replace("{OrderBy}", orderby);
+            query = query.Replace("{WhereClause}", conditions); 
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("GetListPaged<{0}>: {1}", currenttype, query));
+
+            return connection.Query<T>(query);
         }
 
         /// <summary>
@@ -219,6 +272,7 @@ namespace Dapper
         public static TKey Insert<TKey>(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToInsert).ToList();
+
             if (!idProps.Any())
                 throw new ArgumentException("Insert<T> only supports an entity with a [Key] or Id property");
             if (idProps.Count() > 1)
@@ -231,9 +285,9 @@ namespace Dapper
             {
                 throw new Exception("Invalid return type");
             }
-            if (keytype == typeof (Guid))
+            if (keytype == typeof(Guid))
             {
-               var guidvalue = (Guid)idProps.First().GetValue(entityToInsert,null);
+                var guidvalue = (Guid)idProps.First().GetValue(entityToInsert, null);
                 if (guidvalue == Guid.Empty)
                 {
                     var newguid = SequentialGuid();
@@ -252,20 +306,20 @@ namespace Dapper
             BuildInsertValues(entityToInsert, sb);
             sb.Append(")");
 
-            if (keytype == typeof (Guid))
+            if (keytype == typeof(Guid))
             {
                 sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
             }
             else
             {
-               sb.Append(";" +  _getIdentitySql);     
+                sb.Append(";" + _getIdentitySql);
             }
-    
+
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
             var r = connection.Query(sb.ToString(), entityToInsert, transaction, true, commandTimeout);
-            
+
             if (keytype == typeof(Guid))
             {
                 return (TKey)idProps.First().GetValue(entityToInsert, null);
@@ -386,6 +440,68 @@ namespace Dapper
 
             return connection.Execute(sb.ToString(), dynParms, transaction, commandTimeout);
         }
+
+        /// <summary>
+        /// <para>Deletes a list of records in the database</para>
+        /// <para>By default deletes records in the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Deletes records where that match the where clause</para>
+        /// <para>conditions is an SQL where clause ex: "where name='bob'"</para>
+
+        /// <para>The number of records effected</para>
+        /// <para>Supports transaction and command timeout</para>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="conditions"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
+        /// <returns>The number of records effected</returns>
+        public static int DeleteList<T>(this IDbConnection connection, string conditions, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+            if (string.IsNullOrEmpty(conditions))
+                throw new ArgumentException("DeleteList<T> requires a where clause");
+            if (!conditions.ToLower().Contains("where"))
+                throw new ArgumentException("DeleteList<T> requires a where clause and must contain the WHERE keyword");
+
+            var currenttype = typeof(T);
+            var name = GetTableName(currenttype);
+
+            var sb = new StringBuilder();
+            sb.AppendFormat("Delete from {0}", name);
+            sb.Append(" " + conditions);
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("DeleteList<{0}> {1}", currenttype, sb));
+
+            return connection.Execute(sb.ToString(), null, transaction, commandTimeout);
+        }
+
+        /// <summary>
+        /// <para>By default queries the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Returns a number of records entity by a single id from table T</para>
+        /// <para>conditions is an SQL where clause ex: "where name='bob'" - not required </para>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="conditions"></param>
+        /// <returns>Returns a count of records.</returns>
+        public static int RecordCount<T>(this IDbConnection connection, string conditions = "")
+        {
+            var currenttype = typeof(T);
+            var name = GetTableName(currenttype);
+            var sb = new StringBuilder();
+            sb.Append("Select count(1)");
+            sb.AppendFormat(" from {0}", name);
+            sb.Append(" " + conditions);
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currenttype, sb));
+
+            return connection.Query<int>(sb.ToString()).Single();
+        }
+
 
         //build update statement based on list on an entity
         private static void BuildUpdateSet(object entityToUpdate, StringBuilder sb)
@@ -536,13 +652,13 @@ namespace Dapper
         //Get all properties that are NOT named Id, DO NOT have the Key attribute, and are not marked ReadOnly
         private static IEnumerable<PropertyInfo> GetUpdateableProperties(object entity)
         {
-            var updateableProperties =  GetScaffoldableProperties(entity);
+            var updateableProperties = GetScaffoldableProperties(entity);
             //remove ones with ID
             updateableProperties = updateableProperties.Where(p => p.Name != "Id");
             //remove ones with key attribute
-            updateableProperties = updateableProperties.Where(p=> p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute") == false);
+            updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute") == false);
             //remove ones that are readonly
-            updateableProperties = updateableProperties.Where(p=> p.GetCustomAttributes(true).Any(attr => (attr.GetType().Name == "ReadOnlyAttribute") &&  IsReadOnly(p)) == false);
+            updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => (attr.GetType().Name == "ReadOnlyAttribute") && IsReadOnly(p)) == false);
 
             return updateableProperties;
         }

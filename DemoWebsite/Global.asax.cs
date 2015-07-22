@@ -8,6 +8,7 @@ using System.Web.Mvc;
 using System.Web.Optimization;
 using System.Web.Routing;
 using Dapper;
+using DemoWebsite.Models;
 using DemoWebsite.ViewModels;
 
 namespace DemoWebsite
@@ -58,6 +59,14 @@ namespace DemoWebsite
                 connection.Insert(new UserViewModel() {Age = 42, FirstName = "Jim", LastName = "Smith"});
                 connection.Execute(@" CREATE TABLE GUIDTest (guid uniqueidentifier NOT NULL,name varchar(50) NOT NULL, CONSTRAINT PK_GUIDTest PRIMARY KEY CLUSTERED (guid ASC))");
                 connection.Insert<Guid>(new GUIDTestViewModel {name = "Example"});
+
+                int x = 1;
+                do
+                {
+                    connection.Insert(new User { FirstName = "Jim ", LastName = "Smith " + x, Age = x });
+                    x++;
+                } while (x < 101);
+
             }
         }
     }

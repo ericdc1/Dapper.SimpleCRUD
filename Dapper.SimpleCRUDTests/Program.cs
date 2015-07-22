@@ -10,25 +10,22 @@ namespace Dapper.SimpleCRUDTests
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             Setup();
             RunTests();
 
             //PostgreSQL tests assume port 5432 with username postgres and password postgrespass
             //they are commented out by default since postgres setup is required to run tests
-            //SetupPG(); 
-            //RunTestsPG();   
+            //SetupPg(); 
+            //RunTestsPg();   
 
-            SetupSQLite();
-            RunTestsSQLite();
+            SetupSqLite();
+            RunTestsSqLite();
         }
 
         private static void Setup()
         {
-            var projLoc = Assembly.GetAssembly(typeof(Program)).Location;
-            var projFolder = Path.GetDirectoryName(projLoc);
-
             using (var connection = new SqlConnection(@"Data Source=(LocalDB)\v11.0;Initial Catalog=Master;Integrated Security=True"))
             {
                 connection.Open();
@@ -36,7 +33,8 @@ namespace Dapper.SimpleCRUDTests
                 {
                     connection.Execute(@" DROP DATABASE DapperSimpleCrudTestDb; ");
                 }
-                catch { }
+                catch (Exception)
+                { }
 
                 connection.Execute(@" CREATE DATABASE DapperSimpleCrudTestDb; ");
             }
@@ -57,7 +55,7 @@ namespace Dapper.SimpleCRUDTests
             Console.WriteLine("Created database");
         }
 
-        private static void SetupPG()
+        private static void SetupPg()
         {
             using (var connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "5432", "postgres", "postgrespass", "postgres")))
             {
@@ -71,7 +69,7 @@ namespace Dapper.SimpleCRUDTests
             using (var connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "5432", "postgres", "postgrespass", "testdb")))
             {
                 connection.Open();
-                connection.Execute(@" create table Users (Id SERIAL PRIMARY KEY, Name varchar not null, Age int not null, ScheduledDayOff int null, CreatedDate not null default CURRENT_DATE) ");
+                connection.Execute(@" create table Users (Id SERIAL PRIMARY KEY, Name varchar not null, Age int not null, ScheduledDayOff int null, CreatedDate date not null default CURRENT_DATE) ");
                 connection.Execute(@" create table Car (CarId SERIAL PRIMARY KEY, Id int null, Make varchar not null, Model varchar not null) ");
                 connection.Execute(@" create table BigCar (CarId BIGSERIAL PRIMARY KEY, Make varchar not null, Model varchar not null) ");
                 connection.Execute(@" alter sequence bigcar_carid_seq RESTART WITH 2147483650");
@@ -86,9 +84,9 @@ namespace Dapper.SimpleCRUDTests
 
         }
 
-        private static void SetupSQLite()
+        private static void SetupSqLite()
         {
-            System.IO.File.Delete(Directory.GetCurrentDirectory() + "\\MyDatabase.sqlite");
+            File.Delete(Directory.GetCurrentDirectory() + "\\MyDatabase.sqlite");
             SQLiteConnection.CreateFile("MyDatabase.sqlite");
             var connection = new SQLiteConnection("Data Source=MyDatabase.sqlite;Version=3;");
             using (connection)
@@ -115,7 +113,7 @@ namespace Dapper.SimpleCRUDTests
                 Console.Write("Running " + method.Name + " in sql server");
                 method.Invoke(sqltester, null);
                 testwatch.Stop();
-                System.Console.WriteLine(" - OK! {0}ms", testwatch.ElapsedMilliseconds);
+                Console.WriteLine(" - OK! {0}ms", testwatch.ElapsedMilliseconds);
             }
             stopwatch.Stop();
 
@@ -130,42 +128,46 @@ namespace Dapper.SimpleCRUDTests
                     //drop any remaining connections, then drop the db.
                     connection.Execute(@" alter database DapperSimpleCrudTestDb set single_user with rollback immediate; DROP DATABASE DapperSimpleCrudTestDb; ");
                 }
-                catch { }
+                catch (Exception)
+                { }
             }
             Console.Write("SQL Server testing complete.");
             Console.ReadKey();
         }
 
-        private static void RunTestsPG()
+        private static void RunTestsPg()
         {
-
+            var stopwatch = Stopwatch.StartNew();
             var pgtester = new Tests(SimpleCRUD.Dialect.PostgreSQL);
             foreach (var method in typeof(Tests).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
+                var testwatch = Stopwatch.StartNew();
                 Console.Write("Running " + method.Name + " in PostgreSQL");
                 method.Invoke(pgtester, null);
-                Console.WriteLine(" - OK!");
+                Console.WriteLine(" - OK! {0}ms", testwatch.ElapsedMilliseconds);
             }
+            stopwatch.Stop();
+            Console.WriteLine("Time elapsed: {0}", stopwatch.Elapsed);
 
             Console.Write("PostgreSQL testing complete.");
             Console.ReadKey();
         }
 
-        private static void RunTestsSQLite()
+        private static void RunTestsSqLite()
         {
-
-
+            var stopwatch = Stopwatch.StartNew();
             var pgtester = new Tests(SimpleCRUD.Dialect.SQLite);
             foreach (var method in typeof(Tests).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
                 //skip schema tests
                 if(method.Name.Contains("Schema")) continue;
-               
+                var testwatch = Stopwatch.StartNew();
                 Console.Write("Running " + method.Name + " in SQLite");
                 method.Invoke(pgtester, null);
-                Console.WriteLine(" - OK!");
+                Console.WriteLine(" - OK! {0}ms", testwatch.ElapsedMilliseconds);
             }
-
+            stopwatch.Stop();
+            Console.WriteLine("Time elapsed: {0}", stopwatch.Elapsed);
             Console.Write("SQLite testing complete.");
             Console.ReadKey();
         }

@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Data.Common;
+using System.Linq;
 using System.Web.Mvc;
 using Dapper;
 using DemoWebsite.ViewModels;
+using MvcPaging;
 
 namespace DemoWebsite.Controllers
 {
@@ -16,12 +18,15 @@ namespace DemoWebsite.Controllers
         {
             return RedirectToAction("List");
         }
-        public ActionResult List()
+        public ActionResult List(int page = 1)
         {
             IEnumerable<UserViewModel> result;
             using (_connection = Utilities.GetOpenConnection())
             {
-                result = _connection.GetList<UserViewModel>();
+                ViewBag.TotalRecords = _connection.RecordCount<UserViewModel>();
+                ViewBag.Page = page;
+                ViewBag.ItemsPerPage = 10;
+                result = _connection.GetListPaged<UserViewModel>(page,10,null, "intAge desc");
             }
             return View(result);
         }

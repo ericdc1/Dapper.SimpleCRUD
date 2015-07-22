@@ -45,6 +45,9 @@
       <HintPath>..\packages\Dapper.1.38\lib\net45\Dapper.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="MvcPaging">
+      <HintPath>..\packages\MvcPaging.2.1.2\lib\net40\MvcPaging.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
