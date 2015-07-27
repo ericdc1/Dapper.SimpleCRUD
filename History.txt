@@ -24,3 +24,4 @@
 * version 1.8.6 Allow a column named Id column to not be considered a key when another [Key] is specified
 * version 1.8.7 Fix for GUID primary key named Id
 * version 1.9.0-beta Added GetListPaged, DeleteList, and RecordCount methods
+* version 1.9.0  Support for specified value in primary key along with the new methods from 1.9 beta

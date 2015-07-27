@@ -17,8 +17,8 @@ namespace Dapper.SimpleCRUDTests
 
             //PostgreSQL tests assume port 5432 with username postgres and password postgrespass
             //they are commented out by default since postgres setup is required to run tests
-            SetupPg(); 
-            RunTestsPg();   
+            //SetupPg(); 
+            //RunTestsPg();   
 
             SetupSqLite();
             RunTestsSqLite();
@@ -163,7 +163,7 @@ namespace Dapper.SimpleCRUDTests
             foreach (var method in typeof(Tests).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
                 //skip schema tests
-                if(method.Name.Contains("Schema")) continue;
+                if (method.Name.Contains("Schema")) continue;
                 var testwatch = Stopwatch.StartNew();
                 Console.Write("Running " + method.Name + " in SQLite");
                 method.Invoke(pgtester, null);
