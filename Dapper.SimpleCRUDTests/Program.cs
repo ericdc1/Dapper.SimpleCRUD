@@ -17,8 +17,8 @@ namespace Dapper.SimpleCRUDTests
 
             //PostgreSQL tests assume port 5432 with username postgres and password postgrespass
             //they are commented out by default since postgres setup is required to run tests
-            //SetupPg(); 
-            //RunTestsPg();   
+            SetupPg(); 
+            RunTestsPg();   
 
             SetupSqLite();
             RunTestsSqLite();
@@ -50,6 +50,7 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute(@" create table Log.CarLog (Id int IDENTITY(1,1) not null, LogNotes nvarchar(100) NOT NULL) ");
                 connection.Execute(@" CREATE TABLE [dbo].[GUIDTest]([Id] [uniqueidentifier] NOT NULL,[name] [varchar](50) NOT NULL, CONSTRAINT [PK_GUIDTest] PRIMARY KEY CLUSTERED ([Id] ASC))");
                 connection.Execute(@" create table StrangeColumnNames (ItemId int IDENTITY(1,1) not null Primary Key, word nvarchar(100) not null, colstringstrangeword nvarchar(100) not null) ");
+                connection.Execute(@" create table UserWithoutAutoIdentity (Id int not null Primary Key, Name nvarchar(100) not null, Age int not null) ");
 
             }
             Console.WriteLine("Created database");
@@ -78,7 +79,7 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute(@" create table Log.CarLog (Id SERIAL PRIMARY KEY, LogNotes varchar NOT NULL) ");
                 connection.Execute(@" CREATE TABLE GUIDTest(Id uuid PRIMARY KEY,name varchar NOT NULL)");
                 connection.Execute(@" create table StrangeColumnNames (ItemId Serial PRIMARY KEY, word varchar not null, colstringstrangeword varchar) ");
-
+                connection.Execute(@" create table UserWithoutAutoIdentity (Id int PRIMARY KEY, Name varchar not null, Age int not null) ");
 
             }
 
@@ -100,6 +101,8 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute(@" create table City (Name nvarchar(100) not null, Population int not null) ");
                 connection.Execute(@" CREATE TABLE GUIDTest([Id] [uniqueidentifier] NOT NULL,[name] [varchar](50) NOT NULL, CONSTRAINT [PK_GUIDTest] PRIMARY KEY  ([Id] ASC))");
                 connection.Execute(@" create table StrangeColumnNames (ItemId INTEGER PRIMARY KEY AUTOINCREMENT, word nvarchar(100) not null, colstringstrangeword nvarchar(100) not null) ");
+                connection.Execute(@" create table UserWithoutAutoIdentity (Id INTEGER PRIMARY KEY, Name nvarchar(100) not null, Age int not null) ");
+
             }
         }
 

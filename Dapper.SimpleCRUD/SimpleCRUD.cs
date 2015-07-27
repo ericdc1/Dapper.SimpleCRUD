@@ -205,7 +205,7 @@ namespace Dapper
             if (string.IsNullOrEmpty(_getPagedListSql))
                 throw new Exception("GetListPage is not supported with the current SQL Dialect");
 
-            if (pageNumber<1)
+            if (pageNumber < 1)
                 throw new Exception("Page must be greater than 0");
 
             var currenttype = typeof(T);
@@ -228,7 +228,7 @@ namespace Dapper
             query = query.Replace("{PageNumber}", pageNumber.ToString());
             query = query.Replace("{RowsPerPage}", rowsPerPage.ToString());
             query = query.Replace("{OrderBy}", orderby);
-            query = query.Replace("{WhereClause}", conditions); 
+            query = query.Replace("{WhereClause}", conditions);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetListPaged<{0}>: {1}", currenttype, query));
@@ -278,21 +278,13 @@ namespace Dapper
             if (idProps.Count() > 1)
                 throw new ArgumentException("Insert<T> only supports an entity with a single [Key] or Id property");
 
+            var keyHasPredefinedValue = false;
             var baseType = typeof(TKey);
             var underlyingType = Nullable.GetUnderlyingType(baseType);
             var keytype = underlyingType ?? baseType;
             if (keytype != typeof(int) && keytype != typeof(uint) && keytype != typeof(long) && keytype != typeof(ulong) && keytype != typeof(short) && keytype != typeof(ushort) && keytype != typeof(Guid))
             {
                 throw new Exception("Invalid return type");
-            }
-            if (keytype == typeof(Guid))
-            {
-                var guidvalue = (Guid)idProps.First().GetValue(entityToInsert, null);
-                if (guidvalue == Guid.Empty)
-                {
-                    var newguid = SequentialGuid();
-                    idProps.First().SetValue(entityToInsert, newguid, null);
-                }
             }
 
             var name = GetTableName(entityToInsert);
@@ -308,11 +300,26 @@ namespace Dapper
 
             if (keytype == typeof(Guid))
             {
+                var guidvalue = (Guid)idProps.First().GetValue(entityToInsert, null);
+                if (guidvalue == Guid.Empty)
+                {
+                    var newguid = SequentialGuid();
+                    idProps.First().SetValue(entityToInsert, newguid, null);
+                }
+                else
+                {
+                    keyHasPredefinedValue = true;
+                }
                 sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
+            }
+
+            if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
+            {
+                sb.Append(";" + _getIdentitySql);
             }
             else
             {
-                sb.Append(";" + _getIdentitySql);
+                keyHasPredefinedValue = true;
             }
 
             if (Debugger.IsAttached)
@@ -320,7 +327,7 @@ namespace Dapper
 
             var r = connection.Query(sb.ToString(), entityToInsert, transaction, true, commandTimeout);
 
-            if (keytype == typeof(Guid))
+            if (keytype == typeof(Guid) || keyHasPredefinedValue)
             {
                 return (TKey)idProps.First().GetValue(entityToInsert, null);
             }
@@ -567,10 +574,13 @@ namespace Dapper
             for (var i = 0; i < props.Count(); i++)
             {
                 var property = props.ElementAt(i);
-                if (property.PropertyType != typeof(Guid) && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
+                if (property.PropertyType != typeof(Guid)
+                    && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")
+                    && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != "RequiredAttribute"))
+                    continue;
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "ReadOnlyAttribute" && IsReadOnly(property))) continue;
 
-                if (property.Name == "Id" && property.PropertyType != typeof(Guid)) continue;
+                if (property.Name == "Id" && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != "RequiredAttribute") && property.PropertyType != typeof(Guid)) continue;
                 sb.AppendFormat("@{0}", property.Name);
                 if (i < props.Count() - 1)
                     sb.Append(", ");
@@ -589,9 +599,12 @@ namespace Dapper
             for (var i = 0; i < props.Count(); i++)
             {
                 var property = props.ElementAt(i);
-                if (property.PropertyType != typeof(Guid) && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")) continue;
+                if (property.PropertyType != typeof(Guid)
+                    && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")
+                    && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != "RequiredAttribute"))
+                    continue;
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "ReadOnlyAttribute" && IsReadOnly(property))) continue;
-                if (property.Name == "Id" && property.PropertyType != typeof(Guid)) continue;
+                if (property.Name == "Id" && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != "RequiredAttribute") && property.PropertyType != typeof(Guid)) continue;
                 sb.Append(GetColumnName(property));
                 if (i < props.Count() - 1)
                     sb.Append(", ");
@@ -821,6 +834,15 @@ namespace Dapper
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
     public class KeyAttribute : Attribute
+    {
+    }
+
+    /// <summary>
+    /// Optional Key attribute.
+    /// You can use the System.ComponentModel.DataAnnotations version in its place to specify a required property of a poco
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property)]
+    public class RequiredAttribute : Attribute
     {
     }
 

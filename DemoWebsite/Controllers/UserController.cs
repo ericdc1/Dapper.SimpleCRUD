@@ -23,10 +23,8 @@ namespace DemoWebsite.Controllers
             IEnumerable<UserViewModel> result;
             using (_connection = Utilities.GetOpenConnection())
             {
-                ViewBag.TotalRecords = _connection.RecordCount<UserViewModel>();
-                ViewBag.Page = page;
-                ViewBag.ItemsPerPage = 10;
-                result = _connection.GetListPaged<UserViewModel>(page,10,null, "intAge desc");
+                var totalRecords = _connection.RecordCount<UserViewModel>();
+                result = _connection.GetListPaged<UserViewModel>(page, 10, null, "intAge desc").ToPagedList(page, 10, totalRecords);
             }
             return View(result);
         }

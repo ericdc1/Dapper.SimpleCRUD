@@ -1,4 +1,4 @@
-﻿@model IEnumerable<DemoWebsite.ViewModels.UserViewModel>
+﻿@model IPagedList<DemoWebsite.ViewModels.UserViewModel>
 
 @{
     ViewBag.Title = "List";
@@ -30,19 +30,19 @@
 <table class="table">
     <tr>
         <th>
-            @Html.DisplayNameFor(model => model.UserId)
+            @Html.DisplayNameFor(model => model.FirstOrDefault().UserId)
         </th>
         <th>
-            @Html.DisplayNameFor(model => model.FirstName)
+            @Html.DisplayNameFor(model => model.FirstOrDefault().FirstName)
         </th>
         <th>
-            @Html.DisplayNameFor(model => model.LastName)
+            @Html.DisplayNameFor(model => model.FirstOrDefault().LastName)
         </th>
         <th>
-            @Html.DisplayNameFor(model => model.Age)
+            @Html.DisplayNameFor(model => model.FirstOrDefault().Age)
         </th>
         <th>
-            @Html.DisplayNameFor(model => model.FullName)
+            @Html.DisplayNameFor(model => model.FirstOrDefault().FullName)
         </th>
         <th></th>
     </tr>
@@ -74,5 +74,5 @@
     }
 </table>
 <div class="pager">
-    @Html.Pager((int)ViewBag.ItemsPerPage, (int)ViewBag.Page, (int)ViewBag.TotalRecords)
+    @Html.Pager(Model.PageSize, Model.PageIndex, Model.TotalItemCount)
 </div>

@@ -225,26 +225,19 @@ namespace Dapper
         public static async Task<TKey> InsertAsync<TKey>(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToInsert).ToList();
+
             if (!idProps.Any())
                 throw new ArgumentException("Insert<T> only supports an entity with a [Key] or Id property");
             if (idProps.Count() > 1)
                 throw new ArgumentException("Insert<T> only supports an entity with a single [Key] or Id property");
 
+            var keyHasPredefinedValue = false;
             var baseType = typeof(TKey);
             var underlyingType = Nullable.GetUnderlyingType(baseType);
             var keytype = underlyingType ?? baseType;
             if (keytype != typeof(int) && keytype != typeof(uint) && keytype != typeof(long) && keytype != typeof(ulong) && keytype != typeof(short) && keytype != typeof(ushort) && keytype != typeof(Guid))
             {
                 throw new Exception("Invalid return type");
-            }
-            if (keytype == typeof(Guid))
-            {
-                var guidvalue = (Guid)idProps.First().GetValue(entityToInsert, null);
-                if (guidvalue == Guid.Empty)
-                {
-                    var newguid = SequentialGuid();
-                    idProps.First().SetValue(entityToInsert, newguid, null);
-                }
             }
 
             var name = GetTableName(entityToInsert);
@@ -260,17 +253,34 @@ namespace Dapper
 
             if (keytype == typeof(Guid))
             {
+                var guidvalue = (Guid)idProps.First().GetValue(entityToInsert, null);
+                if (guidvalue == Guid.Empty)
+                {
+                    var newguid = SequentialGuid();
+                    idProps.First().SetValue(entityToInsert, newguid, null);
+                }
+                else
+                {
+                    keyHasPredefinedValue = true;
+                }
                 sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
             }
-            else
+
+            if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
             {
                 sb.Append(";" + _getIdentitySql);
             }
+            else
+            {
+                keyHasPredefinedValue = true;
+            }
+
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
+
             var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
 
-            if (keytype == typeof(Guid))
+            if (keytype == typeof(Guid) || keyHasPredefinedValue)
             {
                 return (TKey)idProps.First().GetValue(entityToInsert, null);
             }
