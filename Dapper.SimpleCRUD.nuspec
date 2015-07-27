@@ -10,7 +10,7 @@
     <projectUrl>http://github.com/ericdc1/Dapper.SimpleCRUD/</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>
-      Simple Get, GetList, Insert, Update, and Delete extensions for Dapper. Uses smart defaults for attribute free classes but can be overridden as needed.
+      	Simple Get, GetList, GetListPaged, Insert, Update, Delete, DeleteList, and RecordCount extensions for Dapper.  Uses smart defaults for attribute free classes but can be overridden as needed.
 	  By default uses Id column as the primary key but this can be overridden with an attribute
 	  By default queries the table matching the class name but this can be overridden with an attribute
           By default queries the column matching the property name but this can be overridden with an attribute  
