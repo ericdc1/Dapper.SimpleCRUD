@@ -143,6 +143,53 @@ namespace Dapper
         }
 
         /// <summary>
+        /// <para>By default queries the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>conditions is an SQL where clause ex: "where name='bob'" - not required </para>
+        /// <para>orderby is a column or list of columns to order by ex: "lastname, age desc" - not required - default is by primary key</para>
+        /// <para>Returns a list of entities that match where conditions</para>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="pageNumber"></param>
+        /// <param name="rowsPerPage"></param>
+        /// <param name="conditions"></param>
+        /// <param name="orderby"></param>
+        /// <returns>Gets a list of entities with optional exact match where conditions</returns>
+        public static Task<IEnumerable<T>> GetListPagedAsync<T>(this IDbConnection connection, int pageNumber, int rowsPerPage, string conditions, string orderby)
+        {
+            if (string.IsNullOrEmpty(_getPagedListSql))
+                throw new Exception("GetListPage is not supported with the current SQL Dialect");
+
+            var currenttype = typeof(T);
+            var idProps = GetIdProperties(currenttype).ToList();
+            if (!idProps.Any())
+                throw new ArgumentException("Entity must have at least one [Key] property");
+
+            var name = GetTableName(currenttype);
+            var sb = new StringBuilder();
+            var query = _getPagedListSql;
+            if (string.IsNullOrEmpty(orderby))
+            {
+                orderby = idProps.First().Name;
+            }
+
+            //create a new empty instance of the type to get the base properties
+            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            query = query.Replace("{SelectColumns}", sb.ToString());
+            query = query.Replace("{TableName}", name);
+            query = query.Replace("{PageNumber}", pageNumber.ToString());
+            query = query.Replace("{RowsPerPage}", rowsPerPage.ToString());
+            query = query.Replace("{OrderBy}", orderby);
+            query = query.Replace("{WhereClause}", conditions);
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("GetListPaged<{0}>: {1}", currenttype, query));
+
+            return connection.QueryAsync<T>(query);
+        }
+
+        /// <summary>
         /// <para>Inserts a row into the database asynchronously</para>
         /// <para>By default inserts into the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
@@ -178,26 +225,19 @@ namespace Dapper
         public static async Task<TKey> InsertAsync<TKey>(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToInsert).ToList();
+
             if (!idProps.Any())
                 throw new ArgumentException("Insert<T> only supports an entity with a [Key] or Id property");
             if (idProps.Count() > 1)
                 throw new ArgumentException("Insert<T> only supports an entity with a single [Key] or Id property");
 
+            var keyHasPredefinedValue = false;
             var baseType = typeof(TKey);
             var underlyingType = Nullable.GetUnderlyingType(baseType);
             var keytype = underlyingType ?? baseType;
             if (keytype != typeof(int) && keytype != typeof(uint) && keytype != typeof(long) && keytype != typeof(ulong) && keytype != typeof(short) && keytype != typeof(ushort) && keytype != typeof(Guid))
             {
                 throw new Exception("Invalid return type");
-            }
-            if (keytype == typeof(Guid))
-            {
-                var guidvalue = (Guid)idProps.First().GetValue(entityToInsert, null);
-                if (guidvalue == Guid.Empty)
-                {
-                    var newguid = SequentialGuid();
-                    idProps.First().SetValue(entityToInsert, newguid, null);
-                }
             }
 
             var name = GetTableName(entityToInsert);
@@ -213,17 +253,34 @@ namespace Dapper
 
             if (keytype == typeof(Guid))
             {
+                var guidvalue = (Guid)idProps.First().GetValue(entityToInsert, null);
+                if (guidvalue == Guid.Empty)
+                {
+                    var newguid = SequentialGuid();
+                    idProps.First().SetValue(entityToInsert, newguid, null);
+                }
+                else
+                {
+                    keyHasPredefinedValue = true;
+                }
                 sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
             }
-            else
+
+            if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
             {
                 sb.Append(";" + _getIdentitySql);
             }
+            else
+            {
+                keyHasPredefinedValue = true;
+            }
+
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
+
             var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
 
-            if (keytype == typeof(Guid))
+            if (keytype == typeof(Guid) || keyHasPredefinedValue)
             {
                 return (TKey)idProps.First().GetValue(entityToInsert, null);
             }
@@ -342,6 +399,69 @@ namespace Dapper
 
             return connection.ExecuteAsync(sb.ToString(), dynParms, transaction, commandTimeout);
         }
+
+        /// <summary>
+        /// <para>Deletes a list of records in the database</para>
+        /// <para>By default deletes records in the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Deletes records where that match the where clause</para>
+        /// <para>conditions is an SQL where clause ex: "where name='bob'"</para>
+
+        /// <para>The number of records effected</para>
+        /// <para>Supports transaction and command timeout</para>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="conditions"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
+        /// <returns>The number of records effected</returns>
+        public static Task<int> DeleteListAsync<T>(this IDbConnection connection, string conditions, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+            if (string.IsNullOrEmpty(conditions))
+                throw new ArgumentException("DeleteList<T> requires a where clause");
+            if (!conditions.ToLower().Contains("where"))
+                throw new ArgumentException("DeleteList<T> requires a where clause and must contain the WHERE keyword");
+
+            var currenttype = typeof(T);
+            var name = GetTableName(currenttype);
+
+            var sb = new StringBuilder();
+            sb.AppendFormat("Delete from {0}", name);
+            sb.Append(" " + conditions);
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("DeleteList<{0}> {1}", currenttype, sb));
+
+            return connection.ExecuteAsync(sb.ToString(), null, transaction, commandTimeout);
+        }
+
+        /// <summary>
+        /// <para>By default queries the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Returns a number of records entity by a single id from table T</para>
+        /// <para>conditions is an SQL where clause ex: "where name='bob'" - not required </para>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="conditions"></param>
+        /// <returns>Returns a count of records.</returns>
+        public static async Task<int> RecordCountAsync<T>(this IDbConnection connection, string conditions = "")
+        {
+            var currenttype = typeof(T);
+            var name = GetTableName(currenttype);
+            var sb = new StringBuilder();
+            sb.Append("Select count(1)");
+            sb.AppendFormat(" from {0}", name);
+            sb.Append(" " + conditions);
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currenttype, sb));
+
+            var query = await connection.QueryAsync<int>(sb.ToString());
+            return query.Single();
+        }
+
 
 
        

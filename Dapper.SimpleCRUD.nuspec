@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>Dapper.SimpleCRUD</id>
-    <version>1.8.5</version>
+    <version>1.9.0</version>
     <title>Dapper.SimpleCRUD</title>
     <authors>Eric Coffman</authors>
     <owners>Eric Coffman</owners>
@@ -10,7 +10,7 @@
     <projectUrl>http://github.com/ericdc1/Dapper.SimpleCRUD/</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>
-      Simple Get, GetList, Insert, Update, and Delete extensions for Dapper. Uses smart defaults for attribute free classes but can be overridden as needed.
+      	Simple Get, GetList, GetListPaged, Insert, Update, Delete, DeleteList, and RecordCount extensions for Dapper.  Uses smart defaults for attribute free classes but can be overridden as needed.
 	  By default uses Id column as the primary key but this can be overridden with an attribute
 	  By default queries the table matching the class name but this can be overridden with an attribute
           By default queries the column matching the property name but this can be overridden with an attribute  
@@ -18,7 +18,7 @@
           - Includes async methods when targeting .Net 4.5
     </description>
     <summary>
-    	Simple Get, GetList, Insert, Update, and Delete extensions for Dapper. Uses smart defaults for attribute free classes but can be overridden as needed. 
+    	Simple Get, GetList, GetListPaged, Insert, Update, Delete, DeleteList, and RecordCount extensions for Dapper. Uses smart defaults for attribute free classes but can be overridden as needed. 
     </summary>
     <releaseNotes>
 	Full documentation can be found at http://github.com/ericdc1/Dapper.SimpleCRUD/ 
@@ -33,6 +33,9 @@
 	* version 1.8.3 Fix for async get method, added additional tests around async methods
 	* version 1.8.4 Fix for custom column name on primary key in get and delete methods
 	* version 1.8.5 Added support for ReadOnly attribute on properties which allows selecting it from the database but ignores it on inserts and updates
+	* version 1.8.6 Allow a column named Id column to not be considered a key when another [Key] is specified
+	* version 1.8.7 Fix for GUID primary key named Id
+	* version 1.9.0 Added GetListPaged, DeleteList, and RecordCount methods and support for specified value in primary key
 	</releaseNotes>
     <copyright>Copyright Eric Coffman 2015</copyright>
     <tags>orm dapper micro-orm CRUD</tags>
