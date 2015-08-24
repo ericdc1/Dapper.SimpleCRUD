@@ -66,6 +66,7 @@
   <ItemGroup>
     <Compile Include="SimpleCRUD.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SimpleCRUDSQL.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
