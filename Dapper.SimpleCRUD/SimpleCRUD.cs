@@ -54,6 +54,12 @@ namespace Dapper
                     _getIdentitySql = string.Format("SELECT LAST_INSERT_ROWID() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
                     break;
+                case Dialect.MySQL:
+                    _dialect=Dialect.MySQL;
+                    _encapsulation = "{0}";   //last_insert_id()
+                    _getIdentitySql = string.Format("SELECT last_insert_id() AS id");
+                    _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT (({PageNumber}-1) * {RowsPerPage}),{RowsPerPage}";
+                    break;
                 default:
                     _dialect = Dialect.SQLServer;
                     _encapsulation = "[{0}]";
@@ -777,7 +783,8 @@ namespace Dapper
         {
             SQLServer,
             PostgreSQL,
-            SQLite
+            SQLite,
+            MySQL
         }
 
     }

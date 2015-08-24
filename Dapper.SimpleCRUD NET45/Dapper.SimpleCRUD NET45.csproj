@@ -51,6 +51,9 @@
     <Compile Include="..\Dapper.SimpleCRUD\SimpleCRUD.cs">
       <Link>SimpleCRUD.cs</Link>
     </Compile>
+    <Compile Include="..\Dapper.SimpleCRUD\SimpleCRUDSQL.cs">
+      <Link>SimpleCRUDSQL.cs</Link>
+    </Compile>
     <Compile Include="SimpleCRUDAsync.cs" />
   </ItemGroup>
   <ItemGroup>
