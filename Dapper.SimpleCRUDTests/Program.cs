@@ -4,6 +4,7 @@ using System.Data.SQLite;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using MySql.Data.MySqlClient;
 using Npgsql;
 
 namespace Dapper.SimpleCRUDTests
@@ -22,6 +23,11 @@ namespace Dapper.SimpleCRUDTests
 
             SetupSqLite();
             RunTestsSqLite();
+
+            //MySQL tests assume port 3306 with username admin and password admin
+            //they are commented out by default since mysql setup is required to run tests
+            SetupMySQL();
+            RunTestsMySQL();
         }
 
         private static void Setup()
@@ -106,6 +112,33 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+
+        private static void SetupMySQL()
+        {
+            using (var connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "admin", "admin", "sys")))
+            {
+                connection.Open();
+                // drop  database 
+                connection.Execute("DROP DATABASE IF EXISTS testdb;");
+                connection.Execute("CREATE DATABASE testdb;");
+            }
+            System.Threading.Thread.Sleep(1000);
+
+            using (var connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "admin", "admin", "testdb")))
+            {
+                connection.Open();
+                connection.Execute(@" create table Users (Id INTEGER PRIMARY KEY AUTO_INCREMENT, Name nvarchar(100) not null, Age int not null, ScheduledDayOff int null, CreatedDate datetime default current_timestamp ) ");
+                connection.Execute(@" create table Car (CarId INTEGER PRIMARY KEY AUTO_INCREMENT, Id INTEGER null, Make nvarchar(100) not null, Model nvarchar(100) not null) ");
+                connection.Execute(@" create table BigCar (CarId BIGINT PRIMARY KEY AUTO_INCREMENT, Make nvarchar(100) not null, Model nvarchar(100) not null) ");
+                connection.Execute(@" insert into BigCar (CarId,Make,Model) Values (2147483649,'car','car') ");
+                connection.Execute(@" create table City (Name nvarchar(100) not null, Population int not null) ");
+                connection.Execute(@" CREATE TABLE GUIDTest(Id CHAR(38) NOT NULL,name varchar(50) NOT NULL, CONSTRAINT PK_GUIDTest PRIMARY KEY (Id ASC))");
+                connection.Execute(@" create table StrangeColumnNames (ItemId INTEGER PRIMARY KEY AUTO_INCREMENT, word nvarchar(100) not null, colstringstrangeword nvarchar(100) not null) ");
+                connection.Execute(@" create table UserWithoutAutoIdentity (Id INTEGER PRIMARY KEY, Name nvarchar(100) not null, Age int not null) ");
+            }
+
+        }
+
         private static void RunTests()
         {
             var stopwatch = Stopwatch.StartNew();
@@ -175,5 +208,26 @@ namespace Dapper.SimpleCRUDTests
             Console.ReadKey();
         }
 
+
+        private static void RunTestsMySQL()
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var mysqltester = new Tests(SimpleCRUD.Dialect.MySQL);
+            foreach (var method in typeof(Tests).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                //skip schema tests
+                if (method.Name.Contains("Schema")) continue;
+                if (method.Name.Contains("Guid")) continue;
+                var testwatch = Stopwatch.StartNew();
+                Console.Write("Running " + method.Name + " in MySQL");
+                method.Invoke(mysqltester, null);
+                Console.WriteLine(" - OK! {0}ms", testwatch.ElapsedMilliseconds);
+            }
+            stopwatch.Stop();
+            Console.WriteLine("Time elapsed: {0}", stopwatch.Elapsed);
+
+            Console.Write("MySQL testing complete.");
+            Console.ReadKey();
+        }
     }
 }

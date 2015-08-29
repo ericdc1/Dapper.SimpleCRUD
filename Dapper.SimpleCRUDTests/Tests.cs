@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Collections.Generic;
 using System;
+using MySql.Data.MySqlClient;
 using Npgsql;
 
 
@@ -146,6 +147,11 @@ namespace Dapper.SimpleCRUDTests
             {
                 connection = new SQLiteConnection("Data Source=MyDatabase.sqlite;Version=3;");
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.SQLite);
+            }
+            else if (_dbtype == SimpleCRUD.Dialect.MySQL)
+            {
+                connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "admin", "admin", "testdb"));
+                SimpleCRUD.SetDialect(SimpleCRUD.Dialect.MySQL);
             }
             else
             {
