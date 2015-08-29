@@ -77,7 +77,7 @@ foreach(Table tbl in from t in tables where !t.Ignore select t){
 <# if (IncludeRelationships) { #>
 <#foreach(Key key in from k in tbl.OuterKeys select k)
 {#>
-		public virtual <#=tables[key.ReferencedTableName].ClassName #> <#=tables[key.ReferencedTableName].ClassName #> { get; set; }
+		public virtual <#=tables[key.ReferencedTableName].ClassName #> <# if (tables[key.ReferencedTableName].ClassName==tbl.ClassName) { #>FK_<#}#><#=tables[key.ReferencedTableName].ClassName #> { get; set; }
 <#}#>
 <#foreach(Key key in from k in tbl.InnerKeys select k)
 {#>
