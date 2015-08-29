@@ -366,11 +366,13 @@ var count = connection.RecordCount<User>("Where age > 20");
 
 Database support
 ---------------------
-* There is an option to change database dialect. Default is Microsoft SQL Server but can be changed to PostgreSQL or SQLite and possibly others down the road. 
+* There is an option to change database dialect. Default is Microsoft SQL Server but can be changed to PostgreSQL, SQLite or MySQL and possibly others down the road. 
 ```csharp 
    SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
    
    SimpleCRUD.SetDialect(SimpleCRUD.Dialect.SQLite);
+   
+   SimpleCRUD.SetDialect(SimpleCRUD.Dialect.MySQL);
 ```
 
 Do you have a comprehensive list of examples?
@@ -379,7 +381,3 @@ Dapper.SimpleCRUD has a basic test suite in the [test project](https://github.co
 
 There is also a sample website showing working examples of the the core functionality in the [demo website](https://github.com/ericdc1/Dapper.SimpleCRUD/tree/master/DemoWebsite)
 
-Future
----------------------
-I am considering the following based on feedback:
-* Support for more database types (Firebird, SQLCe, etc) 
