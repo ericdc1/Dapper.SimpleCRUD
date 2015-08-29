@@ -14,7 +14,7 @@
 	  By default uses Id column as the primary key but this can be overridden with an attribute
 	  By default queries the table matching the class name but this can be overridden with an attribute
           By default queries the column matching the property name but this can be overridden with an attribute  
-          - Supports SQL Server, PostgreSQL, and SQLite 
+          - Supports SQL Server, PostgreSQL, SQLite, and MySQL 
           - Includes async methods when targeting .Net 4.5
     </description>
     <summary>
