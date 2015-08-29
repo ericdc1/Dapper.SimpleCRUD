@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>Dapper.SimpleCRUD.ModelGenerator</id>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <title>Dapper.SimpleCRUD.ModelGenerator</title>
     <authors>Eric Coffman</authors>
     <owners>Eric Coffman</owners>
@@ -23,6 +23,7 @@
       * version 1.0.1:  Normalize line endings
       * version 1.0.2: Added datetime2 support
       * version 1.0.3: Remove SQL CE support
+      * version 1.0.4: Support for self referencing tables
     </releaseNotes>
     <copyright>Copyright Eric Coffman 2015</copyright>
     <tags>orm dapper micro-orm t4 template</tags>
