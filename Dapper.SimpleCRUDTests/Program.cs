@@ -26,8 +26,8 @@ namespace Dapper.SimpleCRUDTests
 
             //MySQL tests assume port 3306 with username admin and password admin
             //they are commented out by default since mysql setup is required to run tests
-            SetupMySQL();
-            RunTestsMySQL();
+            //SetupMySQL();
+            //RunTestsMySQL();
         }
 
         private static void Setup()

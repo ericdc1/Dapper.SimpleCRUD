@@ -34,6 +34,7 @@ namespace Dapper
         {
             return _dialect.ToString();
         }
+
         /// <summary>
         /// Sets the database dialect 
         /// </summary>
@@ -74,13 +75,16 @@ namespace Dapper
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>By default filters on the Id column</para>
         /// <para>-Id column name can be overridden by adding an attribute on your primary key property [Key]</para>
+        /// <para>Supports transaction and command timeout</para>
         /// <para>Returns a single entity by a single id from table T</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="id"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
         /// <returns>Returns a single entity by a single id from table T.</returns>
-        public static T Get<T>(this IDbConnection connection, object id)
+        public static T Get<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
@@ -105,20 +109,23 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
 
-            return connection.Query<T>(sb.ToString(), dynParms).FirstOrDefault();
+            return connection.Query<T>(sb.ToString(), dynParms, transaction, true, commandTimeout).FirstOrDefault();
         }
 
         /// <summary>
         /// <para>By default queries the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>whereConditions is an anonymous type to filter the results ex: new {Category = 1, SubCategory=2}</para>
+        /// <para>Supports transaction and command timeout</para>
         /// <para>Returns a list of entities that match where conditions</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="whereConditions"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
         /// <returns>Gets a list of entities with optional exact match where conditions</returns>
-        public static IEnumerable<T> GetList<T>(this IDbConnection connection, object whereConditions)
+        public static IEnumerable<T> GetList<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
@@ -143,20 +150,23 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb));
 
-            return connection.Query<T>(sb.ToString(), whereConditions);
+            return connection.Query<T>(sb.ToString(), whereConditions, transaction, true, commandTimeout);
         }
 
         /// <summary>
         /// <para>By default queries the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>conditions is an SQL where clause and/or order by clause ex: "where name='bob'"</para>
+        /// <para>Supports transaction and command timeout</para>
         /// <para>Returns a list of entities that match where conditions</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="conditions"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
         /// <returns>Gets a list of entities with optional SQL where conditions</returns>
-        public static IEnumerable<T> GetList<T>(this IDbConnection connection, string conditions)
+        public static IEnumerable<T> GetList<T>(this IDbConnection connection, string conditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
@@ -176,7 +186,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb));
 
-            return connection.Query<T>(sb.ToString());
+            return connection.Query<T>(sb.ToString(),null, transaction, true, commandTimeout);
         }
 
         /// <summary>
@@ -197,6 +207,7 @@ namespace Dapper
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>conditions is an SQL where clause ex: "where name='bob'" - not required </para>
         /// <para>orderby is a column or list of columns to order by ex: "lastname, age desc" - not required - default is by primary key</para>
+        /// <para>Supports transaction and command timeout</para>
         /// <para>Returns a list of entities that match where conditions</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -205,8 +216,10 @@ namespace Dapper
         /// <param name="rowsPerPage"></param>
         /// <param name="conditions"></param>
         /// <param name="orderby"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
         /// <returns>Gets a paged list of entities with optional exact match where conditions</returns>
-        public static IEnumerable<T> GetListPaged<T>(this IDbConnection connection, int pageNumber, int rowsPerPage, string conditions, string orderby)
+        public static IEnumerable<T> GetListPaged<T>(this IDbConnection connection, int pageNumber, int rowsPerPage, string conditions, string orderby, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             if (string.IsNullOrEmpty(_getPagedListSql))
                 throw new Exception("GetListPage is not supported with the current SQL Dialect");
@@ -240,7 +253,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetListPaged<{0}>: {1}", currenttype, query));
 
-            return connection.Query<T>(query);
+            return connection.Query<T>(query, null, transaction, true, commandTimeout);
         }
 
         /// <summary>
@@ -340,7 +353,6 @@ namespace Dapper
             }
             return (TKey)r.First().id;
         }
-
 
         /// <summary>
         /// <para>Updates a record or records in the database</para>
@@ -495,13 +507,16 @@ namespace Dapper
         /// <para>By default queries the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Returns a number of records entity by a single id from table T</para>
+        /// <para>Supports transaction and command timeout</para>
         /// <para>conditions is an SQL where clause ex: "where name='bob'" - not required </para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="conditions"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
         /// <returns>Returns a count of records.</returns>
-        public static int RecordCount<T>(this IDbConnection connection, string conditions = "")
+        public static int RecordCount<T>(this IDbConnection connection, string conditions = "", IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
@@ -513,9 +528,8 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currenttype, sb));
 
-            return connection.Query<int>(sb.ToString()).Single();
+            return connection.Query<int>(sb.ToString(), null, transaction, true, commandTimeout).Single();
         }
-
 
         //build update statement based on list on an entity
         private static void BuildUpdateSet(object entityToUpdate, StringBuilder sb)
@@ -571,7 +585,6 @@ namespace Dapper
                     sb.AppendFormat(" and ");
             }
         }
-
 
         //build insert values which include all properties in the class that are not marked with the Editable(false) attribute,
         //are not marked with the [Key] attribute, and are not named Id

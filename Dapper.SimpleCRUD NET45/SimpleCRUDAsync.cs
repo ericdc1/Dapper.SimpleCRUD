@@ -14,19 +14,21 @@ namespace Dapper
     /// </summary>
     public static partial class SimpleCRUD
     {
-
         /// <summary>
         /// <para>By default queries the table matching the class name asynchronously </para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>By default filters on the Id column</para>
         /// <para>-Id column name can be overridden by adding an attribute on your primary key property [Key]</para>
+        /// <para>Supports transaction and command timeout</para>
         /// <para>Returns a single entity by a single id from table T</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="id"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
         /// <returns>Returns a single entity by a single id from table T.</returns>
-        public static async Task<T> GetAsync<T>(this IDbConnection connection, object id)
+        public static async Task<T> GetAsync<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
@@ -52,7 +54,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
 
-            var query = await connection.QueryAsync<T>(sb.ToString(), dynParms);
+            var query = await connection.QueryAsync<T>(sb.ToString(), dynParms, transaction, commandTimeout);
             return query.FirstOrDefault();
         }
 
@@ -60,13 +62,16 @@ namespace Dapper
         /// <para>By default queries the table matching the class name asynchronously</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>whereConditions is an anonymous type to filter the results ex: new {Category = 1, SubCategory=2}</para>
+        /// <para>Supports transaction and command timeout</para>
         /// <para>Returns a list of entities that match where conditions</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="whereConditions"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
         /// <returns>Gets a list of entities with optional exact match where conditions</returns>
-        public static Task<IEnumerable<T>> GetListAsync<T>(this IDbConnection connection, object whereConditions)
+        public static Task<IEnumerable<T>> GetListAsync<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
@@ -92,20 +97,23 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb));
 
-            return connection.QueryAsync<T>(sb.ToString(), whereConditions);
+            return connection.QueryAsync<T>(sb.ToString(), whereConditions, transaction, commandTimeout);
         }
 
         /// <summary>
         /// <para>By default queries the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>conditions is an SQL where clause and/or order by clause ex: "where name='bob'"</para>
+        /// <para>Supports transaction and command timeout</para>
         /// <para>Returns a list of entities that match where conditions</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="conditions"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
         /// <returns>Gets a list of entities with optional SQL where conditions</returns>
-        public static Task<IEnumerable<T>> GetListAsync<T>(this IDbConnection connection, string conditions)
+        public static Task<IEnumerable<T>> GetListAsync<T>(this IDbConnection connection, string conditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
@@ -126,7 +134,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb));
 
-            return connection.QueryAsync<T>(sb.ToString());
+            return connection.QueryAsync<T>(sb.ToString(), null, transaction, commandTimeout);
         }
 
         /// <summary>
@@ -440,14 +448,16 @@ namespace Dapper
         /// <summary>
         /// <para>By default queries the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
-        /// <para>Returns a number of records entity by a single id from table T</para>
+        /// <para>Supports transaction and command timeout</para>
         /// <para>conditions is an SQL where clause ex: "where name='bob'" - not required </para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="conditions"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
         /// <returns>Returns a count of records.</returns>
-        public static async Task<int> RecordCountAsync<T>(this IDbConnection connection, string conditions = "")
+        public static async Task<int> RecordCountAsync<T>(this IDbConnection connection, string conditions = "", IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
@@ -459,17 +469,9 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currenttype, sb));
 
-            var query = await connection.QueryAsync<int>(sb.ToString());
+            var query = await connection.QueryAsync<int>(sb.ToString(), null, transaction, commandTimeout);
             return query.Single();
         }
 
-
-
-       
     }
-
-
-
-
-
 }
