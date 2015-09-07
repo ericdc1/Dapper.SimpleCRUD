@@ -1,0 +1,35 @@
+﻿{
+  "version": "1.0.0-*",
+  "description": "Dapper.SimpleCRUD DNX Core 5 Class Library",
+  "authors": [ "clay" ],
+  "tags": [ "" ],
+  "projectUrl": "",
+  "licenseUrl": "",
+    "frameworks": {
+        "dnx451" : {},
+        "dnxcore50": {
+            "dependencies": {
+                "System.Diagnostics.TraceSource": "4.0.0-beta-*",
+                "System.Linq": "4.0.0-beta-*",
+                "Microsoft.CSharp": "4.0.0-beta-*"
+            }
+        }
+    },
+    "dependencies": {
+        "Microsoft.AspNet.Diagnostics": "1.0.0-beta7",
+        "Microsoft.AspNet.Diagnostics.Entity": "7.0.0-beta7",
+        "Microsoft.AspNet.Identity.EntityFramework": "3.0.0-beta7",
+        "Microsoft.AspNet.Mvc": "6.0.0-beta7",
+        "Microsoft.AspNet.Mvc.TagHelpers": "6.0.0-beta7",
+        "Microsoft.AspNet.Server.IIS": "1.0.0-beta7",
+        "Microsoft.AspNet.Server.WebListener": "1.0.0-beta7",
+        "Microsoft.AspNet.StaticFiles": "1.0.0-beta7",
+        "Microsoft.AspNet.Tooling.Razor": "1.0.0-beta7",
+        "Microsoft.Framework.Configuration.Abstractions": "1.0.0-beta7",
+        "Microsoft.Framework.Configuration.Json": "1.0.0-beta7",
+        "Microsoft.Framework.Configuration.UserSecrets": "1.0.0-beta7",
+        "Microsoft.Framework.Logging": "1.0.0-beta7",
+        "Microsoft.Framework.Logging.Console": "1.0.0-beta7",
+        "Microsoft.Framework.Logging.Debug": "1.0.0-beta7"
+    }
+}
