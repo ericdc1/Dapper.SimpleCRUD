@@ -46,10 +46,10 @@ namespace Dapper
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
             sb.AppendFormat(" from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.AppendFormat(" where {0} = {1}Id", GetColumnName(onlyKey), _parameterPrefix);
 
             var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            dynParms.Add(string.Format("{0}id", _parameterPrefix), id);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
@@ -272,10 +272,13 @@ namespace Dapper
                 {
                     keyHasPredefinedValue = true;
                 }
+                if (_dialect != Dialect.Oracle)
+                    sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
             }
 
             if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
             {
+                if (_dialect != Dialect.Oracle)
                 sb.Append(";" + _getIdentitySql);
             }
             else
@@ -286,6 +289,14 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
+            var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
+
+            if (_dialect == Dialect.Oracle)
+            {
+                var q = connection.Query(string.Format("select max({0}) as maxid from {1}", GetColumnName(idProps.First()), name)).FirstOrDefault();
+                if (q != null)
+                    return (TKey)q.MAXID;
+            }
             if (keytype == typeof(Guid) || keyHasPredefinedValue)
             {
                 await connection.ExecuteAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
@@ -397,10 +408,10 @@ namespace Dapper
 
             var sb = new StringBuilder();
             sb.AppendFormat("Delete from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.AppendFormat(" where {0} = {1}Id", GetColumnName(onlyKey), _parameterPrefix);
 
             var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            dynParms.Add(string.Format("{0}id", _parameterPrefix), id);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));

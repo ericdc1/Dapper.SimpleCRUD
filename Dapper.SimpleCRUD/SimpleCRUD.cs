@@ -25,6 +25,7 @@ namespace Dapper
         private static string _encapsulation;
         private static string _getIdentitySql;
         private static string _getPagedListSql;
+        private static string _parameterPrefix;
 
         /// <summary>
         /// Returns the current dialect name
@@ -46,24 +47,36 @@ namespace Dapper
                 case Dialect.PostgreSQL:
                     _dialect = Dialect.PostgreSQL;
                     _encapsulation = "{0}";
+                    _parameterPrefix = "@";
                     _getIdentitySql = string.Format("SELECT LASTVAL() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
                     break;
                 case Dialect.SQLite:
                     _dialect = Dialect.SQLite;
                     _encapsulation = "{0}";
+                    _parameterPrefix = "@";
                     _getIdentitySql = string.Format("SELECT LAST_INSERT_ROWID() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
                     break;
                 case Dialect.MySQL:
                     _dialect = Dialect.MySQL;
                     _encapsulation = "`{0}`";
+                    _parameterPrefix = "@";
                     _getIdentitySql = string.Format("SELECT LAST_INSERT_ID() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {Offset},{RowsPerPage}";
+                    break;
+                case Dialect.Oracle:
+                    _dialect = Dialect.Oracle;
+                    _encapsulation = "{0}";
+                    _parameterPrefix = ":";
+                    _getIdentitySql = "returning {0} into :{0}";
+                    _getPagedListSql = "select* from (select /*+ first_rows({RowsPerPage}) */ {SelectColumns}, row_number()  over(order by {OrderBy} )rn from {TableName} {WhereClause})" +
+                                        "where rn between (({PageNumber}-1) * {RowsPerPage} + 1) and {PageNumber} * {RowsPerPage} order by rn";
                     break;
                 default:
                     _dialect = Dialect.SQLServer;
                     _encapsulation = "[{0}]";
+                    _parameterPrefix = "@";
                     _getIdentitySql = string.Format("SELECT CAST(SCOPE_IDENTITY()  AS BIGINT) AS [id]");
                     _getPagedListSql = "SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY {OrderBy}) AS PagedNumber, {SelectColumns} FROM {TableName} {WhereClause}) AS u WHERE PagedNUMBER BETWEEN (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
                     break;
@@ -101,10 +114,10 @@ namespace Dapper
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
             sb.AppendFormat(" from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.AppendFormat(" where {0} = {1}id", GetColumnName(onlyKey), _parameterPrefix);
 
             var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            dynParms.Add(string.Format("{0}id", _parameterPrefix), id);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
@@ -186,7 +199,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb));
 
-            return connection.Query<T>(sb.ToString(),null, transaction, true, commandTimeout);
+            return connection.Query<T>(sb.ToString(), null, transaction, true, commandTimeout);
         }
 
         /// <summary>
@@ -330,11 +343,13 @@ namespace Dapper
                 {
                     keyHasPredefinedValue = true;
                 }
+                if (_dialect != Dialect.Oracle)
                 sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
             }
 
             if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
             {
+                if (_dialect != Dialect.Oracle)
                 sb.Append(";" + _getIdentitySql);
             }
             else
@@ -347,6 +362,12 @@ namespace Dapper
 
             var r = connection.Query(sb.ToString(), entityToInsert, transaction, true, commandTimeout);
 
+            if (_dialect == Dialect.Oracle)
+            {
+                var q = connection.Query(string.Format("select max({0}) as maxid from {1}", GetColumnName(idProps.First()), name)).FirstOrDefault();
+                if (q != null)
+                    return (TKey)q.MAXID;
+            }
             if (keytype == typeof(Guid) || keyHasPredefinedValue)
             {
                 return (TKey)idProps.First().GetValue(entityToInsert, null);
@@ -456,10 +477,10 @@ namespace Dapper
 
             var sb = new StringBuilder();
             sb.AppendFormat("Delete from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.AppendFormat(" where {0} = {1}Id", GetColumnName(onlyKey), _parameterPrefix);
 
             var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            dynParms.Add(string.Format("{0}id", _parameterPrefix), id);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));
@@ -576,7 +597,7 @@ namespace Dapper
             {
                 var property = nonIdProps[i];
 
-                sb.AppendFormat("{0} = @{1}", GetColumnName(property), property.Name);
+                sb.AppendFormat("{0} = {1}{2}", GetColumnName(property), _parameterPrefix, property.Name);
                 if (i < nonIdProps.Length - 1)
                     sb.AppendFormat(", ");
             }
@@ -615,7 +636,8 @@ namespace Dapper
                         propertyToUse = sourceProperties.ElementAt(x);
                     }
                 }
-                sb.AppendFormat("{0} = @{1}", GetColumnName(propertyToUse), propertyInfos.ElementAt(i).Name);
+
+                sb.AppendFormat("{0} = {1}{2}", GetColumnName(propertyToUse), _parameterPrefix, propertyInfos.ElementAt(i).Name);
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
             }
@@ -636,7 +658,7 @@ namespace Dapper
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "ReadOnlyAttribute" && IsReadOnly(property))) continue;
 
                 if (property.Name == "Id" && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != "RequiredAttribute") && property.PropertyType != typeof(Guid)) continue;
-                sb.AppendFormat("@{0}", property.Name);
+                sb.AppendFormat("{0}{1}", _parameterPrefix, property.Name);
                 if (i < props.Count() - 1)
                     sb.Append(", ");
             }
@@ -834,6 +856,7 @@ namespace Dapper
             PostgreSQL,
             SQLite,
             MySQL,
+            Oracle,
         }
 
     }
