@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System;
 using MySql.Data.MySqlClient;
 using Npgsql;
+using System.Data.OracleClient;
 
 
 namespace Dapper.SimpleCRUDTests
@@ -152,6 +153,11 @@ namespace Dapper.SimpleCRUDTests
             {
                 connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "admin", "admin", "testdb"));
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.MySQL);
+            }
+            else if (_dbtype == SimpleCRUD.Dialect.Oracle)
+            {
+                connection = new OracleConnection(String.Format("data source={0};password={1};user id={2}", "DEVELOPMENT", "umhk79J&U", "BOWDENJ"));
+                SimpleCRUD.SetDialect(SimpleCRUD.Dialect.Oracle);
             }
             else
             {
