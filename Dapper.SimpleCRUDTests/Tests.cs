@@ -793,5 +793,18 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+
+        public void InsertWithSpecifiedPrimaryKeyAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.InsertAsync(new UserWithoutAutoIdentity() { Id = 999, Name = "User999Async", Age = 10 });
+                id.Result.IsEqualTo(999);
+                var user = connection.GetAsync<UserWithoutAutoIdentity>(999);
+                user.Result.Name.IsEqualTo("User999Async");
+                connection.Execute("Delete from UserWithoutAutoIdentity");
+            }
+        }
+
     }
 }
