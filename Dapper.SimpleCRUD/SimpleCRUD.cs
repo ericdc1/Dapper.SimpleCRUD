@@ -237,7 +237,7 @@ namespace Dapper
             var query = _getPagedListSql;
             if (string.IsNullOrEmpty(orderby))
             {
-                orderby = idProps.First().Name;
+                orderby = GetColumnName(idProps.First());
             }
 
             //create a new empty instance of the type to get the base properties
