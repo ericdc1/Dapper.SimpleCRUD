@@ -9,7 +9,6 @@ using System;
 using MySql.Data.MySqlClient;
 using Npgsql;
 
-
 namespace Dapper.SimpleCRUDTests
 {
     #region DTOClasses
@@ -322,9 +321,6 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-
-
-
         public void InsertWithSpecifiedKey()
         {
             using (var connection = GetOpenConnection())
@@ -631,7 +627,6 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-
         //column attribute tests
 
         public void InsertWithSpecifiedColumnName()
@@ -699,7 +694,6 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-
         public void TestGetListPaged()
         {
             using (var connection = GetOpenConnection())
@@ -718,6 +712,23 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+        public void TestGetListPagedWithSpecifiedPrimaryKey()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                int x = 0;
+                do
+                {
+                    connection.Insert(new StrangeColumnNames { Word = "Word " + x, StrangeWord = "Strange " + x });
+                    x++;
+                } while (x < 30);
+
+                var resultlist = connection.GetListPaged<StrangeColumnNames>(2, 10, null, null);
+                resultlist.Count().IsEqualTo(10);
+                resultlist.Skip(4).First().Word.IsEqualTo("Word 14");
+                connection.Execute("Delete from StrangeColumnNames");
+            }
+        }
         public void TestGetListPagedWithWhereClause()
         {
             using (var connection = GetOpenConnection())
@@ -740,7 +751,7 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-        public void TestDeleteList()
+        public void TestDeleteListWithWhereClause()
         {
             using (var connection = GetOpenConnection())
             {
@@ -754,6 +765,24 @@ namespace Dapper.SimpleCRUDTests
                 connection.DeleteList<User>("Where age > 9");
                 var resultlist = connection.GetList<User>();
                 resultlist.Count().IsEqualTo(10);
+                connection.Execute("Delete from Users");
+            }
+        }
+
+        public void TestDeleteListWithWhereObject()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                int x = 0;
+                do
+                {
+                    connection.Insert(new User { Name = "Person " + x, Age = x, CreatedDate = DateTime.Now, ScheduledDayOff = DayOfWeek.Thursday });
+                    x++;
+                } while (x < 10);
+
+                connection.DeleteList<User>(new {age = 9});
+                var resultlist = connection.GetList<User>();
+                resultlist.Count().IsEqualTo(9);
                 connection.Execute("Delete from Users");
             }
         }
