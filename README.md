@@ -24,6 +24,7 @@ This extension adds the following 8 helpers:
 - Update(entity) - Updates a record
 - Delete&lt;Type&gt;(id) - Deletes a record based on primary key
 - Delete(entity) - Deletes a record based on the typed entity
+- DeleteList&lt;Type&gt;(anonymous object for where clause) - deletes all records matching the where options
 - DeleteList&lt;Type&gt;(string for conditions) - deletes list of all records matching the conditions
 - RecordCount&lt;Type&gt;(string for conditions) -gets count of all records matching the conditions 
 
@@ -39,6 +40,7 @@ For projects targeting .NET 4.5 or later, the following 8 helpers exist for asyn
 - UpdateAsync(entity) - Updates a record
 - DeleteAsync&lt;Type&gt;(id) - Deletes a record based on primary key
 - DeleteAsync(entity) - Deletes a record based on the typed entity
+- DeleteListAsync&lt;Type&gt;(anonymous object for where clause) - deletes all records matching the where options
 - DeleteListAsync&lt;Type&gt;(string for conditions) - deletes list of all records matching the conditions
 - RecordCountAsync&lt;Type&gt;(string for conditions) -gets count of all records matching the conditions 
 
@@ -337,8 +339,20 @@ Results in executing this SQL
 Delete From [User] Where ID = @ID
 ```
 
+Delete multiple records with where conditions
+------------------------------------------------------------
 
-Delete multiple records record
+```csharp
+public static int DeleteList<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
+```
+
+Example usage: 
+
+```csharp     
+connection.DeleteList<User>(new { Age = 10 });
+```
+
+Delete multiple records with where clause
 ------------------------------------------------------------
 
 ```csharp
