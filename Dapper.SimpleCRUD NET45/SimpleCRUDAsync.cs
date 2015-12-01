@@ -272,7 +272,6 @@ namespace Dapper
                 {
                     keyHasPredefinedValue = true;
                 }
-                sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
             }
 
             if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
@@ -287,12 +286,12 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
-            var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
-
             if (keytype == typeof(Guid) || keyHasPredefinedValue)
             {
+                await connection.ExecuteAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
                 return (TKey)idProps.First().GetValue(entityToInsert, null);
             }
+            var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
             return (TKey)r.First().id;
         }
 
