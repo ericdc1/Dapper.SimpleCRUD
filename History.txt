@@ -27,3 +27,5 @@
 * version 1.9.0  Support for specified value in primary key along with the new methods from 1.9 beta
 * version 1.9.1  MySQL Support
 * version 1.9.2  Fix for async insert with specified value in primary key
+* version 1.9.3  Fix for issue with GetPagedList with custom column name for primary key - Thanks haleaurelian. Added DeleteList with anonymous object
+	
