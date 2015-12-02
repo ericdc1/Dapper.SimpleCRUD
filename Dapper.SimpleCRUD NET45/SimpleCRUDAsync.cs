@@ -179,7 +179,7 @@ namespace Dapper
             var query = _getPagedListSql;
             if (string.IsNullOrEmpty(orderby))
             {
-                orderby = idProps.First().Name;
+                orderby = GetColumnName(idProps.First());
             }
 
             //create a new empty instance of the type to get the base properties
@@ -279,7 +279,7 @@ namespace Dapper
             if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
             {
                 if (_dialect != Dialect.Oracle)
-                    sb.Append(";" + _getIdentitySql);
+                sb.Append(";" + _getIdentitySql);
             }
             else
             {
@@ -289,17 +289,17 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
+            if (keytype == typeof(Guid) || keyHasPredefinedValue)
+            {
+                await connection.ExecuteAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
+                return (TKey)idProps.First().GetValue(entityToInsert, null);
+            }
             var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
-
             if (_dialect == Dialect.Oracle)
             {
                 var q = connection.Query(string.Format("select max({0}) as maxid from {1}", GetColumnName(idProps.First()), name)).FirstOrDefault();
                 if (q != null)
                     return (TKey)q.MAXID;
-            }
-            if (keytype == typeof(Guid) || keyHasPredefinedValue)
-            {
-                return (TKey)idProps.First().GetValue(entityToInsert, null);
             }
             return (TKey)r.First().id;
         }
@@ -415,6 +415,43 @@ namespace Dapper
                 Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));
 
             return connection.ExecuteAsync(sb.ToString(), dynParms, transaction, commandTimeout);
+        }
+
+
+        /// <summary>
+        /// <para>Deletes a list of records in the database</para>
+        /// <para>By default deletes records in the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Deletes records where that match the where clause</para>
+        /// <para>whereConditions is an anonymous type to filter the results ex: new {Category = 1, SubCategory=2}</para>
+        /// <para>The number of records effected</para>
+        /// <para>Supports transaction and command timeout</para>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="whereConditions"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
+        /// <returns>The number of records effected</returns>
+        public static Task<int> DeleteListAsync<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+
+            var currenttype = typeof(T);
+            var name = GetTableName(currenttype);
+
+            var sb = new StringBuilder();
+            var whereprops = GetAllProperties(whereConditions).ToArray();
+            sb.AppendFormat("Delete from {0}", name);
+            if (whereprops.Any())
+            {
+                sb.Append(" where ");
+                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
+            }
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("DeleteList<{0}> {1}", currenttype, sb));
+
+            return connection.ExecuteAsync(sb.ToString(), whereConditions, transaction, commandTimeout);
         }
 
         /// <summary>

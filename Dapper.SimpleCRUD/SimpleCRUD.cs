@@ -250,7 +250,7 @@ namespace Dapper
             var query = _getPagedListSql;
             if (string.IsNullOrEmpty(orderby))
             {
-                orderby = idProps.First().Name;
+                orderby = GetColumnName(idProps.First());
             }
 
             //create a new empty instance of the type to get the base properties
@@ -261,7 +261,7 @@ namespace Dapper
             query = query.Replace("{RowsPerPage}", rowsPerPage.ToString());
             query = query.Replace("{OrderBy}", orderby);
             query = query.Replace("{WhereClause}", conditions);
-            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());
+            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());  
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetListPaged<{0}>: {1}", currenttype, query));
@@ -344,13 +344,13 @@ namespace Dapper
                     keyHasPredefinedValue = true;
                 }
                 if (_dialect != Dialect.Oracle)
-                    sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
+                sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
             }
 
             if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
             {
                 if (_dialect != Dialect.Oracle)
-                    sb.Append(";" + _getIdentitySql);
+                sb.Append(";" + _getIdentitySql);
             }
             else
             {
@@ -486,6 +486,42 @@ namespace Dapper
                 Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));
 
             return connection.Execute(sb.ToString(), dynParms, transaction, commandTimeout);
+        }
+
+        /// <summary>
+        /// <para>Deletes a list of records in the database</para>
+        /// <para>By default deletes records in the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Deletes records where that match the where clause</para>
+        /// <para>whereConditions is an anonymous type to filter the results ex: new {Category = 1, SubCategory=2}</para>
+        /// <para>The number of records effected</para>
+        /// <para>Supports transaction and command timeout</para>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="whereConditions"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
+        /// <returns>The number of records effected</returns>
+        public static int DeleteList<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+       
+            var currenttype = typeof(T);
+            var name = GetTableName(currenttype);
+
+            var sb = new StringBuilder();
+            var whereprops = GetAllProperties(whereConditions).ToArray();
+            sb.AppendFormat("Delete from {0}", name);
+            if (whereprops.Any())
+            {
+                sb.Append(" where ");
+                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
+            }
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("DeleteList<{0}> {1}", currenttype, sb));
+
+            return connection.Execute(sb.ToString(), whereConditions, transaction, commandTimeout);
         }
 
         /// <summary>
