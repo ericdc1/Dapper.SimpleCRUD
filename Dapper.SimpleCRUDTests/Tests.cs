@@ -127,7 +127,7 @@ namespace Dapper.SimpleCRUDTests
     #endregion
 
     public class Tests
-    {
+    {       
         public Tests(SimpleCRUD.Dialect dbtype)
         {
             _dbtype = dbtype;
@@ -155,7 +155,7 @@ namespace Dapper.SimpleCRUDTests
             }
             else if (_dbtype == SimpleCRUD.Dialect.Oracle)
             {
-                connection = new OracleConnection(String.Format("data source={0};password={1};user id={2}", "DEVELOPMENT", "umhk79J&U", "BOWDENJ"));
+                connection = new OracleConnection(String.Format("data source={0};password={1};user id={2}", "INSTANCE", "PASS12!", "USERNAME"));
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.Oracle);
             }
             else

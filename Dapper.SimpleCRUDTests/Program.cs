@@ -146,7 +146,8 @@ namespace Dapper.SimpleCRUDTests
 
         private static void SetupOracle()
         {
-            using (var connection = new OracleConnection(String.Format("data source={0};password={1};user id={2}", "INSTANCE", "pass12!", "USER")))
+            string connstr = String.Format("data source={0};password={1};user id={2}", "INSTANCE", "PASS12!", "USERNAME");
+            using (var connection = new OracleConnection(connstr))
             {
                 connection.Open();
                 try
@@ -216,7 +217,7 @@ namespace Dapper.SimpleCRUDTests
                 catch (Exception)
                 { }
             }
-            using (var connection = new OracleConnection(String.Format("data source={0};password={1};user id={2}", "DEVELOPMENT", "umhk79J&U", "BOWDENJ")))
+            using (var connection = new OracleConnection(connstr))
             {
                 connection.Open();
                 connection.Execute(@"CREATE TABLE Users (Id number(10), NAME NVARCHAR2(100) NOT NULL, Age INT NOT NULL, ScheduledDayOff NUMBER(10), CreatedDate DATE DEFAULT sysdate, CONSTRAINT USER_PK PRIMARY KEY (Id))");
