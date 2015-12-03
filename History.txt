@@ -28,4 +28,4 @@
 * version 1.9.1  MySQL Support
 * version 1.9.2  Fix for async insert with specified value in primary key
 * version 1.9.3  Fix for issue with GetPagedList with custom column name for primary key - Thanks haleaurelian. Added DeleteList with anonymous object
-	
+* version 1.10.0 Added IgnoreUpdate, IgnoreInsert, and IgnoreSelect attributes 
