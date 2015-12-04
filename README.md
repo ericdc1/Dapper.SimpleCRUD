@@ -19,7 +19,7 @@ This extension adds the following 8 helpers:
 - GetList&lt;Type&gt;() - gets list of records all records from a table
 - GetList&lt;Type&gt;(anonymous object for where clause) - gets list of all records matching the where options
 - GetList&lt;Type&gt;(string for conditions) - gets list of all records matching the conditions
-- GetListPaged&lt;Type&gt;(string for conditions) - gets paged list of all records matching the conditions
+- GetListPaged&lt;Type&gt;(int pagenumber, int itemsperpage, string for conditions, string for order) - gets paged list of all records matching the conditions
 - Insert(entity) - Inserts a record and returns the new primary key
 - Update(entity) - Updates a record
 - Delete&lt;Type&gt;(id) - Deletes a record based on primary key
@@ -35,7 +35,7 @@ For projects targeting .NET 4.5 or later, the following 8 helpers exist for asyn
 - GetListAsync&lt;Type&gt;() - gets list of records all records from a table
 - GetListAsync&lt;Type&gt;(anonymous object for where clause) - gets list of all records matching the where options
 - GetListAsync&lt;Type&gt;(string for conditions) - gets list of all records matching the conditions
-- GetListPagedAsync&lt;Type&gt;(string for conditions) - gets paged list of all records matching the conditions
+- GetListPagedAsync&lt;Type&gt;(int pagenumber, int itemsperpage, string for conditions, string for order)  - gets paged list of all records matching the conditions
 - InsertAsync(entity) - Inserts a record and returns the new primary key
 - UpdateAsync(entity) - Updates a record
 - DeleteAsync&lt;Type&gt;(id) - Deletes a record based on primary key
