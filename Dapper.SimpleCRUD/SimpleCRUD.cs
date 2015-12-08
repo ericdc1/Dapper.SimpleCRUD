@@ -26,6 +26,12 @@ namespace Dapper
         private static string _getIdentitySql;
         private static string _getPagedListSql;
 
+        private static readonly IDictionary<Type, string> TableNames = new Dictionary<Type, string>();
+        private static readonly IDictionary<string, string> ColumnNames = new Dictionary<string, string>();
+
+        private static ITableNameResolver _tableNameResolver = new TableNameResolver();
+        private static IColumnNameResolver _columnNameResolver = new ColumnNameResolver();
+
         /// <summary>
         /// Returns the current dialect name
         /// </summary>
@@ -68,6 +74,24 @@ namespace Dapper
                     _getPagedListSql = "SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY {OrderBy}) AS PagedNumber, {SelectColumns} FROM {TableName} {WhereClause}) AS u WHERE PagedNUMBER BETWEEN (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
                     break;
             }
+        }
+
+        /// <summary>
+        /// Sets the table name resolver
+        /// </summary>
+        /// <param name="resolver"></param>
+        public static void SetTableNameResolver(ITableNameResolver resolver)
+        {
+            _tableNameResolver = resolver;
+        }
+
+        /// <summary>
+        /// Sets the column name resolver
+        /// </summary>
+        /// <param name="resolver"></param>
+        public static void SetColumnNameResolver(IColumnNameResolver resolver)
+        {
+            _columnNameResolver = resolver;
         }
 
         /// <summary>
@@ -767,7 +791,6 @@ namespace Dapper
             return tp.Any() ? tp : type.GetProperties().Where(p => p.Name == "Id");
         }
 
-
         //Gets the table name for this entity
         //For Inserts and updates we have a whole entity so this method is used
         //Uses class name by default and overrides if the class has a Table attribute
@@ -783,42 +806,27 @@ namespace Dapper
         //Uses class name by default and overrides if the class has a Table attribute
         private static string GetTableName(Type type)
         {
-            //var tableName = String.Format("[{0}]", type.Name);
-            var tableName = Encapsulate(type.Name);
+            string tableName;
 
-            var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "TableAttribute") as dynamic;
-            if (tableattr != null)
-            {
-                //tableName = String.Format("[{0}]", tableattr.Name);
-                tableName = Encapsulate(tableattr.Name);
-                try
-                {
-                    if (!String.IsNullOrEmpty(tableattr.Schema))
-                    {
-                        //tableName = String.Format("[{0}].[{1}]", tableattr.Schema, tableattr.Name);
-                        string schemaName = Encapsulate(tableattr.Schema);
-                        tableName = String.Format("{0}.{1}", schemaName, tableName);
-                    }
-                }
-                catch (RuntimeBinderException)
-                {
-                    //Schema doesn't exist on this attribute.
-                }
-            }
+            if (TableNames.TryGetValue(type, out tableName))
+                return tableName;
+
+            tableName = _tableNameResolver.ResolveTableName(type);
+            TableNames[type] = tableName;
 
             return tableName;
         }
 
         private static string GetColumnName(PropertyInfo propertyInfo)
         {
-            var columnName = Encapsulate(propertyInfo.Name);
+            string columnName, key = string.Format("{0}.{1}", propertyInfo.DeclaringType, propertyInfo.Name);
 
-            var columnattr = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "ColumnAttribute") as dynamic;
-            if (columnattr != null)
-            {
-                columnName = Encapsulate(columnattr.Name);
-                Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
-            }
+            if (ColumnNames.TryGetValue(key, out columnName))
+                return columnName;
+
+            columnName = _columnNameResolver.ResolveColumnName(propertyInfo);
+            ColumnNames[key] = columnName;
+
             return columnName;
         }
 
@@ -856,6 +864,60 @@ namespace Dapper
             MySQL,
         }
 
+        public interface ITableNameResolver
+        {
+            string ResolveTableName(Type type);
+        }
+
+        public interface IColumnNameResolver
+        {
+            string ResolveColumnName(PropertyInfo propertyInfo);
+        }
+
+        public class TableNameResolver : ITableNameResolver
+        {
+            public virtual string ResolveTableName(Type type)
+            {
+                var tableName = Encapsulate(type.Name);
+
+                var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "TableAttribute") as dynamic;
+                if (tableattr != null)
+                {
+                    tableName = Encapsulate(tableattr.Name);
+                    try
+                    {
+                        if (!String.IsNullOrEmpty(tableattr.Schema))
+                        {
+                            //tableName = String.Format("[{0}].[{1}]", tableattr.Schema, tableattr.Name);
+                            string schemaName = Encapsulate(tableattr.Schema);
+                            tableName = String.Format("{0}.{1}", schemaName, tableName);
+                        }
+                    }
+                    catch (RuntimeBinderException)
+                    {
+                        //Schema doesn't exist on this attribute.
+                    }
+                }
+
+                return tableName;
+            }
+        }
+
+        public class ColumnNameResolver : IColumnNameResolver
+        {
+            public virtual string ResolveColumnName(PropertyInfo propertyInfo)
+            {
+                var columnName = Encapsulate(propertyInfo.Name);
+
+                var columnattr = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "ColumnAttribute") as dynamic;
+                if (columnattr != null)
+                {
+                    columnName = Encapsulate(columnattr.Name);
+                    Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
+                }
+                return columnName;
+            }
+        }
     }
 
     /// <summary>
