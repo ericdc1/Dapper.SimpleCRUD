@@ -91,7 +91,7 @@ namespace Dapper
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
+                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)), whereConditions);
             }
 
             if (Debugger.IsAttached)

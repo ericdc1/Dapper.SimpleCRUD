@@ -144,7 +144,7 @@ namespace Dapper
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
+                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)), whereConditions);
             }
 
             if (Debugger.IsAttached)
@@ -602,12 +602,13 @@ namespace Dapper
             }
         }
 
-        //build where clause based on list of properties
-        private static void BuildWhere(StringBuilder sb, IEnumerable<PropertyInfo> idProps, object sourceEntity)
+        private static void BuildWhere(StringBuilder sb, IEnumerable<PropertyInfo> idProps, object sourceEntity, object whereConditions = null)
         {
             var propertyInfos = idProps.ToArray();
             for (var i = 0; i < propertyInfos.Count(); i++)
             {
+                var useIsNull = false;
+
                 //match up generic properties to source entity properties to allow fetching of the column attribute
                 //the anonymous object used for search doesn't have the custom attributes attached to them so this allows us to build the correct where clause
                 //by converting the model type to the database column name via the column attribute
@@ -618,9 +619,19 @@ namespace Dapper
                     if (sourceProperties.ElementAt(x).Name == propertyInfos.ElementAt(i).Name)
                     {
                         propertyToUse = sourceProperties.ElementAt(x);
+
+                        if (whereConditions != null && propertyInfos.ElementAt(i).CanRead && (propertyInfos.ElementAt(i).GetValue(whereConditions, null) == null || propertyInfos.ElementAt(i).GetValue(whereConditions, null) == DBNull.Value))
+                        {
+                            useIsNull = true;
+                        }
+                        break;
                     }
                 }
-                sb.AppendFormat("{0} = @{1}", GetColumnName(propertyToUse), propertyInfos.ElementAt(i).Name);
+                sb.AppendFormat(
+                    useIsNull ? "{0} is null" : "{0} = @{1}",
+                    GetColumnName(propertyToUse),
+                    propertyInfos.ElementAt(i).Name);
+
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
             }

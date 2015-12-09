@@ -850,6 +850,26 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+
+        public void TestGetListNullableWhere()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new User { Name = "TestGetListWithoutWhere", Age = 10, ScheduledDayOff = DayOfWeek.Friday });
+                connection.Insert(new User { Name = "TestGetListWithoutWhere", Age = 10 });
+
+                //test with null property
+                var list = connection.GetList<User>(new { ScheduledDayOff = (DayOfWeek?)null });
+                list.Count().IsEqualTo(1);
+
+
+                // test with db.null value
+                list = connection.GetList<User>(new { ScheduledDayOff = DBNull.Value });
+                list.Count().IsEqualTo(1);
+
+                connection.Execute("Delete from Users");
+            }
+        }
         //ignore attribute tests
         //i cheated here and stuffed all of these in one test
         //didn't implement in postgres or mysql tests yet
