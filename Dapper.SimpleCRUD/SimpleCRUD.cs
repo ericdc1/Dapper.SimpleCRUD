@@ -186,7 +186,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb));
 
-            return connection.Query<T>(sb.ToString(),null, transaction, true, commandTimeout);
+            return connection.Query<T>(sb.ToString(), null, transaction, true, commandTimeout);
         }
 
         /// <summary>
@@ -248,7 +248,7 @@ namespace Dapper
             query = query.Replace("{RowsPerPage}", rowsPerPage.ToString());
             query = query.Replace("{OrderBy}", orderby);
             query = query.Replace("{WhereClause}", conditions);
-            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());  
+            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetListPaged<{0}>: {1}", currenttype, query));
@@ -370,6 +370,26 @@ namespace Dapper
         /// <returns>The number of effected records</returns>
         public static int Update(this IDbConnection connection, object entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            return Update(connection, null, entityToUpdate, transaction, commandTimeout);
+        }
+
+        /// <summary>
+        /// <para>Updates a record or records in the database</para>
+        /// <para>By default updates records in the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Updates records where the Id property and properties with the [Key] attribute match those in the database.</para>
+        /// <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
+        /// <para>Supports transaction and command timeout</para>
+        /// <para>Returns number of rows effected</para>
+        /// </summary>
+        /// <param name="connection"></param>
+        /// /// <param name="originalEntity"></param>
+        /// <param name="entityToUpdate"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
+        /// <returns>The number of effected records</returns>
+        public static int Update(this IDbConnection connection, object originalEntity, object entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
             var idProps = GetIdProperties(entityToUpdate).ToList();
 
             if (!idProps.Any())
@@ -381,7 +401,7 @@ namespace Dapper
             sb.AppendFormat("update {0}", name);
 
             sb.AppendFormat(" set ");
-            BuildUpdateSet(entityToUpdate, sb);
+            BuildUpdateSet(originalEntity, entityToUpdate, sb);
             sb.Append(" where ");
             BuildWhere(sb, idProps, entityToUpdate);
 
@@ -484,7 +504,7 @@ namespace Dapper
         /// <returns>The number of records effected</returns>
         public static int DeleteList<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-       
+
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
 
@@ -568,13 +588,21 @@ namespace Dapper
         }
 
         //build update statement based on list on an entity
-        private static void BuildUpdateSet(object entityToUpdate, StringBuilder sb)
+        private static void BuildUpdateSet(object originalEntity, object entityToUpdate, StringBuilder sb)
         {
             var nonIdProps = GetUpdateableProperties(entityToUpdate).ToArray();
 
             for (var i = 0; i < nonIdProps.Length; i++)
             {
                 var property = nonIdProps[i];
+
+                if (originalEntity != null)
+                {
+                    //if the property didn't change don't update it
+                    if (property.GetValue(entityToUpdate, null) == property.GetValue(originalEntity, null)) continue;
+                    //if the new value is null don't update it 
+                    if (property.GetValue(entityToUpdate, null) == null) continue;
+                }
 
                 sb.AppendFormat("{0} = @{1}", GetColumnName(property), property.Name);
                 if (i < nonIdProps.Length - 1)
