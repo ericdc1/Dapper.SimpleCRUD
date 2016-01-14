@@ -111,7 +111,22 @@ namespace Dapper.SimpleCRUDTests
         public string StrangeWord { get; set; }
         [Editable(false)]
         public string ExtraProperty { get; set; }
+    }
 
+    public class IgnoreColumns
+    {
+        [Key]
+        public int Id { get; set; }
+        [IgnoreInsert]
+        public string IgnoreInsert { get; set; }
+        [IgnoreUpdate]
+        public string IgnoreUpdate { get; set; }
+        [IgnoreSelect]
+        public string IgnoreSelect { get; set; }
+        [IgnoreInsert]
+        [IgnoreUpdate]
+        [IgnoreSelect]
+        public string IgnoreAll { get; set; }
     }
 
     public class UserWithoutAutoIdentity
@@ -838,6 +853,60 @@ namespace Dapper.SimpleCRUDTests
                 var user = connection.GetAsync<UserWithoutAutoIdentity>(999);
                 user.Result.Name.IsEqualTo("User999Async");
                 connection.Execute("Delete from UserWithoutAutoIdentity");
+            }
+        }
+
+
+        public void TestGetListNullableWhere()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new User { Name = "TestGetListWithoutWhere", Age = 10, ScheduledDayOff = DayOfWeek.Friday });
+                connection.Insert(new User { Name = "TestGetListWithoutWhere", Age = 10 });
+
+                //test with null property
+                var list = connection.GetList<User>(new { ScheduledDayOff = (DayOfWeek?)null });
+                list.Count().IsEqualTo(1);
+
+
+                // test with db.null value
+                list = connection.GetList<User>(new { ScheduledDayOff = DBNull.Value });
+                list.Count().IsEqualTo(1);
+
+                connection.Execute("Delete from Users");
+            }
+        }
+        //ignore attribute tests
+        //i cheated here and stuffed all of these in one test
+        //didn't implement in postgres or mysql tests yet
+        public void IgnoreProperties()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var itemId = connection.Insert(new IgnoreColumns() { IgnoreInsert = "OriginalInsert", IgnoreUpdate = "OriginalUpdate", IgnoreSelect = "OriginalSelect", IgnoreAll = "OriginalAll" });
+                var item = connection.Get<IgnoreColumns>(itemId);
+                //verify insert column was ignored
+                item.IgnoreInsert.IsNull(); 
+
+                //verify select value wasn't selected 
+                item.IgnoreSelect.IsNull();
+
+                //verify the column is really there via straight dapper
+                var fromDapper = connection.Query<IgnoreColumns>("Select * from IgnoreColumns where Id = @Id", new{id = itemId}).First();
+                fromDapper.IgnoreSelect.IsEqualTo("OriginalSelect");
+               
+                //change value and update
+                item.IgnoreUpdate = "ChangedUpdate";
+                connection.Update(item);
+                
+                //verify that update didn't take effect
+                item = connection.Get<IgnoreColumns>(itemId);
+                item.IgnoreUpdate.IsEqualTo("OriginalUpdate");
+
+                var allColumnDapper = connection.Query<IgnoreColumns>("Select IgnoreAll from IgnoreColumns where Id = @Id", new { id = itemId }).First();
+                allColumnDapper.IgnoreAll.IsNull();
+
+                connection.Delete<IgnoreColumns>(itemId);
             }
         }
 
