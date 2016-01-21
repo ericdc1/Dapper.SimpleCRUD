@@ -892,7 +892,11 @@ namespace Dapper.SimpleCRUDTests
                 item.IgnoreSelect.IsNull();
 
                 //verify the column is really there via straight dapper
-                var fromDapper = connection.Query<IgnoreColumns>("Select * from IgnoreColumns where Id = @Id", new{id = itemId}).First();
+                string query = "Select * from IgnoreColumns where Id = @Id";
+                if (SimpleCRUD.GetDialect() == "Oracle")
+                    query = "Select * from IgnoreColumns where Id = :id";
+                
+                var fromDapper = connection.Query<IgnoreColumns>(query, new { id = itemId }).First();
                 fromDapper.IgnoreSelect.IsEqualTo("OriginalSelect");
                
                 //change value and update
@@ -903,7 +907,11 @@ namespace Dapper.SimpleCRUDTests
                 item = connection.Get<IgnoreColumns>(itemId);
                 item.IgnoreUpdate.IsEqualTo("OriginalUpdate");
 
-                var allColumnDapper = connection.Query<IgnoreColumns>("Select IgnoreAll from IgnoreColumns where Id = @Id", new { id = itemId }).First();
+                query = "Select IgnoreAll from IgnoreColumns where Id = @Id";
+                if (SimpleCRUD.GetDialect() == "Oracle")
+                    query = "Select IgnoreAll from IgnoreColumns where Id = :Id";
+
+                var allColumnDapper = connection.Query<IgnoreColumns>(query, new { id = itemId }).First();
                 allColumnDapper.IgnoreAll.IsNull();
 
                 connection.Delete<IgnoreColumns>(itemId);

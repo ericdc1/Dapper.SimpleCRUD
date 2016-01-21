@@ -190,7 +190,7 @@ namespace Dapper
             query = query.Replace("{RowsPerPage}", rowsPerPage.ToString());
             query = query.Replace("{OrderBy}", orderby);
             query = query.Replace("{WhereClause}", conditions);
-            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());  
+            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetListPaged<{0}>: {1}", currenttype, query));
@@ -279,7 +279,7 @@ namespace Dapper
             if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
             {
                 if (_dialect != Dialect.Oracle)
-                sb.Append(";" + _getIdentitySql);
+                    sb.Append(";" + _getIdentitySql);
             }
             else
             {
@@ -288,19 +288,21 @@ namespace Dapper
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
-
-            var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
-
-            if (_dialect == Dialect.Oracle)
-            {
-                var q = connection.Query(string.Format("select max({0}) as maxid from {1}", GetColumnName(idProps.First()), name)).FirstOrDefault();
-                if (q != null)
-                    return (TKey)q.MAXID;
-            }
+            
             if (keytype == typeof(Guid) || keyHasPredefinedValue)
             {
                 await connection.ExecuteAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
                 return (TKey)idProps.First().GetValue(entityToInsert, null);
+            }
+            if (_dialect == Dialect.Oracle)
+            {
+
+                var xr = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
+                var q = await connection.QueryAsync(string.Format("select max({0}) as maxid from {1}", GetColumnName(idProps.First()), name));
+                if (q != null)
+                    return (TKey)q.FirstOrDefault().MAXID;
+                else
+                    return default(TKey);
             }
             var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
             return (TKey)r.First().id;
@@ -357,7 +359,7 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of records effected</returns>
-        public static  Task<int> DeleteAsync<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static Task<int> DeleteAsync<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToDelete).ToList();
 
@@ -370,7 +372,7 @@ namespace Dapper
             sb.AppendFormat("delete from {0}", name);
 
             sb.Append(" where ");
-            BuildWhere(sb, idProps,entityToDelete);
+            BuildWhere(sb, idProps, entityToDelete);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete: {0}", sb));

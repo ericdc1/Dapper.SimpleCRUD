@@ -644,11 +644,15 @@ namespace Dapper
                         if (whereConditions != null && propertyInfos.ElementAt(i).CanRead && (propertyInfos.ElementAt(i).GetValue(whereConditions, null) == null || propertyInfos.ElementAt(i).GetValue(whereConditions, null) == DBNull.Value))
                         {
                             useIsNull = true;
-                    }
+                        }
                         break;
+                    }
                 }
+                sb.AppendFormat(
+                useIsNull ? "{0} is null" : "{0} = {1}{2}",
+                GetColumnName(propertyToUse), _parameterPrefix,
+                propertyInfos.ElementAt(i).Name);
 
-                sb.AppendFormat("{0} = {1}{2}", GetColumnName(propertyToUse), _parameterPrefix, propertyInfos.ElementAt(i).Name);
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
             }

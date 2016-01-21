@@ -215,6 +215,18 @@ namespace Dapper.SimpleCRUDTests
                 }
                 catch (Exception)
                 { }
+                try
+                {
+                    connection.Execute(@"drop table IgnoreColumns");
+                }
+                catch (Exception)
+                { }
+                try
+                {
+                    connection.Execute(@"drop SEQUENCE IgnoreColumns_seq");
+                }
+                catch (Exception)
+                { }
             }
             using (var connection = new OracleConnection(connstr))
             {
@@ -235,6 +247,11 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute(@"CREATE SEQUENCE StrangeColumnNames_seq  START WITH     1 INCREMENT BY   1 NOCACHE NOCYCLE");
                 connection.Execute(@"CREATE OR REPLACE TRIGGER SColNames_INS_TRIG BEFORE INSERT ON StrangeColumnNames FOR EACH ROW BEGIN IF :new.ItemId IS NULL THEN SELECT StrangeColumnNames_seq.nextval INTO :new.ItemId FROM DUAL;        END IF;  END;");
                 connection.Execute(@"CREATE TABLE UserWithoutAutoIdentity (Id number(10), NAME NVARCHAR2(100) NOT NULL, Age number(10) NOT NULL,CONSTRAINT UserWithoutAutoIdentity_PK PRIMARY KEY (Id) )");
+                connection.Execute(@"create table IgnoreColumns (Id number(10) not null Primary Key, IgnoreInsert nvarchar2(100), IgnoreUpdate nvarchar2(100), IgnoreSelect nvarchar2(100), IgnoreAll nvarchar2(100)) ");
+                connection.Execute(@"CREATE SEQUENCE IgnoreColumns_seq START WITH     1 INCREMENT BY   1 NOCACHE NOCYCLE");
+                connection.Execute(@"CREATE OR REPLACE TRIGGER IgnoreColumns_INS_TRIG BEFORE INSERT ON IgnoreColumns FOR EACH ROW BEGIN IF :new.ID IS NULL THEN SELECT IgnoreColumns_seq.nextval INTO :new.ID FROM DUAL; END IF;  END;");
+
+
             }
         }
 
