@@ -190,7 +190,7 @@ namespace Dapper
             query = query.Replace("{RowsPerPage}", rowsPerPage.ToString());
             query = query.Replace("{OrderBy}", orderby);
             query = query.Replace("{WhereClause}", conditions);
-            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());
+            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());  
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetListPaged<{0}>: {1}", currenttype, query));
@@ -279,7 +279,7 @@ namespace Dapper
             if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
             {
                 if (_dialect != Dialect.Oracle)
-                    sb.Append(";" + _getIdentitySql);
+                sb.Append(";" + _getIdentitySql);
             }
             else
             {
@@ -288,7 +288,7 @@ namespace Dapper
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
-            
+
             if (keytype == typeof(Guid) || keyHasPredefinedValue)
             {
                 await connection.ExecuteAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
@@ -305,6 +305,12 @@ namespace Dapper
                     return default(TKey);
             }
             var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
+            if (_dialect == Dialect.Oracle)
+            {
+                var q = connection.Query(string.Format("select max({0}) as maxid from {1}", GetColumnName(idProps.First()), name)).FirstOrDefault();
+                if (q != null)
+                    return (TKey)q.MAXID;
+            }
             return (TKey)r.First().id;
         }
 

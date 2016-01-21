@@ -252,7 +252,6 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute(@"CREATE OR REPLACE TRIGGER IgnoreColumns_INS_TRIG BEFORE INSERT ON IgnoreColumns FOR EACH ROW BEGIN IF :new.ID IS NULL THEN SELECT IgnoreColumns_seq.nextval INTO :new.ID FROM DUAL; END IF;  END;");
 
 
-            }
         }
 
 
