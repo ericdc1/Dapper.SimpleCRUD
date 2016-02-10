@@ -246,7 +246,7 @@ public class User
    public DateTime CreatedDate { get; set; }
 }
 
-var newId = connection.Insert(new User { Name = "User", Age = 10 });  
+var newId = connection.Insert(new User { FirstName = "User", LastName = "Person",  Age = 10 });  
 ```
 Results in executing this SQL 
 ```sql
