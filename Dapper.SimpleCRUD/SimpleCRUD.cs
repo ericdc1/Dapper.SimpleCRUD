@@ -45,13 +45,13 @@ namespace Dapper
             {
                 case Dialect.PostgreSQL:
                     _dialect = Dialect.PostgreSQL;
-                    _encapsulation = "{0}";
+                    _encapsulation = "\"{0}\"";
                     _getIdentitySql = string.Format("SELECT LASTVAL() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
                     break;
                 case Dialect.SQLite:
                     _dialect = Dialect.SQLite;
-                    _encapsulation = "{0}";
+                    _encapsulation = "\"{0}\"";
                     _getIdentitySql = string.Format("SELECT LAST_INSERT_ROWID() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
                     break;
@@ -186,7 +186,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb));
 
-            return connection.Query<T>(sb.ToString(),null, transaction, true, commandTimeout);
+            return connection.Query<T>(sb.ToString(), null, transaction, true, commandTimeout);
         }
 
         /// <summary>
@@ -248,7 +248,7 @@ namespace Dapper
             query = query.Replace("{RowsPerPage}", rowsPerPage.ToString());
             query = query.Replace("{OrderBy}", orderby);
             query = query.Replace("{WhereClause}", conditions);
-            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());  
+            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetListPaged<{0}>: {1}", currenttype, query));
@@ -484,7 +484,7 @@ namespace Dapper
         /// <returns>The number of records effected</returns>
         public static int DeleteList<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-       
+
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
 
@@ -596,7 +596,7 @@ namespace Dapper
                 sb.Append(GetColumnName(propertyInfos.ElementAt(i)));
                 //if there is a custom column name add an "as customcolumnname" to the item so it maps properly
                 if (propertyInfos.ElementAt(i).GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "ColumnAttribute") != null)
-                    sb.Append(" as " + propertyInfos.ElementAt(i).Name);
+                    sb.Append(" as " + Encapsulate(propertyInfos.ElementAt(i).Name));
                 addedAny = true;
 
             }
