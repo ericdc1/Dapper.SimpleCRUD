@@ -564,7 +564,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currenttype, sb));
 
-            return connection.Query<int>(sb.ToString(), null, transaction, true, commandTimeout).Single();
+            return connection.ExecuteScalar<int>(sb.ToString(), null, transaction, commandTimeout);
         }
 
         /// <summary>
@@ -598,7 +598,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currenttype, sb));
 
-            return connection.Query<int>(sb.ToString(), whereConditions, transaction, true, commandTimeout).Single();
+            return connection.ExecuteScalar<int>(sb.ToString(), whereConditions, transaction, commandTimeout);
         }
 
         //build update statement based on list on an entity
