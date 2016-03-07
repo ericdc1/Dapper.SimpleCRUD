@@ -509,40 +509,5 @@ namespace Dapper
             return query.Single();
         }
 
-
-        /// <summary>
-        /// <para>By default queries the table matching the class name</para>
-        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
-        /// <para>Returns a number of records entity by a single id from table T</para>
-        /// <para>Supports transaction and command timeout</para>
-        /// <para>whereConditions is an anonymous type to filter the results ex: new {Category = 1, SubCategory=2}</para>
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="connection"></param>
-        /// <param name="whereConditions"></param>
-        /// <param name="transaction"></param>
-        /// <param name="commandTimeout"></param>
-        /// <returns>Returns a count of records.</returns>
-        public static async Task<int> RecordCountAsync<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
-        {
-            var currenttype = typeof(T);
-            var name = GetTableName(currenttype);
-
-            var sb = new StringBuilder();
-            var whereprops = GetAllProperties(whereConditions).ToArray();
-            sb.Append("Select count(1)");
-            sb.AppendFormat(" from {0}", name);
-            if (whereprops.Any())
-            {
-                sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
-            }
-
-            if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currenttype, sb));
-
-            var query = await connection.QueryAsync<int>(sb.ToString(), whereConditions, transaction, commandTimeout);
-            return query.Single();
-        }
     }
 }
