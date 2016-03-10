@@ -362,7 +362,7 @@ namespace Dapper
 
             var r = connection.Query(sb.ToString(), entityToInsert, transaction, true, commandTimeout);
 
-            if (_dialect == Dialect.Oracle)
+            if (_dialect == Dialect.Oracle && !keyHasPredefinedValue)
             {
                 var q = connection.Query(string.Format("select max({0}) as maxid from {1}", GetColumnName(idProps.First()), name)).FirstOrDefault();
                 if (q != null)
