@@ -6,6 +6,7 @@ using System.IO;
 using System.Reflection;
 using MySql.Data.MySqlClient;
 using Npgsql;
+using System.Data.OracleClient;
 
 namespace Dapper.SimpleCRUDTests
 {
@@ -28,6 +29,10 @@ namespace Dapper.SimpleCRUDTests
             //they are commented out by default since mysql setup is required to run tests
             //SetupMySQL();
             //RunTestsMySQL();
+
+            //
+            //SetupOracle();
+            //RunTestsOracle();
         }
 
         private static void Setup()
@@ -138,6 +143,117 @@ namespace Dapper.SimpleCRUDTests
 
         }
 
+        private static void SetupOracle()
+        {
+            string connstr = String.Format("data source={0};password={1};user id={2}", "INSTANCE", "PASS12!", "USERNAME");
+            using (var connection = new OracleConnection(connstr))
+            {
+                connection.Open();
+                try
+                {
+                    connection.Execute(@"drop table users");
+                }
+                catch (Exception)
+                { }
+                try
+                {
+                    connection.Execute(@"drop SEQUENCE users_seq");
+                }
+                catch (Exception)
+                { }
+                try
+                {
+                    connection.Execute(@"drop table car");
+                }
+                catch (Exception)
+                { }
+                try
+                {
+                    connection.Execute(@"drop SEQUENCE car_seq");
+                }
+                catch (Exception)
+                { }
+                try
+                {
+                    connection.Execute(@"drop table bigcar");
+                }
+                catch (Exception)
+                { }
+                try
+                {
+                    connection.Execute(@"drop SEQUENCE bigcar_seq");
+                }
+                catch (Exception)
+                { }
+                try
+                {
+                    connection.Execute(@"drop table city");
+                }
+                catch (Exception)
+                { }
+                try
+                {
+                    connection.Execute(@"drop table GUIDTest");
+                }
+                catch (Exception)
+                { }
+                try
+                {
+                    connection.Execute(@"drop table StrangeColumnNames");
+                }
+                catch (Exception)
+                { }
+                try
+                {
+                    connection.Execute(@"drop SEQUENCE StrangeColumnNames_seq");
+                }
+                catch (Exception)
+                { }
+                try
+                {
+                    connection.Execute(@"drop table UserWithoutAutoIdentity");
+                }
+                catch (Exception)
+                { }
+                try
+                {
+                    connection.Execute(@"drop table IgnoreColumns");
+                }
+                catch (Exception)
+                { }
+                try
+                {
+                    connection.Execute(@"drop SEQUENCE IgnoreColumns_seq");
+                }
+                catch (Exception)
+                { }
+            }
+            using (var connection = new OracleConnection(connstr))
+            {
+                connection.Open();
+                connection.Execute(@"CREATE TABLE Users (Id number(10), NAME NVARCHAR2(100) NOT NULL, Age INT NOT NULL, ScheduledDayOff NUMBER(10), CreatedDate DATE DEFAULT sysdate, CONSTRAINT USER_PK PRIMARY KEY (Id))");
+                connection.Execute(@"CREATE SEQUENCE Users_seq START WITH     1 INCREMENT BY   1 NOCACHE NOCYCLE");
+                connection.Execute(@"CREATE OR REPLACE TRIGGER USERS_INS_TRIG BEFORE INSERT ON Users FOR EACH ROW BEGIN IF :new.ID IS NULL THEN SELECT Users_seq.nextval INTO :new.ID FROM DUAL; END IF;  END;");
+                connection.Execute(@"CREATE TABLE Car (CarId number(10), Id number(10), Make NVARCHAR2(100) NOT NULL, Model NVARCHAR2(100) NOT NULL, CONSTRAINT CAR_PK PRIMARY KEY (CARId))");
+                connection.Execute(@"CREATE SEQUENCE Car_seq  START WITH     1 INCREMENT BY   1 NOCACHE NOCYCLE");
+                connection.Execute(@"CREATE OR REPLACE TRIGGER CAR_INS_TRIG BEFORE INSERT ON CAR FOR EACH ROW BEGIN IF :new.CarId IS NULL THEN SELECT Car_seq.nextval INTO :new.CarId FROM DUAL;        END IF;  END;");
+                connection.Execute(@"CREATE TABLE BigCar (CarId number(10), Make NVARCHAR2(100) NOT NULL, Model NVARCHAR2(100) NOT NULL, CONSTRAINT BIGCAR_PK PRIMARY KEY (CARId))");
+                connection.Execute(@"CREATE SEQUENCE BigCar_seq  START WITH     2147483649 INCREMENT BY   1 NOCACHE NOCYCLE");
+                connection.Execute(@"CREATE OR REPLACE TRIGGER BIGCAR_INS_TRIG BEFORE INSERT ON BIGCAR FOR EACH ROW BEGIN IF :new.CarId IS NULL THEN SELECT BigCar_seq.nextval INTO :new.CarId FROM DUAL;        END IF;  END;");
+                connection.Execute(@"INSERT INTO BigCar (Make, Model) VALUES ('car', 'car')");
+                connection.Execute(@"CREATE TABLE City (NAME NVARCHAR2(100) NOT NULL, Population number(10) NOT NULL)");
+                connection.Execute(@"CREATE TABLE GUIDTest (Id char(38) default sys_guid(), NAME VARCHAR(50) NOT NULL, CONSTRAINT PK_GUIDTest PRIMARY KEY (Id))");
+                connection.Execute(@"CREATE TABLE StrangeColumnNames (ItemId NUMBER(10), word NVARCHAR2(100) NOT NULL, colstringstrangeword NVARCHAR2(100) NOT NULL, CONSTRAINT StrangeColumnNames_PK PRIMARY KEY (ItemId) )");
+                connection.Execute(@"CREATE SEQUENCE StrangeColumnNames_seq  START WITH     1 INCREMENT BY   1 NOCACHE NOCYCLE");
+                connection.Execute(@"CREATE OR REPLACE TRIGGER SColNames_INS_TRIG BEFORE INSERT ON StrangeColumnNames FOR EACH ROW BEGIN IF :new.ItemId IS NULL THEN SELECT StrangeColumnNames_seq.nextval INTO :new.ItemId FROM DUAL;        END IF;  END;");
+                connection.Execute(@"CREATE TABLE UserWithoutAutoIdentity (Id number(10), NAME NVARCHAR2(100) NOT NULL, Age number(10) NOT NULL,CONSTRAINT UserWithoutAutoIdentity_PK PRIMARY KEY (Id) )");
+                connection.Execute(@"create table IgnoreColumns (Id number(10) not null Primary Key, IgnoreInsert nvarchar2(100), IgnoreUpdate nvarchar2(100), IgnoreSelect nvarchar2(100), IgnoreAll nvarchar2(100)) ");
+                connection.Execute(@"CREATE SEQUENCE IgnoreColumns_seq START WITH     1 INCREMENT BY   1 NOCACHE NOCYCLE");
+                connection.Execute(@"CREATE OR REPLACE TRIGGER IgnoreColumns_INS_TRIG BEFORE INSERT ON IgnoreColumns FOR EACH ROW BEGIN IF :new.ID IS NULL THEN SELECT IgnoreColumns_seq.nextval INTO :new.ID FROM DUAL; END IF;  END;");
+
+            }
+        }
+
 
         private static void RunTests()
         {
@@ -226,6 +342,26 @@ namespace Dapper.SimpleCRUDTests
             Console.WriteLine("Time elapsed: {0}", stopwatch.Elapsed);
 
             Console.Write("MySQL testing complete.");
+            Console.ReadKey();
+        }
+
+        private static void RunTestsOracle()
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var Oracletester = new Tests(SimpleCRUD.Dialect.Oracle);
+            foreach (var method in typeof(Tests).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                if (method.Name.Contains("Schema")) continue;
+                if (method.Name.Contains("Guid")) continue;
+                var testwatch = Stopwatch.StartNew();
+                Console.Write("Running " + method.Name + " in Oracle");
+                method.Invoke(Oracletester, null);
+                Console.WriteLine(" - OK! {0}ms", testwatch.ElapsedMilliseconds);
+            }
+            stopwatch.Stop();
+            Console.WriteLine("Time elapsed: {0}", stopwatch.Elapsed);
+
+            Console.Write("Oracle testing complete.");
             Console.ReadKey();
         }
     }
