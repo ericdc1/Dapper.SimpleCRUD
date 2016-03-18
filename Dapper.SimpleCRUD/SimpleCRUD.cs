@@ -856,6 +856,8 @@ namespace Dapper
 
         private static string Encapsulate(string databaseword)
         {
+            if (databaseword != null && databaseword.Length > 1 && databaseword[0] == '[') //has been already provided capsulated.
+                return databaseword;
             return string.Format(_encapsulation, databaseword);
         }
         /// <summary>
