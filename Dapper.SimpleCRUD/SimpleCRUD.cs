@@ -104,7 +104,7 @@ namespace Dapper
             sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
 
             var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            dynParms.Add("@Id", id);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
