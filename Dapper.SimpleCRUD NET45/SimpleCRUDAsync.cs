@@ -190,7 +190,7 @@ namespace Dapper
             query = query.Replace("{RowsPerPage}", rowsPerPage.ToString());
             query = query.Replace("{OrderBy}", orderby);
             query = query.Replace("{WhereClause}", conditions);
-            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());  
+            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetListPaged<{0}>: {1}", currenttype, query));
@@ -272,14 +272,15 @@ namespace Dapper
                 {
                     keyHasPredefinedValue = true;
                 }
-                if (_dialect != Dialect.Oracle)
-                    sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
+                sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
             }
 
             if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
             {
                 if (_dialect != Dialect.Oracle)
-                sb.Append(";" + _getIdentitySql);
+                    sb.Append(";" + _getIdentitySql);
+                else
+                    sb.AppendFormat(_getIdentitySql, GetColumnName(idProps.First()));
             }
             else
             {
@@ -296,21 +297,24 @@ namespace Dapper
             }
             if (_dialect == Dialect.Oracle)
             {
-
-                var xr = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
-                var q = await connection.QueryAsync(string.Format("select max({0}) as maxid from {1}", GetColumnName(idProps.First()), name));
-                if (q != null)
-                    return (TKey)q.FirstOrDefault().MAXID;
+                if (keytype == typeof(Guid))
+                    throw new Exception("Invalid return type");
+                var param = new DynamicParameters(entityToInsert);
+                
+                if (keyHasPredefinedValue)
+                {
+                    var xr = await connection.ExecuteAsync(sb.ToString(), param, transaction, commandTimeout);
+                    return (TKey)idProps.First().GetValue(entityToInsert, null);
+                }
                 else
-                    return default(TKey);
+                {
+                    param.Add(GetColumnName(idProps.First()), null, DbType.Int64, ParameterDirection.ReturnValue);
+                    var xr = await connection.ExecuteAsync(sb.ToString(), param, transaction, commandTimeout);
+                    var q = param.Get<dynamic>(GetColumnName(idProps.First()));
+                    return (TKey)q;
+                }               
             }
-            var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
-            if (_dialect == Dialect.Oracle)
-            {
-                var q = connection.Query(string.Format("select max({0}) as maxid from {1}", GetColumnName(idProps.First()), name)).FirstOrDefault();
-                if (q != null)
-                    return (TKey)q.MAXID;
-            }
+            var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);          
             return (TKey)r.First().id;
         }
 

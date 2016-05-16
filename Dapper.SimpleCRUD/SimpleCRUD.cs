@@ -69,7 +69,7 @@ namespace Dapper
                     _dialect = Dialect.Oracle;
                     _encapsulation = "{0}";
                     _parameterPrefix = ":";
-                    _getIdentitySql = "returning {0} into :{0}";
+                    _getIdentitySql = " returning {0} into :{0}";
                     _getPagedListSql = "select* from (select /*+ first_rows({RowsPerPage}) */ {SelectColumns}, row_number()  over(order by {OrderBy} )rn from {TableName} {WhereClause})" +
                                         "where rn between (({PageNumber}-1) * {RowsPerPage} + 1) and {PageNumber} * {RowsPerPage} order by rn";
                     break;
@@ -261,7 +261,7 @@ namespace Dapper
             query = query.Replace("{RowsPerPage}", rowsPerPage.ToString());
             query = query.Replace("{OrderBy}", orderby);
             query = query.Replace("{WhereClause}", conditions);
-            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());  
+            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetListPaged<{0}>: {1}", currenttype, query));
@@ -343,14 +343,15 @@ namespace Dapper
                 {
                     keyHasPredefinedValue = true;
                 }
-                if (_dialect != Dialect.Oracle)
                 sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
             }
 
             if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
             {
                 if (_dialect != Dialect.Oracle)
-                sb.Append(";" + _getIdentitySql);
+                    sb.Append(";" + _getIdentitySql);
+                else
+                    sb.AppendFormat(_getIdentitySql, GetColumnName(idProps.First()));
             }
             else
             {
@@ -360,19 +361,35 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
-            var r = connection.Query(sb.ToString(), entityToInsert, transaction, true, commandTimeout);
+            if (_dialect == Dialect.Oracle)
+            {
+                if (keytype == typeof(Guid))
+                    throw new Exception("Invalid return type");
+                var param = new DynamicParameters(entityToInsert);
 
-            if (_dialect == Dialect.Oracle && !keyHasPredefinedValue)
-            {
-                var q = connection.Query(string.Format("select max({0}) as maxid from {1}", GetColumnName(idProps.First()), name)).FirstOrDefault();
-                if (q != null)
-                    return (TKey)q.MAXID;
+                if (keyHasPredefinedValue)
+                {
+                    dynamic b = connection.Execute(sb.ToString(), param, transaction, commandTimeout);
+                    return (TKey)idProps.First().GetValue(entityToInsert, null);
+                }
+                else
+                {
+                    param.Add(GetColumnName(idProps.First()), null, DbType.Int64, ParameterDirection.ReturnValue);
+                    dynamic b = connection.Execute(sb.ToString(), param, transaction, commandTimeout);
+                    var q = param.Get<dynamic>(GetColumnName(idProps.First()));
+                    return (TKey)q;
+                }
             }
-            if (keytype == typeof(Guid) || keyHasPredefinedValue)
+            else
             {
-                return (TKey)idProps.First().GetValue(entityToInsert, null);
-            }
-            return (TKey)r.First().id;
+                var r = connection.Query(sb.ToString(), entityToInsert, transaction, true, commandTimeout);
+                if (keytype == typeof(Guid) || keyHasPredefinedValue)
+                {
+                    return (TKey)idProps.First().GetValue(entityToInsert, null);
+                }
+                return (TKey)r.First().id;
+            }         
+
         }
 
         /// <summary>
@@ -505,7 +522,7 @@ namespace Dapper
         /// <returns>The number of records effected</returns>
         public static int DeleteList<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-       
+
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
 
