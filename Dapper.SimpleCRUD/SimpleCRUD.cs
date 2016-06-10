@@ -828,7 +828,8 @@ namespace Dapper
             if (columnattr != null)
             {
                 columnName = Encapsulate(columnattr.Name);
-                Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
+                if (Debugger.IsAttached)
+                    Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
             }
             return columnName;
         }
