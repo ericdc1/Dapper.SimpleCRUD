@@ -345,13 +345,13 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
-            var r = connection.Query(sb.ToString(), entityToInsert, transaction, true, commandTimeout);
+            var r = connection.Query<InsertedRowResult<TKey>>(sb.ToString(), entityToInsert, transaction, true, commandTimeout);
 
             if (keytype == typeof(Guid) || keyHasPredefinedValue)
             {
                 return (TKey)idProps.First().GetValue(entityToInsert, null);
             }
-            return (TKey)r.First().id;
+            return r.First().id;
         }
 
         /// <summary>
@@ -797,7 +797,7 @@ namespace Dapper
             //var tableName = String.Format("[{0}]", type.Name);
             var tableName = Encapsulate(type.Name);
 
-            var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "TableAttribute") as dynamic;
+            var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "TableAttribute") as TableAttribute;
             if (tableattr != null)
             {
                 //tableName = String.Format("[{0}]", tableattr.Name);
@@ -824,11 +824,12 @@ namespace Dapper
         {
             var columnName = Encapsulate(propertyInfo.Name);
 
-            var columnattr = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "ColumnAttribute") as dynamic;
+            var columnattr = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "ColumnAttribute") as ColumnAttribute;
             if (columnattr != null)
             {
                 columnName = Encapsulate(columnattr.Name);
-                Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
+                if (Debugger.IsAttached)
+                    Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
             }
             return columnName;
         }
@@ -867,6 +868,10 @@ namespace Dapper
             MySQL,
         }
 
+        internal class InsertedRowResult<TKey>
+        {
+            public TKey id { get; set; }
+        }
     }
 
     /// <summary>
