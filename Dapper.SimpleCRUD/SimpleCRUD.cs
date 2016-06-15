@@ -27,6 +27,12 @@ namespace Dapper
         private static string _getPagedListSql;
         private static string _parameterPrefix;
 
+        private static readonly IDictionary<Type, string> TableNames = new Dictionary<Type, string>();
+        private static readonly IDictionary<string, string> ColumnNames = new Dictionary<string, string>();
+
+        private static ITableNameResolver _tableNameResolver = new TableNameResolver();
+        private static IColumnNameResolver _columnNameResolver = new ColumnNameResolver();
+
         /// <summary>
         /// Returns the current dialect name
         /// </summary>
@@ -81,6 +87,24 @@ namespace Dapper
                     _getPagedListSql = "SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY {OrderBy}) AS PagedNumber, {SelectColumns} FROM {TableName} {WhereClause}) AS u WHERE PagedNUMBER BETWEEN (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
                     break;
             }
+        }
+
+        /// <summary>
+        /// Sets the table name resolver
+        /// </summary>
+        /// <param name="resolver">The resolver to use when requesting the format of a table name</param>
+        public static void SetTableNameResolver(ITableNameResolver resolver)
+        {
+            _tableNameResolver = resolver;
+        }
+
+        /// <summary>
+        /// Sets the column name resolver
+        /// </summary>
+        /// <param name="resolver">The resolver to use when requesting the format of a column name</param>
+        public static void SetColumnNameResolver(IColumnNameResolver resolver)
+        {
+            _columnNameResolver = resolver;
         }
 
         /// <summary>
@@ -602,7 +626,41 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currenttype, sb));
 
-            return connection.Query<int>(sb.ToString(), null, transaction, true, commandTimeout).Single();
+            return connection.ExecuteScalar<int>(sb.ToString(), null, transaction, commandTimeout);
+        }
+
+        /// <summary>
+        /// <para>By default queries the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Returns a number of records entity by a single id from table T</para>
+        /// <para>Supports transaction and command timeout</para>
+        /// <para>whereConditions is an anonymous type to filter the results ex: new {Category = 1, SubCategory=2}</para>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="whereConditions"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
+        /// <returns>Returns a count of records.</returns>
+        public static int RecordCount<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+            var currenttype = typeof(T);
+            var name = GetTableName(currenttype);
+
+            var sb = new StringBuilder();
+            var whereprops = GetAllProperties(whereConditions).ToArray();
+            sb.Append("Select count(1)");
+            sb.AppendFormat(" from {0}", name);
+            if (whereprops.Any())
+            {
+                sb.Append(" where ");
+                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
+            }
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currenttype, sb));
+
+            return connection.ExecuteScalar<int>(sb.ToString(), whereConditions, transaction, commandTimeout);
         }
 
         //build update statement based on list on an entity
@@ -627,14 +685,14 @@ namespace Dapper
             var addedAny = false;
             for (var i = 0; i < propertyInfos.Count(); i++)
             {
-                if (propertyInfos.ElementAt(i).GetCustomAttributes(true).Any(attr => attr.GetType().Name == "IgnoreSelectAttribute")) continue;
+                if (propertyInfos.ElementAt(i).GetCustomAttributes(true).Any(attr => attr.GetType() == typeof(IgnoreSelectAttribute))) continue;
 
                 if (addedAny)
                     sb.Append(",");
                 sb.Append(GetColumnName(propertyInfos.ElementAt(i)));
                 //if there is a custom column name add an "as customcolumnname" to the item so it maps properly
-                if (propertyInfos.ElementAt(i).GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "ColumnAttribute") != null)
-                    sb.Append(" as " + propertyInfos.ElementAt(i).Name);
+                    if (propertyInfos.ElementAt(i).GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType() == typeof(ColumnAttribute)) != null)
+                    sb.Append(" as " + Encapsulate(propertyInfos.ElementAt(i).Name));
                 addedAny = true;
 
             }
@@ -687,13 +745,16 @@ namespace Dapper
             {
                 var property = props.ElementAt(i);
                 if (property.PropertyType != typeof(Guid)
-                    && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")
-                    && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != "RequiredAttribute"))
+                      && property.GetCustomAttributes(true).Any(attr => attr.GetType() == typeof(KeyAttribute))
+                      && property.GetCustomAttributes(true).All(attr => attr.GetType() != typeof(RequiredAttribute)))
                     continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "IgnoreInsertAttribute")) continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "ReadOnlyAttribute" && IsReadOnly(property))) continue;
+                if (property.GetCustomAttributes(true).Any(attr => attr.GetType() == typeof(IgnoreInsertAttribute))) continue;
+                if (property.GetCustomAttributes(true).Any(attr => attr.GetType() == typeof(ReadOnlyAttribute) && IsReadOnly(property))) continue;
 
                 if (property.Name == "Id" && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != "RequiredAttribute") && property.PropertyType != typeof(Guid)) continue;
+                sb.AppendFormat("{0}{1}", _parameterPrefix, property.Name);
+                if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType() != typeof(RequiredAttribute)) && property.PropertyType != typeof(Guid)) continue;
+
                 sb.AppendFormat("{0}{1}", _parameterPrefix, property.Name);
                 if (i < props.Count() - 1)
                     sb.Append(", ");
@@ -716,13 +777,14 @@ namespace Dapper
             {
                 var property = props.ElementAt(i);
                 if (property.PropertyType != typeof(Guid)
-                    && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")
-                    && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != "RequiredAttribute"))
+                      && property.GetCustomAttributes(true).Any(attr => attr.GetType() == typeof(KeyAttribute))
+                      && property.GetCustomAttributes(true).All(attr => attr.GetType() != typeof(RequiredAttribute)))
                     continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "IgnoreInsertAttribute")) continue;
+                if (property.GetCustomAttributes(true).Any(attr => attr.GetType() == typeof(IgnoreInsertAttribute))) continue;
 
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "ReadOnlyAttribute" && IsReadOnly(property))) continue;
-                if (property.Name == "Id" && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != "RequiredAttribute") && property.PropertyType != typeof(Guid)) continue;
+                if (property.GetCustomAttributes(true).Any(attr => attr.GetType() == typeof(ReadOnlyAttribute) && IsReadOnly(property))) continue;
+                if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType() != typeof(RequiredAttribute)) && property.PropertyType != typeof(Guid)) continue;
+
                 sb.Append(GetColumnName(property));
                 if (i < props.Count() - 1)
                     sb.Append(", ");
@@ -741,7 +803,7 @@ namespace Dapper
         //Get all properties that are not decorated with the Editable(false) attribute
         private static IEnumerable<PropertyInfo> GetScaffoldableProperties(object entity)
         {
-            var props = entity.GetType().GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "EditableAttribute" && !IsEditable(p)) == false);
+            var props = entity.GetType().GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType() == typeof(EditableAttribute) && !IsEditable(p)) == false);
             return props.Where(p => p.PropertyType.IsSimpleType() || IsEditable(p));
         }
 
@@ -753,7 +815,7 @@ namespace Dapper
             var attributes = pi.GetCustomAttributes(false);
             if (attributes.Length > 0)
             {
-                dynamic write = attributes.FirstOrDefault(x => x.GetType().Name == "EditableAttribute");
+                dynamic write = attributes.FirstOrDefault(x => x.GetType() == typeof(EditableAttribute));
                 if (write != null)
                 {
                     return write.AllowEdit;
@@ -771,7 +833,7 @@ namespace Dapper
             var attributes = pi.GetCustomAttributes(false);
             if (attributes.Length > 0)
             {
-                dynamic write = attributes.FirstOrDefault(x => x.GetType().Name == "ReadOnlyAttribute");
+                dynamic write = attributes.FirstOrDefault(x => x.GetType() == typeof(ReadOnlyAttribute));
                 if (write != null)
                 {
                     return write.IsReadOnly;
@@ -789,13 +851,13 @@ namespace Dapper
         {
             var updateableProperties = GetScaffoldableProperties(entity);
             //remove ones with ID
-            updateableProperties = updateableProperties.Where(p => p.Name != "Id");
+            updateableProperties = updateableProperties.Where(p => !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase));
             //remove ones with key attribute
-            updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute") == false);
+            updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType() == typeof(KeyAttribute)) == false);
             //remove ones that are readonly
-            updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => (attr.GetType().Name == "ReadOnlyAttribute") && IsReadOnly(p)) == false);
+            updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => (attr.GetType() == typeof(ReadOnlyAttribute)) && IsReadOnly(p)) == false);
             //remove ones with IgnoreUpdate attribute
-            updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "IgnoreUpdateAttribute") == false);
+            updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType() == typeof(IgnoreUpdateAttribute)) == false);
 
             return updateableProperties;
         }
@@ -812,10 +874,9 @@ namespace Dapper
         //For Get(id) and Delete(id) we don't have an entity, just the type so this method is used
         private static IEnumerable<PropertyInfo> GetIdProperties(Type type)
         {
-            var tp = type.GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == "KeyAttribute")).ToList();
-            return tp.Any() ? tp : type.GetProperties().Where(p => p.Name == "Id");
+            var tp = type.GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType() == typeof(KeyAttribute))).ToList();
+            return tp.Any() ? tp : type.GetProperties().Where(p => p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase));
         }
-
 
         //Gets the table name for this entity
         //For Inserts and updates we have a whole entity so this method is used
@@ -832,42 +893,27 @@ namespace Dapper
         //Uses class name by default and overrides if the class has a Table attribute
         private static string GetTableName(Type type)
         {
-            //var tableName = String.Format("[{0}]", type.Name);
-            var tableName = Encapsulate(type.Name);
+            string tableName;
 
-            var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "TableAttribute") as dynamic;
-            if (tableattr != null)
-            {
-                //tableName = String.Format("[{0}]", tableattr.Name);
-                tableName = Encapsulate(tableattr.Name);
-                try
-                {
-                    if (!String.IsNullOrEmpty(tableattr.Schema))
-                    {
-                        //tableName = String.Format("[{0}].[{1}]", tableattr.Schema, tableattr.Name);
-                        string schemaName = Encapsulate(tableattr.Schema);
-                        tableName = String.Format("{0}.{1}", schemaName, tableName);
-                    }
-                }
-                catch (RuntimeBinderException)
-                {
-                    //Schema doesn't exist on this attribute.
-                }
-            }
+            if (TableNames.TryGetValue(type, out tableName))
+                return tableName;
+
+            tableName = _tableNameResolver.ResolveTableName(type);
+            TableNames[type] = tableName;
 
             return tableName;
         }
 
         private static string GetColumnName(PropertyInfo propertyInfo)
         {
-            var columnName = Encapsulate(propertyInfo.Name);
+            string columnName, key = string.Format("{0}.{1}", propertyInfo.DeclaringType, propertyInfo.Name);
 
-            var columnattr = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == "ColumnAttribute") as dynamic;
-            if (columnattr != null)
-            {
-                columnName = Encapsulate(columnattr.Name);
-                Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
-            }
+            if (ColumnNames.TryGetValue(key, out columnName))
+                return columnName;
+
+            columnName = _columnNameResolver.ResolveColumnName(propertyInfo);
+            ColumnNames[key] = columnName;
+
             return columnName;
         }
 
@@ -908,6 +954,60 @@ namespace Dapper
             Oracle,
         }
 
+        public interface ITableNameResolver
+        {
+            string ResolveTableName(Type type);
+        }
+
+        public interface IColumnNameResolver
+        {
+            string ResolveColumnName(PropertyInfo propertyInfo);
+        }
+
+        public class TableNameResolver : ITableNameResolver
+        {
+            public virtual string ResolveTableName(Type type)
+            {
+                var tableName = Encapsulate(type.Name);
+
+                var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType() == typeof(TableAttribute)) as dynamic;
+                if (tableattr != null)
+                {
+                    tableName = Encapsulate(tableattr.Name);
+                    try
+                    {
+                        if (!String.IsNullOrEmpty(tableattr.Schema))
+                        {
+                            //tableName = String.Format("[{0}].[{1}]", tableattr.Schema, tableattr.Name);
+                            string schemaName = Encapsulate(tableattr.Schema);
+                            tableName = String.Format("{0}.{1}", schemaName, tableName);
+                        }
+                    }
+                    catch (RuntimeBinderException)
+                    {
+                        //Schema doesn't exist on this attribute.
+                    }
+                }
+
+                return tableName;
+            }
+        }
+
+        public class ColumnNameResolver : IColumnNameResolver
+        {
+            public virtual string ResolveColumnName(PropertyInfo propertyInfo)
+            {
+                var columnName = Encapsulate(propertyInfo.Name);
+
+                var columnattr = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType() == typeof(ColumnAttribute)) as dynamic;
+                if (columnattr != null)
+                {
+                    columnName = Encapsulate(columnattr.Name);
+                    Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
+                }
+                return columnName;
+            }
+        }
     }
 
     /// <summary>

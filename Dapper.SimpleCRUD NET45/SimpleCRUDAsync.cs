@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Win32.SafeHandles;
 
 namespace Dapper
 {
@@ -45,10 +46,10 @@ namespace Dapper
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
             sb.AppendFormat(" from {0}", name);
-            sb.AppendFormat(" where {0} = {1}Id", GetColumnName(onlyKey), _parameterPrefix);
+            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
 
             var dynParms = new DynamicParameters();
-            dynParms.Add(string.Format("{0}id", _parameterPrefix), id);
+            dynParms.Add("@id", id);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
@@ -189,7 +190,7 @@ namespace Dapper
             query = query.Replace("{RowsPerPage}", rowsPerPage.ToString());
             query = query.Replace("{OrderBy}", orderby);
             query = query.Replace("{WhereClause}", conditions);
-            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());
+            query = query.Replace("{Offset}", ((pageNumber - 1) * rowsPerPage).ToString());  
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetListPaged<{0}>: {1}", currenttype, query));
@@ -271,15 +272,11 @@ namespace Dapper
                 {
                     keyHasPredefinedValue = true;
                 }
-                sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
             }
 
             if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
             {
-                if (_dialect != Dialect.Oracle)
-                    sb.Append(";" + _getIdentitySql);
-                else
-                    sb.AppendFormat(_getIdentitySql, GetColumnName(idProps.First()));
+                sb.Append(";" + _getIdentitySql);
             }
             else
             {
@@ -294,26 +291,7 @@ namespace Dapper
                 await connection.ExecuteAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
                 return (TKey)idProps.First().GetValue(entityToInsert, null);
             }
-            if (_dialect == Dialect.Oracle)
-            {
-                if (keytype == typeof(Guid))
-                    throw new Exception("Invalid return type");
-                var param = new DynamicParameters(entityToInsert);
-                
-                if (keyHasPredefinedValue)
-                {
-                    var xr = await connection.ExecuteAsync(sb.ToString(), param, transaction, commandTimeout);
-                    return (TKey)idProps.First().GetValue(entityToInsert, null);
-                }
-                else
-                {
-                    param.Add(GetColumnName(idProps.First()), null, DbType.Int64, ParameterDirection.ReturnValue);
-                    var xr = await connection.ExecuteAsync(sb.ToString(), param, transaction, commandTimeout);
-                    var q = param.Get<dynamic>(GetColumnName(idProps.First()));
-                    return (TKey)q;
-                }               
-            }
-            var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);          
+            var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
             return (TKey)r.First().id;
         }
 
@@ -368,7 +346,7 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of records effected</returns>
-        public static Task<int> DeleteAsync<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static  Task<int> DeleteAsync<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToDelete).ToList();
 
@@ -381,7 +359,7 @@ namespace Dapper
             sb.AppendFormat("delete from {0}", name);
 
             sb.Append(" where ");
-            BuildWhere(sb, idProps, entityToDelete);
+            BuildWhere(sb, idProps,entityToDelete);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete: {0}", sb));
@@ -419,10 +397,10 @@ namespace Dapper
 
             var sb = new StringBuilder();
             sb.AppendFormat("Delete from {0}", name);
-            sb.AppendFormat(" where {0} = {1}Id", GetColumnName(onlyKey), _parameterPrefix);
+            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
 
             var dynParms = new DynamicParameters();
-            dynParms.Add(string.Format("{0}id", _parameterPrefix), id);
+            dynParms.Add("@id", id);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));
@@ -531,5 +509,10 @@ namespace Dapper
             return query.Single();
         }
 
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currenttype, sb));
+
+            return connection.ExecuteScalarAsync<int>(sb.ToString(), whereConditions, transaction, commandTimeout);
+        }
     }
 }

@@ -380,6 +380,30 @@ Example usage:
 var count = connection.RecordCount<User>("Where age > 20");
 ```
 
+Custom table and column name resolvers
+---------------------
+You can also change the format of table and column names, first create a class implimenting the ITableNameResolver and/or IColumnNameResolver interfaces
+```csharp 
+public class CustomResolver : SimpleCRUD.ITableNameResolver, SimpleCRUD.IColumnNameResolver
+{
+    public string ResolveTableName(Type type)
+    {
+        return string.Format("tbl_{0}", type.Name);
+    }
+
+    public string ResolveColumnName(PropertyInfo propertyInfo)
+    {
+        return string.Format("{0}_{1}", propertyInfo.DeclaringType.Name, propertyInfo.Name);
+    }
+}
+```
+then apply the resolvers when intializing your application
+```csharp 
+    var resolver = new CustomResolver();
+    SimpleCRUD.SetTableNameResolver(resolver);
+    SimpleCRUD.SetColumnNameResolver(resolver);
+```
+
 Database support
 ---------------------
 * There is an option to change database dialect. Default is Microsoft SQL Server but can be changed to PostgreSQL, SQLite or MySQL and possibly others down the road. 
@@ -416,7 +440,7 @@ The following attributes can be applied to properties in your model
 
 Do you have a comprehensive list of examples?
 ---------------------
-Dapper.SimpleCRUD has a basic test suite in the [test project](https://github.com/ericdc1/dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD.Tests/Tests.cs)
+Dapper.SimpleCRUD has a basic test suite in the [test project](https://github.com/ericdc1/dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUDTests/Tests.cs)
 
 There is also a sample website showing working examples of the the core functionality in the [demo website](https://github.com/ericdc1/Dapper.SimpleCRUD/tree/master/DemoWebsite)
 

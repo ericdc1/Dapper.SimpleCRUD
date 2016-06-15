@@ -109,6 +109,8 @@ namespace Dapper.SimpleCRUDTests
         public string Word { get; set; }
         [Column("colstringstrangeword")]
         public string StrangeWord { get; set; }
+        [Column("KeywordedProperty")]
+        public string Select { get; set; }
         [Editable(false)]
         public string ExtraProperty { get; set; }
     }
@@ -138,6 +140,14 @@ namespace Dapper.SimpleCRUDTests
         public int Age { get; set; }
     }
 
+    public class GradingScale
+    {
+        [Key]
+        public virtual int ScaleID { get; set; }
+        public virtual int? AppID { get; set; }
+        public virtual string ScaleName { get; set; }
+        public virtual bool IsDefault { get; set; }
+    }
 
     #endregion
 
@@ -203,6 +213,17 @@ namespace Dapper.SimpleCRUDTests
                 id.IsEqualTo(2147483650);
                 connection.Delete<BigCar>(id);
 
+            }
+        }
+
+        public void Eric()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = 6;
+                id = connection.Insert<int>(new GradingScale() { AppID = 22, IsDefault = true, ScaleName = "bob"});
+                id.IsEqualTo(1);
+                connection.Delete<GradingScale>(id);
             }
         }
 
@@ -647,6 +668,51 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute("Delete from Users");
             }
         }
+        public void TestRecordCountAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                int x = 0;
+                do
+                {
+                    connection.Insert(new User { Name = "Person " + x, Age = x, CreatedDate = DateTime.Now, ScheduledDayOff = DayOfWeek.Thursday });
+                    x++;
+                } while (x < 30);
+
+                var resultlist = connection.GetList<User>();
+                resultlist.Count().IsEqualTo(30);
+                connection.RecordCountAsync<User>().Result.IsEqualTo(30);
+
+                connection.RecordCountAsync<User>("where age = 10 or age = 11").Result.IsEqualTo(2);
+
+
+                connection.Execute("Delete from Users");
+            }
+
+        }
+
+        public void TestRecordCountByObjectAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                int x = 0;
+                do
+                {
+                    connection.Insert(new User { Name = "Person " + x, Age = x, CreatedDate = DateTime.Now, ScheduledDayOff = DayOfWeek.Thursday });
+                    x++;
+                } while (x < 30);
+
+                var resultlist = connection.GetList<User>();
+                resultlist.Count().IsEqualTo(30);
+                connection.RecordCountAsync<User>().Result.IsEqualTo(30);
+
+                connection.RecordCountAsync<User>(new { age = 10 }).Result.IsEqualTo(1);
+
+
+                connection.Execute("Delete from Users");
+            }
+
+        }
 
         //column attribute tests
 
@@ -808,7 +874,7 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-        public void TestRecordCount()
+        public void TestRecordCountWhereClause()
         {
             using (var connection = GetOpenConnection())
             {
@@ -824,6 +890,29 @@ namespace Dapper.SimpleCRUDTests
                 connection.RecordCount<User>().IsEqualTo(30);
 
                 connection.RecordCount<User>("where age = 10 or age = 11").IsEqualTo(2);
+
+
+                connection.Execute("Delete from Users");
+            }
+
+        }
+
+        public void TestRecordCountWhereObject()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                int x = 0;
+                do
+                {
+                    connection.Insert(new User { Name = "Person " + x, Age = x, CreatedDate = DateTime.Now, ScheduledDayOff = DayOfWeek.Thursday });
+                    x++;
+                } while (x < 30);
+
+                var resultlist = connection.GetList<User>();
+                resultlist.Count().IsEqualTo(30);
+                connection.RecordCount<User>().IsEqualTo(30);
+
+                connection.RecordCount<User>(new { age = 10}).IsEqualTo(1);
 
 
                 connection.Execute("Delete from Users");
