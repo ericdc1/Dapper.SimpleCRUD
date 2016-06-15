@@ -46,14 +46,14 @@ namespace Dapper
             {
                 case Dialect.PostgreSQL:
                     _dialect = Dialect.PostgreSQL;
-                    _encapsulation = "{0}";
+                    _encapsulation = "\"{0}\"";
                     _parameterPrefix = "@";
                     _getIdentitySql = string.Format("SELECT LASTVAL() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
                     break;
                 case Dialect.SQLite:
                     _dialect = Dialect.SQLite;
-                    _encapsulation = "{0}";
+                    _encapsulation = "\"{0}\"";
                     _parameterPrefix = "@";
                     _getIdentitySql = string.Format("SELECT LAST_INSERT_ROWID() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
@@ -67,7 +67,7 @@ namespace Dapper
                     break;
                 case Dialect.Oracle:
                     _dialect = Dialect.Oracle;
-                    _encapsulation = "{0}";
+                    _encapsulation = "\"{0}\"";
                     _parameterPrefix = ":";
                     _getIdentitySql = " returning {0} into :{0}";
                     _getPagedListSql = "select* from (select /*+ first_rows({RowsPerPage}) */ {SelectColumns}, row_number()  over(order by {OrderBy} )rn from {TableName} {WhereClause})" +
