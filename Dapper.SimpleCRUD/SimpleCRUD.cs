@@ -51,13 +51,13 @@ namespace Dapper
             {
                 case Dialect.PostgreSQL:
                     _dialect = Dialect.PostgreSQL;
-                    _encapsulation = "{0}";
+                    _encapsulation = "\"{0}\"";
                     _getIdentitySql = string.Format("SELECT LASTVAL() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
                     break;
                 case Dialect.SQLite:
                     _dialect = Dialect.SQLite;
-                    _encapsulation = "{0}";
+                    _encapsulation = "\"{0}\"";
                     _getIdentitySql = string.Format("SELECT LAST_INSERT_ROWID() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
                     break;
@@ -620,7 +620,7 @@ namespace Dapper
                 sb.Append(GetColumnName(propertyInfos.ElementAt(i)));
                 //if there is a custom column name add an "as customcolumnname" to the item so it maps properly
                     if (propertyInfos.ElementAt(i).GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType() == typeof(ColumnAttribute)) != null)
-                    sb.Append(" as " + propertyInfos.ElementAt(i).Name);
+                    sb.Append(" as " + Encapsulate(propertyInfos.ElementAt(i).Name));
                 addedAny = true;
 
             }
