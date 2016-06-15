@@ -137,6 +137,14 @@ namespace Dapper.SimpleCRUDTests
         public int Age { get; set; }
     }
 
+    public class GradingScale
+    {
+        [Key]
+        public virtual int ScaleID { get; set; }
+        public virtual int? AppID { get; set; }
+        public virtual string ScaleName { get; set; }
+        public virtual bool IsDefault { get; set; }
+    }
 
     #endregion
 
@@ -197,6 +205,17 @@ namespace Dapper.SimpleCRUDTests
                 id.IsEqualTo(2147483650);
                 connection.Delete<BigCar>(id);
 
+            }
+        }
+
+        public void Eric()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = 6;
+                id = connection.Insert<int>(new GradingScale() { AppID = 22, IsDefault = true, ScaleName = "bob"});
+                id.IsEqualTo(1);
+                connection.Delete<GradingScale>(id);
             }
         }
 
