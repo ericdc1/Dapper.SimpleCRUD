@@ -927,7 +927,7 @@ namespace Dapper
             {
                 var tableName = Encapsulate(type.Name);
 
-                var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType() == typeof(TableAttribute)) as dynamic;
+                var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType() == typeof(TableAttribute)) as TableAttribute;
                 if (tableattr != null)
                 {
                     tableName = Encapsulate(tableattr.Name);
@@ -935,7 +935,6 @@ namespace Dapper
                     {
                         if (!String.IsNullOrEmpty(tableattr.Schema))
                         {
-                            //tableName = String.Format("[{0}].[{1}]", tableattr.Schema, tableattr.Name);
                             string schemaName = Encapsulate(tableattr.Schema);
                             tableName = String.Format("{0}.{1}", schemaName, tableName);
                         }
@@ -956,11 +955,12 @@ namespace Dapper
             {
                 var columnName = Encapsulate(propertyInfo.Name);
 
-                var columnattr = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType() == typeof(ColumnAttribute)) as dynamic;
+                var columnattr = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType() == typeof(ColumnAttribute)) as ColumnAttribute;
                 if (columnattr != null)
                 {
                     columnName = Encapsulate(columnattr.Name);
-                    Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
+                    if (Debugger.IsAttached)
+                        Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
                 }
                 return columnName;
             }
