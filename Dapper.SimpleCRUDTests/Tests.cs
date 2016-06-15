@@ -108,6 +108,8 @@ namespace Dapper.SimpleCRUDTests
         public string Word { get; set; }
         [Column("colstringstrangeword")]
         public string StrangeWord { get; set; }
+        [Column("KeywordedProperty")]
+        public string Select { get; set; }
         [Editable(false)]
         public string ExtraProperty { get; set; }
     }
@@ -795,7 +797,7 @@ namespace Dapper.SimpleCRUDTests
                     x++;
                 } while (x < 10);
 
-                connection.DeleteList<User>(new {age = 9});
+                connection.DeleteList<User>(new { age = 9 });
                 var resultlist = connection.GetList<User>();
                 resultlist.Count().IsEqualTo(9);
                 connection.Execute("Delete from Users");
@@ -880,19 +882,19 @@ namespace Dapper.SimpleCRUDTests
                 var itemId = connection.Insert(new IgnoreColumns() { IgnoreInsert = "OriginalInsert", IgnoreUpdate = "OriginalUpdate", IgnoreSelect = "OriginalSelect", IgnoreAll = "OriginalAll" });
                 var item = connection.Get<IgnoreColumns>(itemId);
                 //verify insert column was ignored
-                item.IgnoreInsert.IsNull(); 
+                item.IgnoreInsert.IsNull();
 
                 //verify select value wasn't selected 
                 item.IgnoreSelect.IsNull();
 
                 //verify the column is really there via straight dapper
-                var fromDapper = connection.Query<IgnoreColumns>("Select * from IgnoreColumns where Id = @Id", new{id = itemId}).First();
+                var fromDapper = connection.Query<IgnoreColumns>("Select * from IgnoreColumns where Id = @Id", new { id = itemId }).First();
                 fromDapper.IgnoreSelect.IsEqualTo("OriginalSelect");
-               
+
                 //change value and update
                 item.IgnoreUpdate = "ChangedUpdate";
                 connection.Update(item);
-                
+
                 //verify that update didn't take effect
                 item = connection.Get<IgnoreColumns>(itemId);
                 item.IgnoreUpdate.IsEqualTo("OriginalUpdate");
