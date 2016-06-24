@@ -731,7 +731,8 @@ namespace Dapper
                     }
                 }
                 sb.AppendFormat(
-                    useIsNull ? "{0} is null" : "{0} = @{1}",
+                    //useIsNull ? "{0} is null" : "{0} = @{1}",
+                    useIsNull ? "{0} is null" : "{0} = {1}{2}",
                     //GetColumnName(propertyToUse),
                     GetColumnName(propertyToUse), _parameterPrefix,
                     propertyInfos.ElementAt(i).Name);
