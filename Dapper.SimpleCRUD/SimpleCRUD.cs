@@ -740,6 +740,7 @@ namespace Dapper
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
             }
+
         }
 
         //build insert values which include all properties in the class that are:
