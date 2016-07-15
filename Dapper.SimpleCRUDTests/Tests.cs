@@ -346,7 +346,7 @@ namespace Dapper.SimpleCRUDTests
             {
                 var id = connection.Insert(new User { Name = "TestGetWithNotMappedProperty", Age = 10, NotMappedInt = 1000 });
                 var user = connection.Get<User>(id);
-                user.NotMappedInt.IsNull();
+                user.NotMappedInt.IsEqualTo(0);
                 connection.Execute("Delete from Users");
             }
         }
@@ -357,7 +357,7 @@ namespace Dapper.SimpleCRUDTests
             {
                 var id = connection.Insert(new User { Name = "TestInsertWithNotMappedProperty", Age = 10, CreatedDate = new DateTime(2001, 1, 1), NotMappedInt = 1000 });
                 var user = connection.Get<User>(id);
-                user.NotMappedInt.IsNull();
+                user.NotMappedInt.IsEqualTo(0);
                 connection.Execute("Delete from Users");
             }
         }
@@ -374,7 +374,7 @@ namespace Dapper.SimpleCRUDTests
                 connection.Update(user);
                 user = connection.Get<User>(id);
 
-                user.NotMappedInt.IsNull();
+                user.NotMappedInt.IsEqualTo(0);
 
                 connection.Execute("Delete from Users");
             }
