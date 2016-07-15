@@ -437,6 +437,8 @@ The following attributes can be applied to properties in your model
 
 [IgnoreUpdate] - Excludes the property from updates
 
+[NotMapped] - Excludes the property from all operations
+
 
 Do you have a comprehensive list of examples?
 ---------------------
