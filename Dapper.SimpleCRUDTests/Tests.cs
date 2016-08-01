@@ -24,6 +24,9 @@ namespace Dapper.SimpleCRUDTests
 
         [ReadOnly(true)]
         public DateTime CreatedDate { get; set; }
+
+        [NotMapped]
+        public int NotMappedInt { get; set; }
     }
 
     [Table("Users")]
@@ -336,6 +339,47 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute("Delete from Users");
             }
         }
+
+        public void TestGetWithNotMappedProperty()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.Insert(new User { Name = "TestGetWithNotMappedProperty", Age = 10, NotMappedInt = 1000 });
+                var user = connection.Get<User>(id);
+                user.NotMappedInt.IsEqualTo(0);
+                connection.Execute("Delete from Users");
+            }
+        }
+
+        public void TestInsertWithNotMappedProperty()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.Insert(new User { Name = "TestInsertWithNotMappedProperty", Age = 10, CreatedDate = new DateTime(2001, 1, 1), NotMappedInt = 1000 });
+                var user = connection.Get<User>(id);
+                user.NotMappedInt.IsEqualTo(0);
+                connection.Execute("Delete from Users");
+            }
+        }
+
+        public void TestUpdateWithNotMappedProperty()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.Insert(new User { Name = "TestUpdateWithNotMappedProperty", Age = 10 });
+                var user = connection.Get<User>(id);
+                user.Age = 11;
+                user.CreatedDate = new DateTime(2001, 1, 1);
+                user.NotMappedInt = 1234;
+                connection.Update(user);
+                user = connection.Get<User>(id);
+
+                user.NotMappedInt.IsEqualTo(0);
+
+                connection.Execute("Delete from Users");
+            }
+        }
+
 
         public void InsertWithSpecifiedKey()
         {

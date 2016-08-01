@@ -640,14 +640,14 @@ namespace Dapper
             }
         }
 
-        //build select clause based on list of properties skipping ones with the IgnoreSelect attribute
+        //build select clause based on list of properties skipping ones with the IgnoreSelect and NotMapped attribute
         private static void BuildSelect(StringBuilder sb, IEnumerable<PropertyInfo> props)
         {
             var propertyInfos = props as IList<PropertyInfo> ?? props.ToList();
             var addedAny = false;
             for (var i = 0; i < propertyInfos.Count(); i++)
             {
-                if (propertyInfos.ElementAt(i).GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreSelectAttribute).Name)) continue;
+                if (propertyInfos.ElementAt(i).GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreSelectAttribute).Name || attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
 
                 if (addedAny)
                     sb.Append(",");
@@ -700,6 +700,7 @@ namespace Dapper
         //Not marked with the Editable(false) attribute
         //Not marked with the [Key] attribute (without required attribute)
         //Not marked with [IgnoreInsert]
+        //Not marked with [NotMapped]
         private static void BuildInsertValues(object entityToInsert, StringBuilder sb)
         {
             var props = GetScaffoldableProperties(entityToInsert).ToArray();
@@ -711,6 +712,7 @@ namespace Dapper
                       && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
                     continue;
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreInsertAttribute).Name)) continue;
+                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))) continue;
 
                 if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
@@ -729,6 +731,7 @@ namespace Dapper
         //marked with the [Key] attribute
         //marked with [IgnoreInsert]
         //named Id
+        //marked with [NotMapped]
         private static void BuildInsertParameters(object entityToInsert, StringBuilder sb)
         {
             var props = GetScaffoldableProperties(entityToInsert).ToArray();
@@ -741,6 +744,7 @@ namespace Dapper
                       && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
                     continue;
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreInsertAttribute).Name)) continue;
+                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
 
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))) continue;
                 if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
@@ -807,6 +811,7 @@ namespace Dapper
         //Not marked with the Key attribute
         //Not marked ReadOnly
         //Not marked IgnoreInsert
+        //Not marked NotMapped
         private static IEnumerable<PropertyInfo> GetUpdateableProperties(object entity)
         {
             var updateableProperties = GetScaffoldableProperties(entity);
@@ -818,6 +823,8 @@ namespace Dapper
             updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => (attr.GetType().Name == typeof(ReadOnlyAttribute).Name) && IsReadOnly(p)) == false);
             //remove ones with IgnoreUpdate attribute
             updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreUpdateAttribute).Name) == false);
+            //remove ones that are not mapped
+            updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(NotMappedAttribute).Name) == false);
 
             return updateableProperties;
         }
@@ -1019,6 +1026,15 @@ namespace Dapper
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
     public class KeyAttribute : Attribute
+    {
+    }
+
+    /// <summary>
+    /// Optional NotMapped attribute.
+    /// You can use the System.ComponentModel.DataAnnotations version in its place to specify that the property is not mapped
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property)]
+    public class NotMappedAttribute : Attribute
     {
     }
 
