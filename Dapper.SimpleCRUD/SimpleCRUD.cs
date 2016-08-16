@@ -192,6 +192,26 @@ namespace Dapper
         /// <returns>Gets a list of entities with optional SQL where conditions</returns>
         public static IEnumerable<T> GetList<T>(this IDbConnection connection, string conditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            return connection.GetList<T>(conditions, null, transaction, commandTimeout);
+        }
+
+        /// <summary>
+        /// <para>By default queries the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>conditions is an SQL where clause and/or order by clause ex: "where name = @Name and age > @Age"</para>
+        /// <para>param is an anonymous type containig where clause parameters ex: new {Name = "bob", Age = 18}</para>
+        /// <para>Supports transaction and command timeout</para>
+        /// <para>Returns a list of entities that match where conditions</para>
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="conditions"></param>
+        /// <param name="param"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
+        /// <returns>Gets a list of entities with optional SQL where conditions</returns>
+        public static IEnumerable<T> GetList<T>(this IDbConnection connection, string conditions, object param = null, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
             if (!idProps.Any())
@@ -210,7 +230,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb));
 
-            return connection.Query<T>(sb.ToString(), null, transaction, true, commandTimeout);
+            return connection.Query<T>(sb.ToString(), param, transaction, true, commandTimeout);
         }
 
         /// <summary>
