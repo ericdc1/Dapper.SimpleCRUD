@@ -359,7 +359,7 @@ namespace Dapper
             sb.AppendFormat("delete from {0}", name);
 
             sb.Append(" where ");
-            BuildWhere(sb, idProps,entityToDelete);
+            BuildWhere(sb, idProps, entityToDelete);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete: {0}", sb));

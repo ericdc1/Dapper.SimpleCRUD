@@ -115,24 +115,40 @@ namespace Dapper
 
             if (!idProps.Any())
                 throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Get<T> only supports an entity with a single [Key] or Id property");
 
-            var onlyKey = idProps.First();
             var name = GetTableName(currenttype);
+            var selectprops = GetAllProperties(currenttype).ToArray();
+            if (!selectprops.Any())
+                throw new ArgumentException("Entity must have DataAnnotations attributes to be selected");
+
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(currenttype)).ToArray());
             sb.AppendFormat(" from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.Append(" where ");
+            BuildWhere(sb, idProps, (T)Activator.CreateInstance(currenttype), null);
 
             var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            if (idProps.Count == 1)
+                dynParms.Add("@" + idProps.First().Name, id); 
+            else 
+                foreach (PropertyInfo pi in idProps)
+                {
+                    dynParms.Add("@" + pi.Name, pi.GetValue(id, null));
+                }
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
-
+            {
+                if (idProps.Count == 1)
+                {
+                    Trace.WriteLine(String.Format("Get<{0}>: {1} with Id(s): {2}", currenttype, sb, id));
+                }
+                else
+                {
+                    Trace.WriteLine(String.Format("Get<{0}>: {1} ", currenttype, sb));
+                }
+            }
             return connection.Query<T>(sb.ToString(), dynParms, transaction, true, commandTimeout).FirstOrDefault();
         }
 
@@ -159,16 +175,21 @@ namespace Dapper
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            var whereprops = GetAllProperties(whereConditions).ToArray();
+            var selectprops = GetScaffoldableProperties((T)Activator.CreateInstance(currenttype)).ToArray();
+            var whereprops = GetAllProperties(whereConditions).ToArray();            
+
+            if (!selectprops.Any())
+                throw new ArgumentException("Entity must have properties to be selected");
+
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect(sb, selectprops);
             sb.AppendFormat(" from {0}", name);
 
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)), whereConditions);
+                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(currenttype), whereConditions);
             }
 
             if (Debugger.IsAttached)
@@ -319,8 +340,6 @@ namespace Dapper
 
             if (!idProps.Any())
                 throw new ArgumentException("Insert<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Insert<T> only supports an entity with a single [Key] or Id property");
 
             var keyHasPredefinedValue = false;
             var baseType = typeof(TKey);
@@ -758,6 +777,12 @@ namespace Dapper
         {
             if (entity == null) entity = new { };
             return entity.GetType().GetProperties();
+        }
+
+        //Get all properties in an entity that has a value
+        private static IEnumerable<PropertyInfo> GetAllPropertiesWithValue(Type type, object entity)
+        {
+            return GetAllProperties(type).Where(p => p.GetValue(entity, null) != null);
         }
 
         //Get all properties that are not decorated with the Editable(false) attribute

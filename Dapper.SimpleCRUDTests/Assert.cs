@@ -49,5 +49,13 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+
+        public static void IsNotNull(this object obj)
+        {
+            if (obj == null)
+            {
+                throw new ApplicationException("Expected not null");
+            }
+        }
     }
 }

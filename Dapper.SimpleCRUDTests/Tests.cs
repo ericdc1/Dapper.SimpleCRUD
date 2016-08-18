@@ -139,6 +139,21 @@ namespace Dapper.SimpleCRUDTests
         public int Age { get; set; }
     }
 
+    [Table("CompositePK")]
+    public class CompositePK
+    {
+        [Key]
+        [Required]
+        [Column("CompositePK1ID")]
+        public int Id1 { get; set; }
+        
+        [Key]
+        [Required]
+        [Column("CompositePK2ID")]
+        public int Id2 { get; set; }
+        public string Description { get; set; }        
+    }
+
     #endregion
 
     public class Tests
@@ -198,6 +213,17 @@ namespace Dapper.SimpleCRUDTests
                 id.IsEqualTo(2147483650);
                 connection.Delete<BigCar>(id);
 
+            }
+        }
+
+        public void CompositePrimaryKey()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new CompositePK { Id1 = 1, Id2 = 1, Description = "CompositePK Test" });
+                var id = connection.Get<CompositePK>(new CompositePK { Id1 = 1, Id2 = 1 });
+                id.IsNotNull();                
+                connection.Delete<CompositePK>(id);
             }
         }
 
