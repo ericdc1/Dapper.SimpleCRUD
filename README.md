@@ -1,4 +1,8 @@
 Dapper.SimpleCRUD - simple CRUD helpers for Dapper
+
+This package enhances Dapper.SimpleCRUD with functionality for Oracle.
+
+
 ========================================
 Features
 --------
