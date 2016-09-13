@@ -73,7 +73,7 @@ namespace Dapper
                     break;
                 case Dialect.Oracle:
                     _dialect = Dialect.Oracle;
-                    _encapsulation = "\"{0}\"";
+                    _encapsulation = "{0}";
                     _parameterPrefix = ":";
                     _getIdentitySql = " returning {0} into :{0}";
                     _getPagedListSql = "select* from (select /*+ first_rows({RowsPerPage}) */ {SelectColumns}, row_number()  over(order by {OrderBy} )rn from {TableName} {WhereClause})" +
