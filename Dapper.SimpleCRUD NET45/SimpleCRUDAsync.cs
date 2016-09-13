@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;
+using System.Reflection;
 
 namespace Dapper
 {
@@ -34,26 +35,42 @@ namespace Dapper
             var idProps = GetIdProperties(currenttype).ToList();
 
             if (!idProps.Any())
-                throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Get<T> only supports an entity with a single [Key] or Id property");
+                throw new ArgumentException(ExceptionMessageKeyMissing);
 
-            var onlyKey = idProps.First();
             var name = GetTableName(currenttype);
+
+            var selectprops = GetAllProperties(currenttype).ToArray();
+            if (!selectprops.Any())
+                throw new ArgumentException("Entity must have DataAnnotations attributes to be selected");
 
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(currenttype)).ToArray());
             sb.AppendFormat(" from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.Append(" where ");
+            BuildWhere(sb, idProps, (T)Activator.CreateInstance(currenttype), null);            
 
             var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            if (idProps.Count == 1)
+                dynParms.Add("@" + idProps.First().Name, id);
+            else
+                foreach (PropertyInfo pi in idProps)
+                {
+                    dynParms.Add("@" + pi.Name, pi.GetValue(id, null));
+                }
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
-
+            {
+                if (idProps.Count == 1)
+                {
+                    Trace.WriteLine(String.Format("Get<{0}>: {1} with Id(s): {2}", currenttype, sb, id));
+                }
+                else
+                {
+                    Trace.WriteLine(String.Format("Get<{0}>: {1} ", currenttype, sb));
+                }
+            }
             var query = await connection.QueryAsync<T>(sb.ToString(), dynParms, transaction, commandTimeout);
             return query.FirstOrDefault();
         }
@@ -77,7 +94,7 @@ namespace Dapper
             var idProps = GetIdProperties(currenttype).ToList();
 
             if (!idProps.Any())
-                throw new ArgumentException("Entity must have at least one [Key] property");
+                throw new ArgumentException(ExceptionMessageKeyMissing);
 
             var name = GetTableName(currenttype);
 
@@ -118,7 +135,7 @@ namespace Dapper
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
             if (!idProps.Any())
-                throw new ArgumentException("Entity must have at least one [Key] property");
+                throw new ArgumentException(ExceptionMessageKeyMissing);
 
             var name = GetTableName(currenttype);
 
@@ -236,9 +253,7 @@ namespace Dapper
             var idProps = GetIdProperties(entityToInsert).ToList();
 
             if (!idProps.Any())
-                throw new ArgumentException("Insert<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Insert<T> only supports an entity with a single [Key] or Id property");
+                throw new ArgumentException(ExceptionMessageKeyMissing);
 
             var keyHasPredefinedValue = false;
             var baseType = typeof(TKey);
@@ -314,7 +329,7 @@ namespace Dapper
             var idProps = GetIdProperties(entityToUpdate).ToList();
 
             if (!idProps.Any())
-                throw new ArgumentException("Entity must have at least one [Key] or Id property");
+                throw new ArgumentException(ExceptionMessageKeyMissing);
 
             var name = GetTableName(entityToUpdate);
 
@@ -346,12 +361,12 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of records effected</returns>
-        public static  Task<int> DeleteAsync<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static Task<int> DeleteAsync<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToDelete).ToList();
 
             if (!idProps.Any())
-                throw new ArgumentException("Entity must have at least one [Key] or Id property");
+                throw new ArgumentException(ExceptionMessageKeyMissing);
 
             var name = GetTableName(entityToDelete);
 
@@ -388,22 +403,36 @@ namespace Dapper
 
 
             if (!idProps.Any())
-                throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Delete<T> only supports an entity with a single [Key] or Id property");
-
-            var onlyKey = idProps.First();
+                throw new ArgumentException(ExceptionMessageKeyMissing);            
+            
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
             sb.AppendFormat("Delete from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.Append(" where ");
+            BuildWhere(sb, idProps, currenttype, null);
 
             var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            if (idProps.Count == 1)
+                dynParms.Add("@" + idProps.First().Name, id);
+            else
+                foreach (PropertyInfo pi in idProps)
+                {
+                    dynParms.Add("@" + pi.Name, pi.GetValue(id, null));
+                }
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));
+            {
+                if (idProps.Count == 1)
+                {
+                    Trace.WriteLine(String.Format("Delete<{0}>: {1} with Id(s): {2}", currenttype, sb, id));
+                }
+                else
+                {
+                    Trace.WriteLine(String.Format("Delete<{0}>: {1} ", currenttype, sb));
+                }
+            }
+
 
             return connection.ExecuteAsync(sb.ToString(), dynParms, transaction, commandTimeout);
         }

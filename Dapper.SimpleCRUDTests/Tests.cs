@@ -582,12 +582,30 @@ namespace Dapper.SimpleCRUDTests
                 connection.InsertAsync(new User { Name = "TestMultiInsertASync2", Age = 10 });
                 connection.InsertAsync(new User { Name = "TestMultiInsertASync3", Age = 10 });
                 connection.InsertAsync(new User { Name = "TestMultiInsertASync4", Age = 11 });
+
                 System.Threading.Thread.Sleep(300);
                 //tiny wait to let the inserts happen
                 var list = connection.GetList<User>(new { Age = 10 });
                 list.Count().IsEqualTo(3);
                 connection.Execute("Delete from Users");
 
+            }
+        }
+
+        public void TestMultiInsertCompositePKASync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.InsertAsync(new CompositePK { Id1 = 1, Id2 = 1, Description = "CompositePK Test 1-1" });
+                connection.InsertAsync(new CompositePK { Id1 = 2, Id2 = 1, Description = "CompositePK Test 2-1" });
+                connection.InsertAsync(new CompositePK { Id1 = 1, Id2 = 2, Description = "CompositePK Test 1-2" });
+                connection.InsertAsync(new CompositePK { Id1 = 2, Id2 = 2, Description = "CompositePK Test 2-2" });
+
+                System.Threading.Thread.Sleep(300);
+                //tiny wait to let the inserts happen
+                var list = connection.GetList<CompositePK>(new { Id1 = 1 });
+                list.Count().IsEqualTo(2);
+                connection.Execute("Delete from CompositePK");
             }
         }
 
@@ -615,6 +633,17 @@ namespace Dapper.SimpleCRUDTests
                 var user = connection.GetAsync<User>(id);
                 user.Result.Name.IsEqualTo("TestSimpleGetAsync");
                 connection.Delete<User>(id);
+            }
+        }
+
+        public void TestSimpleCompositePKGetAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.InsertAsync(new CompositePK { Id1 = 1, Id2 = 1, Description = "CompositePK Test 1-1" });
+                var id = connection.GetAsync<CompositePK>(new CompositePK { Id1 = 1, Id2 = 1 });
+                id.Result.Description.IsEqualTo("CompositePK Test 1-1");
+                connection.Delete<CompositePK>(id.Result);
             }
         }
 
