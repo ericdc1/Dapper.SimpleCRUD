@@ -751,10 +751,7 @@ namespace Dapper
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType() == typeof(IgnoreInsertAttribute))) continue;
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType() == typeof(ReadOnlyAttribute) && IsReadOnly(property))) continue;
 
-                if (property.Name == "Id" && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != "RequiredAttribute") && property.PropertyType != typeof(Guid)) continue;
-                sb.AppendFormat("{0}{1}", _parameterPrefix, property.Name);
                 if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType() != typeof(RequiredAttribute)) && property.PropertyType != typeof(Guid)) continue;
-
                 sb.AppendFormat("{0}{1}", _parameterPrefix, property.Name);
                 if (i < props.Count() - 1)
                     sb.Append(", ");

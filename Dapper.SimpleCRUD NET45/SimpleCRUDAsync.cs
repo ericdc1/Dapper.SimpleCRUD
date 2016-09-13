@@ -289,7 +289,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
-           
+
             if (_dialect == Dialect.Oracle)
             {
                 if (keytype == typeof(Guid))
@@ -370,7 +370,7 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of records effected</returns>
-        public static  Task<int> DeleteAsync<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static Task<int> DeleteAsync<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToDelete).ToList();
 
@@ -383,7 +383,7 @@ namespace Dapper
             sb.AppendFormat("delete from {0}", name);
 
             sb.Append(" where ");
-            BuildWhere(sb, idProps,entityToDelete);
+            BuildWhere(sb, idProps, entityToDelete);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete: {0}", sb));
@@ -538,5 +538,5 @@ namespace Dapper
 
             return connection.ExecuteScalarAsync<int>(sb.ToString(), whereConditions, transaction, commandTimeout);
         }
-    }
+}
 }
