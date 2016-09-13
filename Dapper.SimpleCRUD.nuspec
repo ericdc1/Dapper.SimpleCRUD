@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>Dapper.SimpleCRUD</id>
-    <version>1.10.0</version>
+    <version>1.12.0</version>
     <title>Dapper.SimpleCRUD</title>
     <authors>Eric Coffman</authors>
     <owners>Eric Coffman</owners>
@@ -40,8 +40,11 @@
 	* version 1.9.2 Fix for async insert with specified value in primary key
 	* version 1.9.3 Fix for issue with GetPagedList with custom column name for primary key - Thanks haleaurelian. Added DeleteList with anonymous object
 	* version 1.10.0 Added IgnoreUpdate, IgnoreInsert, and IgnoreSelect attributes 
+	* version 1.11.0 Added resolvers PR, typed attributes, merged recordcount where conditions PR, performance improvements PR   
+	* version 1.11.1 Bug fix for resolvers to allow attributes from different namespaces (SimpleCRUD and Data Annotations)
+	* version 1.12.0 Added notmapped attribute to match DataAnnotations (thanks Mattykins). Allow insert with string primary key (thanks xalikoutis)
 	</releaseNotes>
-    <copyright>Copyright Eric Coffman 2015</copyright>
+    <copyright>Copyright Eric Coffman 2016</copyright>
     <tags>orm dapper micro-orm CRUD</tags>
   <iconUrl>https://raw.githubusercontent.com/ericdc1/Dapper.SimpleCRUD/master/images/SimpleCRUD-200x200.png</iconUrl>
     <dependencies>

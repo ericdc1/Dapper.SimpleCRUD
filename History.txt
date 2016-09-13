@@ -29,3 +29,6 @@
 * version 1.9.2  Fix for async insert with specified value in primary key
 * version 1.9.3  Fix for issue with GetPagedList with custom column name for primary key - Thanks haleaurelian. Added DeleteList with anonymous object
 * version 1.10.0 Added IgnoreUpdate, IgnoreInsert, and IgnoreSelect attributes 
+* version 1.11.0 Added resolvers PR, typed attributes, merged recordcount where conditions PR, performance improvements PR   
+* version 1.11.1 Bug fix for resolvers to allow attributes from different namespaces (SimpleCRUD and Data Annotations)
+* version 1.12.0 Added notmapped attribute to match DataAnnotations (thanks Mattykins). Allow insert with string primary key (thanks xalikoutis)
