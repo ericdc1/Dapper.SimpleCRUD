@@ -1,13 +1,11 @@
-﻿using System.ComponentModel;
+﻿using MySql.Data.MySqlClient;
+using Npgsql;
+using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Data.SQLite;
-using System.Diagnostics;
 using System.Linq;
-using System.Collections.Generic;
-using System;
-using MySql.Data.MySqlClient;
-using Npgsql;
 
 namespace Dapper.SimpleCRUDTests
 {
@@ -292,6 +290,21 @@ namespace Dapper.SimpleCRUDTests
             {
                 connection.Insert(new User { Name = "TestGetListWithoutWhere", Age = 10 });
                 var user = connection.GetList<User>();
+                user.Count().IsEqualTo(1);
+                connection.Execute("Delete from Users");
+            }
+        }
+
+        public void TestFilteredWithSQLDynamicParamsGetList()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new User { Name = "TestFilteredWithSQLGetList1", Age = 10 });
+                connection.Insert(new User { Name = "TestFilteredWithSQLGetList2", Age = 10 });
+                connection.Insert(new User { Name = "TestFilteredWithSQLGetList3", Age = 10 });
+                connection.Insert(new User { Name = "TestFilteredWithSQLGetList4", Age = 11 });
+
+                var user = connection.GetList<User>("where Age > @Age", new { Age = 10 });
                 user.Count().IsEqualTo(1);
                 connection.Execute("Delete from Users");
             }
@@ -778,6 +791,24 @@ namespace Dapper.SimpleCRUDTests
                 } while (x < 30);
 
                 connection.DeleteList<User>("Where age > 9");
+                var resultlist = connection.GetList<User>();
+                resultlist.Count().IsEqualTo(10);
+                connection.Execute("Delete from Users");
+            }
+        }
+
+        public void TestDeleteListWithWhereClauseDynamicParams()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                int x = 0;
+                do
+                {
+                    connection.Insert(new User { Name = "Person " + x, Age = x, CreatedDate = DateTime.Now, ScheduledDayOff = DayOfWeek.Thursday });
+                    x++;
+                } while (x < 30);
+
+                connection.DeleteList<User>("Where age > @Age", new { Age = 9 });
                 var resultlist = connection.GetList<User>();
                 resultlist.Count().IsEqualTo(10);
                 connection.Execute("Delete from Users");
