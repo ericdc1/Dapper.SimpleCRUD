@@ -18,15 +18,15 @@ This extension adds the following 8 helpers:
 - Get(id) - gets one record based on the primary key 
 - GetList&lt;Type&gt;() - gets list of records all records from a table
 - GetList&lt;Type&gt;(anonymous object for where clause) - gets list of all records matching the where options
-- GetList&lt;Type&gt;(string for conditions) - gets list of all records matching the conditions
-- GetListPaged&lt;Type&gt;(int pagenumber, int itemsperpage, string for conditions, string for order) - gets paged list of all records matching the conditions
+- GetList&lt;Type&gt;(string for conditions, anonymous object with parameters) - gets list of all records matching the conditions
+- GetListPaged&lt;Type&gt;(int pagenumber, int itemsperpage, string for conditions, string for order, anonymous object with parameters) - gets paged list of all records matching the conditions
 - Insert(entity) - Inserts a record and returns the new primary key
 - Update(entity) - Updates a record
 - Delete&lt;Type&gt;(id) - Deletes a record based on primary key
 - Delete(entity) - Deletes a record based on the typed entity
 - DeleteList&lt;Type&gt;(anonymous object for where clause) - deletes all records matching the where options
-- DeleteList&lt;Type&gt;(string for conditions) - deletes list of all records matching the conditions
-- RecordCount&lt;Type&gt;(string for conditions) -gets count of all records matching the conditions 
+- DeleteList&lt;Type&gt;(string for conditions, anonymous object with parameters) - deletes list of all records matching the conditions
+- RecordCount&lt;Type&gt;(string for conditions,anonymous object with parameters) -gets count of all records matching the conditions 
 
 
 For projects targeting .NET 4.5 or later, the following 8 helpers exist for async operations:
@@ -34,15 +34,15 @@ For projects targeting .NET 4.5 or later, the following 8 helpers exist for asyn
 - GetAsync(id) - gets one record based on the primary key 
 - GetListAsync&lt;Type&gt;() - gets list of records all records from a table
 - GetListAsync&lt;Type&gt;(anonymous object for where clause) - gets list of all records matching the where options
-- GetListAsync&lt;Type&gt;(string for conditions) - gets list of all records matching the conditions
-- GetListPagedAsync&lt;Type&gt;(int pagenumber, int itemsperpage, string for conditions, string for order)  - gets paged list of all records matching the conditions
+- GetListAsync&lt;Type&gt;(string for conditions, anonymous object with parameters) - gets list of all records matching the conditions
+- GetListPagedAsync&lt;Type&gt;(int pagenumber, int itemsperpage, string for conditions, string for order, anonymous object with parameters)  - gets paged list of all records matching the conditions
 - InsertAsync(entity) - Inserts a record and returns the new primary key
 - UpdateAsync(entity) - Updates a record
 - DeleteAsync&lt;Type&gt;(id) - Deletes a record based on primary key
 - DeleteAsync(entity) - Deletes a record based on the typed entity
 - DeleteListAsync&lt;Type&gt;(anonymous object for where clause) - deletes all records matching the where options
-- DeleteListAsync&lt;Type&gt;(string for conditions) - deletes list of all records matching the conditions
-- RecordCountAsync&lt;Type&gt;(string for conditions) -gets count of all records matching the conditions 
+- DeleteListAsync&lt;Type&gt;(string for conditions, anonymous object with parameters) - deletes list of all records matching the conditions
+- RecordCountAsync&lt;Type&gt;(string for conditions, anonymous object with parameters) -gets count of all records matching the conditions 
 
 If you need something more complex use Dapper's Query or Execute methods!
 
@@ -165,7 +165,7 @@ Execute a query with a where clause and map the results to a strongly typed List
 ------------------------------------------------------------
 
 ```csharp
-public static IEnumerable<T> GetList<T>(this IDbConnection connection, string conditions)
+public static IEnumerable<T> GetList<T>(this IDbConnection connection, string conditions, object parameters = null)
 ```
 
 Example usage: 
@@ -179,6 +179,12 @@ public class User
 }
   
 var user = connection.GetList<User>("where age = 10 or Name like '%Smith%'");  
+
+or 
+
+var encodeForLike = term => term.Replace("[", "[[]").Replace("%", "[%]");
+string likename = "%" + encodeForLike("Smith") + "%";
+var user = connection.GetList<User>("where age = @Age or Name like @Name", new {Age = 10, Name = likename});  
 ```
 Results in 
 ```sql
@@ -193,7 +199,7 @@ Execute a query with a where clause and map the results to a strongly typed List
 ------------------------------------------------------------
 
 ```csharp
-public static IEnumerable<T> GetListPaged<T>(this IDbConnection connection, int pageNumber, int rowsPerPage, string conditions, string orderby)
+public static IEnumerable<T> GetListPaged<T>(this IDbConnection connection, int pageNumber, int rowsPerPage, string conditions, string orderby, object parameters = null)
 ```
 
 Example usage: 
@@ -358,7 +364,7 @@ Delete multiple records with where clause
 ------------------------------------------------------------
 
 ```csharp
-public static int DeleteList<T>(this IDbConnection connection, string conditions, IDbTransaction transaction = null, int? commandTimeout = null)
+public static int DeleteList<T>(this IDbConnection connection, string conditions, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
 ```
 
 Example usage: 
@@ -366,18 +372,26 @@ Example usage:
 ```csharp     
 connection.DeleteList<User>("Where age > 20");
 ```
+or
+```csharp     
+connection.DeleteList<User>("Where age > @Age", new {Age = 20});
+```
 
 Get count of records 
 ------------------------------------------------------------
 
 ```csharp
-public static int RecordCount<T>(this IDbConnection connection, string conditions = "")
+public static int RecordCount<T>(this IDbConnection connection, string conditions = "", object parameters = null)
 ```
 
 Example usage: 
 
 ```csharp     
 var count = connection.RecordCount<User>("Where age > 20");
+```
+or
+```csharp     
+var count = connection.RecordCount<User>("Where age > @Age", new {Age = 20});
 ```
 
 Custom table and column name resolvers
