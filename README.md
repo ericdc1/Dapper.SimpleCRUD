@@ -179,9 +179,11 @@ public class User
 }
   
 var user = connection.GetList<User>("where age = 10 or Name like '%Smith%'");  
+```
 
-or 
+or with parameters
 
+```csharp
 var encodeForLike = term => term.Replace("[", "[[]").Replace("%", "[%]");
 string likename = "%" + encodeForLike("Smith") + "%";
 var user = connection.GetList<User>("where age = @Age or Name like @Name", new {Age = 10, Name = likename});  
@@ -192,7 +194,7 @@ Select * from [User] where age = 10 or Name like '%Smith%'
 ```
 
 Notes:
-- This uses your raw SQL so be careful to not create SQL injection holes
+- This uses your raw SQL so be careful to not create SQL injection holes or use the Parameters option
 - There is nothing stopping you from adding an order by clause using this method 
 
 Execute a query with a where clause and map the results to a strongly typed List with Paging
@@ -218,9 +220,17 @@ Results in (SQL Server dialect)
 ```sql
 SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY Name desc) AS PagedNumber, Id, Name, Age FROM [User] where age = 10 or Name like '%Smith%') AS u WHERE PagedNUMBER BETWEEN ((1 - 1) * 10 + 1) AND (1 * 10)
 ```
+or with parameters
+```csharp
+var user = connection.GetListPaged<User>(1,10,"where age = @Age","Name desc", new {Age = 10});  
+```
+Results in (SQL Server dialect)
+```sql
+SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY Name desc) AS PagedNumber, Id, Name, Age FROM [User] where age = 10) AS u WHERE PagedNUMBER BETWEEN ((1 - 1) * 10 + 1) AND (1 * 10)
+```
 
 Notes:
-- This uses your raw SQL so be careful to not create SQL injection holes
+- This uses your raw SQL so be careful to not create SQL injection holes or use the Parameters option
 - It is recommended to use https://github.com/martijnboland/MvcPaging for the paging helper for your views 
   - @Html.Pager(10, 1, 100) - items per page, page number, total records
 
@@ -372,7 +382,8 @@ Example usage:
 ```csharp     
 connection.DeleteList<User>("Where age > 20");
 ```
-or
+or with parameters
+
 ```csharp     
 connection.DeleteList<User>("Where age > @Age", new {Age = 20});
 ```
@@ -389,7 +400,8 @@ Example usage:
 ```csharp     
 var count = connection.RecordCount<User>("Where age > 20");
 ```
-or
+or with parameters
+
 ```csharp     
 var count = connection.RecordCount<User>("Where age > @Age", new {Age = 20});
 ```
