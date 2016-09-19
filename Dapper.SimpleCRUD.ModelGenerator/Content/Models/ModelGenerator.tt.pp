@@ -69,7 +69,7 @@ foreach(Table tbl in from t in tables where !t.Ignore select t){
 	{
 <#foreach(Column col in from c in tbl.Columns where !c.Ignore select c)
 {#>
-	<# if (tbl.PK!=null && tbl.PK.Name==col.PropertyName) { #>
+	<# if (tbl.IsPrimaryKeyColumn(col.PropertyName)) { #>
 	[Key]
 	<#}#>
 	public virtual <#=col.PropertyType #><#=CheckNullable(col)#> <#=col.PropertyName #> { get; set; }
@@ -124,13 +124,10 @@ public class Table
 	public string SequenceName;
 	public bool Ignore;
 
-    public Column PK
-    {
-        get
-        {
-            return this.Columns.SingleOrDefault(x=>x.IsPK);
-        }
-    }
+	public bool IsPrimaryKeyColumn(string columnName)
+	{
+		return Columns.Single(x=>string.Compare(x.Name, columnName, true)==0).IsPK;
+	}
 
 	public Column GetColumn(string columnName)
 	{
@@ -527,11 +524,15 @@ class SqlServerSchemaReader : SchemaReader
 			tbl.Columns=LoadColumns(tbl);
 		            
 			// Mark the primary key
-			string PrimaryKey=GetPK(tbl.Name);
-			var pkColumn=tbl.Columns.SingleOrDefault(x=>x.Name.ToLower().Trim()==PrimaryKey.ToLower().Trim());
-			if(pkColumn!=null)
+			string[] PrimaryKeys=GetPK(tbl.Name);
+
+			foreach (string primaryKey in PrimaryKeys)
 			{
-				pkColumn.IsPK=true;
+				var pkColumn=tbl.Columns.SingleOrDefault(x=>x.Name.ToLower().Trim()==primaryKey.ToLower().Trim());
+				if(pkColumn!=null)
+				{
+					pkColumn.IsPK=true;
+				}
 			}
 
 			try
@@ -655,7 +656,7 @@ class SqlServerSchemaReader : SchemaReader
 		}
 	}
 
-	string GetPK(string table){
+	string[] GetPK(string table){
 		
 		string sql=@"SELECT c.name AS ColumnName
                 FROM sys.indexes AS i 
@@ -663,6 +664,8 @@ class SqlServerSchemaReader : SchemaReader
                 INNER JOIN sys.objects AS o ON i.object_id = o.object_id 
                 LEFT OUTER JOIN sys.columns AS c ON ic.object_id = c.object_id AND c.column_id = ic.column_id
                 WHERE (i.type = 1) AND (o.name = @tableName)";
+
+		List<string> primaryKeys = new List<string>();
 
 		using (var cmd=_factory.CreateCommand())
 		{
@@ -674,13 +677,19 @@ class SqlServerSchemaReader : SchemaReader
 			p.Value=table;
 			cmd.Parameters.Add(p);
 
-			var result=cmd.ExecuteScalar();
-
-			if(result!=null)
-				return result.ToString();    
+			using(var result=cmd.ExecuteReader())
+			{
+				if(result!=null && result.HasRows)
+				{
+					while (result.Read())
+					{
+						primaryKeys.Add(result.GetString(0));
+					}   
+				}
+			}
 		}	         
 		
-		return "";
+		return primaryKeys.ToArray();
 	}
 	
 	string GetPropertyType(string sqlType)
