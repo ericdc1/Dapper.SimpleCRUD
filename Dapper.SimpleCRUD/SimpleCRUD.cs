@@ -115,20 +115,29 @@ namespace Dapper
 
             if (!idProps.Any())
                 throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Get<T> only supports an entity with a single [Key] or Id property");
-
-            var onlyKey = idProps.First();
+            
             var name = GetTableName(currenttype);
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
-            sb.AppendFormat(" from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.AppendFormat(" from {0} where ", name);
+
+            for (var i = 0; i < idProps.Count; i++)
+            {
+                if (i > 0)
+                    sb.Append(" and ");
+                sb.AppendFormat("{0} = @{0}", GetColumnName(idProps[i]).RemoveBrackets());
+            }
 
             var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            if (idProps.Count == 1)
+                dynParms.Add("@" + GetColumnName(idProps.First()).RemoveBrackets(), id);
+            else
+            {
+                foreach (var prop in idProps)
+                    dynParms.Add("@" + GetColumnName(prop).RemoveBrackets(), id.GetType().GetProperty(prop.Name).GetValue(id, null));
+            }
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
@@ -323,8 +332,6 @@ namespace Dapper
 
             if (!idProps.Any())
                 throw new ArgumentException("Insert<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Insert<T> only supports an entity with a single [Key] or Id property");
 
             var keyHasPredefinedValue = false;
             var baseType = typeof(TKey);
@@ -476,18 +483,27 @@ namespace Dapper
 
             if (!idProps.Any())
                 throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Delete<T> only supports an entity with a single [Key] or Id property");
-
-            var onlyKey = idProps.First();
+            
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("Delete from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.AppendFormat("Delete from {0} where ", name);
+
+            for (var i = 0; i < idProps.Count; i++)
+            {
+                if (i > 0)
+                    sb.Append(" and ");
+                sb.AppendFormat("{0} = @{0}", GetColumnName(idProps[i]).RemoveBrackets());
+            }
 
             var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            if (idProps.Count == 1)
+                dynParms.Add("@" + GetColumnName(idProps.First()).RemoveBrackets(), id);
+            else
+            {
+                foreach (var prop in idProps)
+                    dynParms.Add("@" + GetColumnName(prop).RemoveBrackets(), id.GetType().GetProperty(prop.Name).GetValue(id, null));
+            }
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));
@@ -888,6 +904,11 @@ namespace Dapper
             ColumnNames[key] = columnName;
 
             return columnName;
+        }
+
+        private static string RemoveBrackets(this string name)
+        {
+            return name.Replace("[", string.Empty).Replace("]", string.Empty);
         }
 
         private static string Encapsulate(string databaseword)
