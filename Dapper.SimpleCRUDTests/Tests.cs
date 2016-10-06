@@ -180,7 +180,7 @@ namespace Dapper.SimpleCRUDTests
             }
             else
             {
-                connection = new SqlConnection(@"Data Source = (LocalDB)\MSSQLLocalDB;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True;MultipleActiveResultSets=true;");
+                connection = new SqlConnection(@"Data Source = (LocalDB)\v11.0;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True;MultipleActiveResultSets=true;");
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.SQLServer);
             }
 
