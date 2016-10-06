@@ -666,6 +666,12 @@ namespace Dapper
             }
         }
 
+        private static bool HasAttribute<T>(object entity, string propertyName)
+        {
+
+            return false;
+        }
+
         private static void BuildWhere(StringBuilder sb, IEnumerable<PropertyInfo> idProps, object sourceEntity, object whereConditions = null)
         {
             var propertyInfos = idProps.ToArray();
