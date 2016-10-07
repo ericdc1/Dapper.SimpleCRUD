@@ -787,8 +787,10 @@ namespace Dapper
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
         private static bool IsEditable(Type entityType, PropertyInfo pi)
         {
-            var attr = FindAttribute<EditableAttribute>(entityType, pi);
-            return attr != null && attr.AllowEdit;
+            var attr = FindAttribute(entityType, pi, nameof(EditableAttribute));
+            if (attr != null)
+                return (bool)attr.GetType().GetProperty("AllowEdit").GetValue(attr, null);
+            return false;
         }
 
 
@@ -797,25 +799,27 @@ namespace Dapper
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
         private static bool IsReadOnly(Type entityType, PropertyInfo pi)
         {
-            var attr = FindAttribute<ReadOnlyAttribute>(entityType, pi);
-            return attr != null && attr.IsReadOnly;
+            var attr = FindAttribute(entityType, pi, nameof(ReadOnlyAttribute));
+            if (attr != null)
+                return (bool)attr.GetType().GetProperty("IsReadOnly").GetValue(attr, null);
+            return false;
         }
 
-        private static T FindAttribute<T>(Type entityType, PropertyInfo propertyInfo) where T : class
+        private static Attribute FindAttribute(Type entityType, PropertyInfo propertyInfo, string attributeName)
         {
-            var attribute = entityType.GetProperty(propertyInfo.Name).GetCustomAttributes(true).FirstOrDefault(x => x.GetType().Name == typeof(T).Name);
-            if (attribute == null &&
-                entityType.GetCustomAttributes(true).Any(a => a.GetType().Name == typeof(MetadataTypeAttribute).Name))
+            var attribute = entityType.GetProperty(propertyInfo.Name).GetCustomAttributes(true).FirstOrDefault(x => x.GetType().Name == attributeName);
+            if (attribute == null && entityType.GetCustomAttributes(true).Any(a => a.GetType().Name == typeof(MetadataTypeAttribute).Name))
             {
-                var metadataAttribute = entityType.GetCustomAttributes(true).FirstOrDefault(a => a.GetType().Name == typeof(MetadataTypeAttribute).Name) as MetadataTypeAttribute;
+                var metadataAttribute = entityType.GetCustomAttributes(true).FirstOrDefault(a => string.Equals(a.GetType().Name, typeof(MetadataTypeAttribute).Name));
                 if (metadataAttribute != null)
                 {
-                    var metadataClassType = metadataAttribute.MetadataClassType;
-                    attribute = metadataClassType.GetMethod(propertyInfo.Name).GetCustomAttributes(true).FirstOrDefault(x => x.GetType().Name == typeof(T).Name);
+                    var metadataType = metadataAttribute.GetType().GetProperty("MetadataClassType").GetValue(metadataAttribute, null) as Type;
+                    if (metadataType != null)
+                        attribute = metadataType.GetProperty(propertyInfo.Name).GetCustomAttributes(true).FirstOrDefault(x => x.GetType().Name == attributeName);
                 }
             }
 
-            return (T)attribute;
+            return (Attribute)attribute;
         }
 
         //Get all properties that are:
@@ -862,15 +866,16 @@ namespace Dapper
             var metadataValue = false;
             var classValue = entityType.GetProperties().Any(p => string.Equals(p.Name, propertyName) && p.GetCustomAttributes(true).Any(a => string.Equals(a.GetType().Name, typeof(T).Name)));
 
-            if (entityType.GetCustomAttributes(true).Any(a => string.Equals(a.GetType().Name, typeof(MetadataTypeAttribute).Name)))
+            if (!classValue && entityType.GetCustomAttributes(true).Any(a => string.Equals(a.GetType().Name, typeof(MetadataTypeAttribute).Name)))
             {
-                var metadata = entityType.GetCustomAttributes(true).First(a => string.Equals(a.GetType().Name, typeof(MetadataTypeAttribute).Name)) as MetadataTypeAttribute;
+                var metadata = entityType.GetCustomAttributes(true).FirstOrDefault(a => string.Equals(a.GetType().Name, typeof(MetadataTypeAttribute).Name));
                 if (metadata != null)
                 {
-                    var metadataClass = metadata.MetadataClassType;
-                    metadataValue = metadataClass.GetProperties().Any(p =>
-                         string.Equals(p.Name, propertyName) &&
-                         p.GetCustomAttributes(true).Any(a => string.Equals(a.GetType().Name, typeof(T).Name)));
+                    var metadataType = metadata.GetType().GetProperty("MetadataClassType").GetValue(metadata, null) as Type;
+                    if (metadataType != null)
+                        metadataValue = metadataType.GetProperties().Any(p =>
+                             string.Equals(p.Name, propertyName) &&
+                             p.GetCustomAttributes(true).Any(a => string.Equals(a.GetType().Name, typeof(T).Name)));
                 }
             }
 
