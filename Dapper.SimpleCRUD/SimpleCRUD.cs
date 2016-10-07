@@ -123,7 +123,7 @@ namespace Dapper
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect<T>(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
             sb.AppendFormat(" from {0}", name);
             sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
 
@@ -162,7 +162,7 @@ namespace Dapper
             var whereprops = GetAllProperties(whereConditions).ToArray();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect<T>(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
             sb.AppendFormat(" from {0}", name);
 
             if (whereprops.Any())
@@ -204,7 +204,7 @@ namespace Dapper
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect<T>(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
             sb.AppendFormat(" from {0}", name);
 
             sb.Append(" " + conditions);
@@ -269,7 +269,7 @@ namespace Dapper
             }
 
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect<T>(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
             query = query.Replace("{SelectColumns}", sb.ToString());
             query = query.Replace("{TableName}", name);
             query = query.Replace("{PageNumber}", pageNumber.ToString());
@@ -647,19 +647,19 @@ namespace Dapper
         }
 
         //build select clause based on list of properties skipping ones with the IgnoreSelect and NotMapped attribute
-        private static void BuildSelect(StringBuilder sb, IEnumerable<PropertyInfo> props)
+        private static void BuildSelect<T>(StringBuilder sb, IEnumerable<PropertyInfo> props)
         {
             var propertyInfos = props as IList<PropertyInfo> ?? props.ToList();
             var addedAny = false;
             for (var i = 0; i < propertyInfos.Count(); i++)
             {
-                if (propertyInfos.ElementAt(i).GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreSelectAttribute).Name || attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
+                if (HasAttribute<IgnoreSelectAttribute>(typeof(T), propertyInfos.ElementAt(i).Name) || HasAttribute<NotMappedAttribute>(typeof(T), propertyInfos.ElementAt(i).Name)) continue;
 
                 if (addedAny)
                     sb.Append(",");
                 sb.Append(GetColumnName(propertyInfos.ElementAt(i)));
                 //if there is a custom column name add an "as customcolumnname" to the item so it maps properly
-                if (propertyInfos.ElementAt(i).GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == typeof(ColumnAttribute).Name) != null)
+                if (HasAttribute<ColumnAttribute>(typeof(T), propertyInfos.ElementAt(i).Name))
                     sb.Append(" as " + Encapsulate(propertyInfos.ElementAt(i).Name));
                 addedAny = true;
 
@@ -710,18 +710,21 @@ namespace Dapper
         private static void BuildInsertValues(object entityToInsert, StringBuilder sb)
         {
             var props = GetScaffoldableProperties(entityToInsert).ToArray();
-            for (var i = 0; i < props.Count(); i++)
+            for (var i = 0; i < props.Length; i++)
             {
                 var property = props.ElementAt(i);
                 if (property.PropertyType != typeof(Guid)
-                      && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)
-                      && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
+                    && HasAttribute<KeyAttribute>(entityToInsert.GetType(), property.Name)
+                    && !HasAttribute<RequiredAttribute>(entityToInsert.GetType(), property.Name))
                     continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreInsertAttribute).Name)) continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))) continue;
+                if (HasAttribute<IgnoreInsertAttribute>(entityToInsert.GetType(), property.Name)) continue;
+                if (HasAttribute<NotMappedAttribute>(entityToInsert.GetType(), property.Name)) continue;
+                if (HasAttribute<ReadOnlyAttribute>(entityToInsert.GetType(), property.Name)
+                    && IsReadOnly(entityToInsert.GetType(), property)) continue;
 
-                if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
+                if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase)
+                    && !HasAttribute<RequiredAttribute>(entityToInsert.GetType(), property.Name)
+                    && property.PropertyType != typeof(Guid)) continue;
 
                 sb.AppendFormat("@{0}", property.Name);
                 if (i < props.Count() - 1)
@@ -742,18 +745,20 @@ namespace Dapper
         {
             var props = GetScaffoldableProperties(entityToInsert).ToArray();
 
-            for (var i = 0; i < props.Count(); i++)
+            for (var i = 0; i < props.Length; i++)
             {
                 var property = props.ElementAt(i);
                 if (property.PropertyType != typeof(Guid)
-                      && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)
-                      && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
+                    && HasAttribute<KeyAttribute>(entityToInsert.GetType(), property.Name)
+                    && !HasAttribute<RequiredAttribute>(entityToInsert.GetType(), property.Name))
                     continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreInsertAttribute).Name)) continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
+                if (HasAttribute<IgnoreInsertAttribute>(entityToInsert.GetType(), property.Name)) continue;
+                if (HasAttribute<NotMappedAttribute>(entityToInsert.GetType(), property.Name)) continue;
 
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))) continue;
-                if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
+                if (HasAttribute<ReadOnlyAttribute>(entityToInsert.GetType(), property.Name) && IsReadOnly(entityToInsert.GetType(), property)) continue;
+                if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase)
+                    && !HasAttribute<RequiredAttribute>(entityToInsert.GetType(), property.Name)
+                    && property.PropertyType != typeof(Guid)) continue;
 
                 sb.Append(GetColumnName(property));
                 if (i < props.Count() - 1)
@@ -773,24 +778,18 @@ namespace Dapper
         //Get all properties that are not decorated with the Editable(false) attribute
         private static IEnumerable<PropertyInfo> GetScaffoldableProperties(object entity)
         {
-            var props = entity.GetType().GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(EditableAttribute).Name && !IsEditable(p)) == false);
-            return props.Where(p => p.PropertyType.IsSimpleType() || IsEditable(p));
+            var props = entity.GetType().GetProperties().Where(p => !(HasAttribute<EditableAttribute>(entity.GetType(), p.Name) && !IsEditable(entity.GetType(), p)));
+            return props.Where(p => p.PropertyType.IsSimpleType() || IsEditable(entity.GetType(), p));
         }
 
         //Determine if the Attribute has an AllowEdit key and return its boolean state
         //fake the funk and try to mimick EditableAttribute in System.ComponentModel.DataAnnotations 
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
-        private static bool IsEditable(PropertyInfo pi)
+        private static bool IsEditable(Type entityType, PropertyInfo pi)
         {
-            var attributes = pi.GetCustomAttributes(false);
-            if (attributes.Length > 0)
-            {
-                dynamic write = attributes.FirstOrDefault(x => x.GetType().Name == typeof(EditableAttribute).Name);
-                if (write != null)
-                {
-                    return write.AllowEdit;
-                }
-            }
+            var attr = FindAttribute(entityType, pi, nameof(EditableAttribute));
+            if (attr != null)
+                return (bool)attr.GetType().GetProperty("AllowEdit").GetValue(attr, null);
             return false;
         }
 
@@ -798,18 +797,29 @@ namespace Dapper
         //Determine if the Attribute has an IsReadOnly key and return its boolean state
         //fake the funk and try to mimick ReadOnlyAttribute in System.ComponentModel 
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
-        private static bool IsReadOnly(PropertyInfo pi)
+        private static bool IsReadOnly(Type entityType, PropertyInfo pi)
         {
-            var attributes = pi.GetCustomAttributes(false);
-            if (attributes.Length > 0)
+            var attr = FindAttribute(entityType, pi, nameof(ReadOnlyAttribute));
+            if (attr != null)
+                return (bool)attr.GetType().GetProperty("IsReadOnly").GetValue(attr, null);
+            return false;
+        }
+
+        private static Attribute FindAttribute(Type entityType, PropertyInfo propertyInfo, string attributeName)
+        {
+            var attribute = entityType.GetProperty(propertyInfo.Name)?.GetCustomAttributes(true).FirstOrDefault(x => x.GetType().Name == attributeName);
+            if (attribute == null && entityType.GetCustomAttributes(true).Any(a => a.GetType().Name == typeof(MetadataTypeAttribute).Name))
             {
-                dynamic write = attributes.FirstOrDefault(x => x.GetType().Name == typeof(ReadOnlyAttribute).Name);
-                if (write != null)
+                var metadataAttribute = entityType.GetCustomAttributes(true).FirstOrDefault(a => string.Equals(a.GetType().Name, typeof(MetadataTypeAttribute).Name));
+                if (metadataAttribute != null)
                 {
-                    return write.IsReadOnly;
+                    var metadataType = metadataAttribute.GetType().GetProperty("MetadataClassType")?.GetValue(metadataAttribute, null) as Type;
+                    if (metadataType != null)
+                        attribute = metadataType.GetProperty(propertyInfo.Name)?.GetCustomAttributes(true).FirstOrDefault(x => x.GetType().Name == attributeName);
                 }
             }
-            return false;
+
+            return (Attribute)attribute;
         }
 
         //Get all properties that are:
@@ -824,13 +834,13 @@ namespace Dapper
             //remove ones with ID
             updateableProperties = updateableProperties.Where(p => !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase));
             //remove ones with key attribute
-            updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name) == false);
+            updateableProperties = updateableProperties.Where(p => !HasAttribute<KeyAttribute>(entity.GetType(), p.Name));
             //remove ones that are readonly
-            updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => (attr.GetType().Name == typeof(ReadOnlyAttribute).Name) && IsReadOnly(p)) == false);
+            updateableProperties = updateableProperties.Where(p => (HasAttribute<ReadOnlyAttribute>(entity.GetType(), p.Name) && IsReadOnly(entity.GetType(), p)) == false);
             //remove ones with IgnoreUpdate attribute
-            updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreUpdateAttribute).Name) == false);
+            updateableProperties = updateableProperties.Where(p => !HasAttribute<IgnoreUpdateAttribute>(entity.GetType(), p.Name));
             //remove ones that are not mapped
-            updateableProperties = updateableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(NotMappedAttribute).Name) == false);
+            updateableProperties = updateableProperties.Where(p => !HasAttribute<NotMappedAttribute>(entity.GetType(), p.Name));
 
             return updateableProperties;
         }
@@ -847,8 +857,29 @@ namespace Dapper
         //For Get(id) and Delete(id) we don't have an entity, just the type so this method is used
         private static IEnumerable<PropertyInfo> GetIdProperties(Type type)
         {
-            var tp = type.GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)).ToList();
+            var tp = type.GetProperties().Where(p => HasAttribute<KeyAttribute>(type, p.Name)).ToList();
             return tp.Any() ? tp : type.GetProperties().Where(p => p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool HasAttribute<T>(Type entityType, string propertyName)
+        {
+            var metadataValue = false;
+            var classValue = entityType.GetProperties().Any(p => string.Equals(p.Name, propertyName) && p.GetCustomAttributes(true).Any(a => string.Equals(a.GetType().Name, typeof(T).Name)));
+
+            if (!classValue && entityType.GetCustomAttributes(true).Any(a => string.Equals(a.GetType().Name, typeof(MetadataTypeAttribute).Name)))
+            {
+                var metadata = entityType.GetCustomAttributes(true).FirstOrDefault(a => string.Equals(a.GetType().Name, typeof(MetadataTypeAttribute).Name));
+                if (metadata != null)
+                {
+                    var metadataType = metadata.GetType().GetProperty("MetadataClassType")?.GetValue(metadata, null) as Type;
+                    if (metadataType != null)
+                        metadataValue = metadataType.GetProperties().Any(p =>
+                             string.Equals(p.Name, propertyName) &&
+                             p.GetCustomAttributes(true).Any(a => string.Equals(a.GetType().Name, typeof(T).Name)));
+                }
+            }
+
+            return classValue || metadataValue;
         }
 
         //Gets the table name for this entity
@@ -1122,6 +1153,32 @@ namespace Dapper
     {
     }
 
+    /// <summary>
+    /// Optional MetadataType attribute.
+    /// Custom for Dapper.SimpleCRUD to use a different class to add additional attributes
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class)]
+    public class MetadataTypeAttribute : Attribute
+    {
+        private readonly Type _metadataClassType;
+
+        public Type MetadataClassType
+        {
+            get
+            {
+                if (_metadataClassType == null)
+                {
+                    throw new InvalidOperationException("Type Cannot Be Null");
+                }
+
+                return _metadataClassType;
+            }
+        }
+        public MetadataTypeAttribute(Type metadataClassType)
+        {
+            _metadataClassType = metadataClassType;
+        }
+    }
 }
 
 internal static class TypeExtension
