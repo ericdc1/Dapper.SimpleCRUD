@@ -807,15 +807,15 @@ namespace Dapper
 
         private static Attribute FindAttribute(Type entityType, PropertyInfo propertyInfo, string attributeName)
         {
-            var attribute = entityType.GetProperty(propertyInfo.Name).GetCustomAttributes(true).FirstOrDefault(x => x.GetType().Name == attributeName);
+            var attribute = entityType.GetProperty(propertyInfo.Name)?.GetCustomAttributes(true).FirstOrDefault(x => x.GetType().Name == attributeName);
             if (attribute == null && entityType.GetCustomAttributes(true).Any(a => a.GetType().Name == typeof(MetadataTypeAttribute).Name))
             {
                 var metadataAttribute = entityType.GetCustomAttributes(true).FirstOrDefault(a => string.Equals(a.GetType().Name, typeof(MetadataTypeAttribute).Name));
                 if (metadataAttribute != null)
                 {
-                    var metadataType = metadataAttribute.GetType().GetProperty("MetadataClassType").GetValue(metadataAttribute, null) as Type;
+                    var metadataType = metadataAttribute.GetType().GetProperty("MetadataClassType")?.GetValue(metadataAttribute, null) as Type;
                     if (metadataType != null)
-                        attribute = metadataType.GetProperty(propertyInfo.Name).GetCustomAttributes(true).FirstOrDefault(x => x.GetType().Name == attributeName);
+                        attribute = metadataType.GetProperty(propertyInfo.Name)?.GetCustomAttributes(true).FirstOrDefault(x => x.GetType().Name == attributeName);
                 }
             }
 
@@ -871,7 +871,7 @@ namespace Dapper
                 var metadata = entityType.GetCustomAttributes(true).FirstOrDefault(a => string.Equals(a.GetType().Name, typeof(MetadataTypeAttribute).Name));
                 if (metadata != null)
                 {
-                    var metadataType = metadata.GetType().GetProperty("MetadataClassType").GetValue(metadata, null) as Type;
+                    var metadataType = metadata.GetType().GetProperty("MetadataClassType")?.GetValue(metadata, null) as Type;
                     if (metadataType != null)
                         metadataValue = metadataType.GetProperties().Any(p =>
                              string.Equals(p.Name, propertyName) &&
