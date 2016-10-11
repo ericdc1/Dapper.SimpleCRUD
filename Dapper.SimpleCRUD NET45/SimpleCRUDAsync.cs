@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Win32.SafeHandles;
 
 namespace Dapper
 {
@@ -44,7 +43,7 @@ namespace Dapper
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
             sb.AppendFormat(" from {0}", name);
             sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
 
@@ -85,7 +84,7 @@ namespace Dapper
             var whereprops = GetAllProperties(whereConditions).ToArray();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
             sb.AppendFormat(" from {0}", name);
 
             if (whereprops.Any())
@@ -128,7 +127,7 @@ namespace Dapper
             var whereprops = GetAllProperties(conditions).ToArray();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
             sb.AppendFormat(" from {0}", name);
 
             sb.Append(" " + conditions);
@@ -189,7 +188,7 @@ namespace Dapper
             }
 
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
             query = query.Replace("{SelectColumns}", sb.ToString());
             query = query.Replace("{TableName}", name);
             query = query.Replace("{PageNumber}", pageNumber.ToString());
@@ -218,13 +217,13 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The ID (primary key) of the newly inserted record if it is identity using the int? type, otherwise null</returns>
-        public static Task<int?> InsertAsync(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static Task<int?> InsertAsync<TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-            return InsertAsync<int?>(connection, entityToInsert, transaction, commandTimeout);
+            return InsertAsync<int?, TEntity>(connection, entityToInsert, transaction, commandTimeout);
         }
 
         /// <summary>
-        /// <para>Inserts a row into the database asynchronously</para>
+        /// <para>Inserts a row into the database, using ONLY the properties defined by TEntity</para>
         /// <para>By default inserts into the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Insert filters out Id column and any columns with the [Key] attribute</para>
@@ -237,7 +236,7 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The ID (primary key) of the newly inserted record if it is identity using the defined type, otherwise null</returns>
-        public static async Task<TKey> InsertAsync<TKey>(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static async Task<TKey> InsertAsync<TKey, TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToInsert).ToList();
 
@@ -259,11 +258,11 @@ namespace Dapper
             var sb = new StringBuilder();
             sb.AppendFormat("insert into {0}", name);
             sb.Append(" (");
-            BuildInsertParameters(entityToInsert, sb);
+            BuildInsertParameters<TEntity>(sb);
             sb.Append(") ");
             sb.Append("values");
             sb.Append(" (");
-            BuildInsertValues(entityToInsert, sb);
+            BuildInsertValues<TEntity>(sb);
             sb.Append(")");
 
             if (keytype == typeof(Guid))
@@ -300,7 +299,7 @@ namespace Dapper
             var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
             return (TKey)r.First().id;
         }
-
+        
         /// <summary>
         ///  <para>Updates a record or records in the database asynchronously</para>
         ///  <para>By default updates records in the table matching the class name</para>
@@ -315,7 +314,7 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of effected records</returns>
-        public static Task<int> UpdateAsync(this IDbConnection connection, object entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null, System.Threading.CancellationToken? token = null)
+        public static Task<int> UpdateAsync<TEntity>(this IDbConnection connection, TEntity entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null, System.Threading.CancellationToken? token = null)
         {
             var idProps = GetIdProperties(entityToUpdate).ToList();
 

@@ -12,13 +12,18 @@ using Npgsql;
 namespace Dapper.SimpleCRUDTests
 {
     #region DTOClasses
-    //For .Net 4.5> [System.ComponentModel.DataAnnotations.Schema.Table("Users")]  or the attribute built into SimpleCRUD
     [Table("Users")]
-    public class User
+    public class UserEditableSettings
     {
         public int Id { get; set; }
         public string Name { get; set; }
         public int Age { get; set; }
+    }
+
+    //For .Net 4.5> [System.ComponentModel.DataAnnotations.Schema.Table("Users")]  or the attribute built into SimpleCRUD
+    [Table("Users")]
+    public class User : UserEditableSettings
+{
         //we modified so enums were automatically handled, we should also automatically handle nullable enums
         public DayOfWeek? ScheduledDayOff { get; set; }
 
@@ -187,7 +192,6 @@ namespace Dapper.SimpleCRUDTests
             using (var connection = GetOpenConnection())
             {
                 var id = connection.Insert(new User { Name = "User1", Age = 10 });
-                id.IsEqualTo(1);
                 connection.Delete<User>(id);
 
             }
@@ -197,10 +201,47 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                var id = connection.Insert<long>(new BigCar { Make = "Big", Model = "Car" });
-                id.IsEqualTo(2147483650);
+                var id = connection.Insert<long, BigCar>(new BigCar { Make = "Big", Model = "Car" });
                 connection.Delete<BigCar>(id);
 
+            }
+        }
+
+        public void TestInsertUsingGenericLimitedFields()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                //arrange
+                var user = new User {Name = "User1", Age = 10, ScheduledDayOff = DayOfWeek.Friday};
+
+                //act
+                var id = connection.Insert<int?, UserEditableSettings>(user);
+
+                //assert
+                var insertedUser = connection.Get<User>(id);
+                insertedUser.ScheduledDayOff.IsNull();
+
+                connection.Delete<User>(id);
+            }
+        }
+
+        public void TestInsertUsingGenericLimitedFieldsAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                //arrange
+                var user = new User { Name = "User1", Age = 10, ScheduledDayOff = DayOfWeek.Friday };
+
+                //act
+                var idTask = connection.InsertAsync<int?, UserEditableSettings>(user);
+                idTask.Wait();
+                var id = idTask.Result;
+
+                //assert
+                var insertedUser = connection.Get<User>(id);
+                insertedUser.ScheduledDayOff.IsNull();
+
+                connection.Delete<User>(id);
             }
         }
 
@@ -427,6 +468,62 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+        /// <summary>
+        /// We expect scheduled day off to NOT be updated, since it's not a property of UserEditableSettings
+        /// </summary>
+        public void TestUpdateUsingGenericLimitedFields()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                //arrange
+                var user = new User { Name = "User1", Age = 10, ScheduledDayOff = DayOfWeek.Friday };
+                user.Id = connection.Insert(user) ?? 0;
+
+                user.ScheduledDayOff = DayOfWeek.Thursday;
+                var userAsEditableSettings = (UserEditableSettings)user;
+                userAsEditableSettings.Name = "User++";
+
+                connection.Update(userAsEditableSettings);
+
+                //act
+                var insertedUser = connection.Get<User>(user.Id);
+
+                //assert
+                insertedUser.Name.IsEqualTo("User++");
+                insertedUser.ScheduledDayOff.IsEqualTo(DayOfWeek.Friday);
+
+                connection.Delete<User>(user.Id);
+            }
+        }
+
+        /// <summary>
+        /// We expect scheduled day off to NOT be updated, since it's not a property of UserEditableSettings
+        /// </summary>
+        public void TestUpdateUsingGenericLimitedFieldsAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                //arrange
+                var user = new User { Name = "User1", Age = 10, ScheduledDayOff = DayOfWeek.Friday };
+                user.Id = connection.Insert(user) ?? 0;
+
+                user.ScheduledDayOff = DayOfWeek.Thursday;
+                var userAsEditableSettings = (UserEditableSettings)user;
+                userAsEditableSettings.Name = "User++";
+
+                connection.UpdateAsync(userAsEditableSettings).Wait();
+
+                //act
+                var insertedUser = connection.Get<User>(user.Id);
+
+                //assert
+                insertedUser.Name.IsEqualTo("User++");
+                insertedUser.ScheduledDayOff.IsEqualTo(DayOfWeek.Friday);
+
+                connection.Delete<User>(user.Id);
+            }
+        }
+
         public void TestDeleteByObjectWithAttributes()
         {
             using (var connection = GetOpenConnection())
@@ -560,7 +657,7 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                var id = connection.Insert<Guid>(new GUIDTest { Name = "GuidUser" });
+                var id = connection.Insert<Guid, GUIDTest>(new GUIDTest { Name = "GuidUser" });
                 id.GetType().Name.IsEqualTo("Guid");
                 var record = connection.Get<GUIDTest>(id);
                 record.Name.IsEqualTo("GuidUser");
@@ -573,7 +670,7 @@ namespace Dapper.SimpleCRUDTests
             using (var connection = GetOpenConnection())
             {
                 var guid = new Guid("1a6fb33d-7141-47a0-b9fa-86a1a1945da9");
-                var id = connection.Insert<Guid>(new GUIDTest { Name = "InsertIntoTableWithGuidKey", Id = guid });
+                var id = connection.Insert<Guid, GUIDTest>(new GUIDTest { Name = "InsertIntoTableWithGuidKey", Id = guid });
                 id.IsEqualTo(guid);
                 connection.Delete<GUIDTest>(id);
             }
@@ -584,7 +681,7 @@ namespace Dapper.SimpleCRUDTests
             using (var connection = GetOpenConnection())
             {
                 var guid = new Guid("2a6fb33d-7141-47a0-b9fa-86a1a1945da9");
-                connection.Insert<Guid>(new GUIDTest { Name = "GetRecordWithGuidKey", Id = guid });
+                connection.Insert<Guid, GUIDTest>(new GUIDTest { Name = "GetRecordWithGuidKey", Id = guid });
                 var id = connection.GetList<GUIDTest>().First().Id;
                 var record = connection.Get<GUIDTest>(id);
                 record.Name.IsEqualTo("GetRecordWithGuidKey");
@@ -598,7 +695,7 @@ namespace Dapper.SimpleCRUDTests
             using (var connection = GetOpenConnection())
             {
                 var guid = new Guid("3a6fb33d-7141-47a0-b9fa-86a1a1945da9");
-                connection.Insert<Guid>(new GUIDTest { Name = "DeleteRecordWithGuidKey", Id = guid });
+                connection.Insert<Guid, GUIDTest>(new GUIDTest { Name = "DeleteRecordWithGuidKey", Id = guid });
                 var id = connection.GetList<GUIDTest>().First().Id;
                 connection.Delete<GUIDTest>(id);
                 connection.Get<GUIDTest>(id).IsNull();
@@ -627,10 +724,10 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.InsertAsync<Guid>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
-                connection.InsertAsync<Guid>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
-                connection.InsertAsync<Guid>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
-                connection.InsertAsync<Guid>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
+                connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
+                connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
+                connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
+                connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
                 //tiny wait to let the inserts happen
                 System.Threading.Thread.Sleep(300);
                 var list = connection.GetList<GUIDTest>(new { Name = "MultiInsertWithGuidAsync" });

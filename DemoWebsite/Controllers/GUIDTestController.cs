@@ -49,7 +49,7 @@ namespace DemoWebsite.Controllers
             {
                 using (_connection = Utilities.GetOpenConnection())
                 {
-                    _connection.Insert<Guid>(model);
+                    _connection.Insert<Guid, GUIDTestViewModel>(model);
                 }
                 return RedirectToAction("index");
             }
