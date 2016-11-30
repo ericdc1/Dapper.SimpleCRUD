@@ -25,6 +25,7 @@ namespace Dapper
         private static string _encapsulation;
         private static string _getIdentitySql;
         private static string _getPagedListSql;
+        private static string _parameterPrefix;
 
         private static readonly IDictionary<Type, string> TableNames = new Dictionary<Type, string>();
         private static readonly IDictionary<string, string> ColumnNames = new Dictionary<string, string>();
@@ -58,18 +59,30 @@ namespace Dapper
                 case Dialect.SQLite:
                     _dialect = Dialect.SQLite;
                     _encapsulation = "\"{0}\"";
+                    _parameterPrefix = "@";
                     _getIdentitySql = string.Format("SELECT LAST_INSERT_ROWID() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
                     break;
                 case Dialect.MySQL:
                     _dialect = Dialect.MySQL;
                     _encapsulation = "`{0}`";
+                    _parameterPrefix = "@";
                     _getIdentitySql = string.Format("SELECT LAST_INSERT_ID() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {Offset},{RowsPerPage}";
+                    break;
+                case Dialect.Oracle:
+                    _dialect = Dialect.Oracle;
+                    //_encapsulation = "\"{0}\"";
+                    _encapsulation = "{0}";
+                    _parameterPrefix = ":";
+                    _getIdentitySql = " returning {0} into :{0}";
+                    _getPagedListSql = "select* from (select /*+ first_rows({RowsPerPage}) */ {SelectColumns}, row_number()  over(order by {OrderBy} )rn from {TableName} {WhereClause})" +
+                                        "where rn between (({PageNumber}-1) * {RowsPerPage} + 1) and {PageNumber} * {RowsPerPage} order by rn";
                     break;
                 default:
                     _dialect = Dialect.SQLServer;
                     _encapsulation = "[{0}]";
+                    _parameterPrefix = "@";
                     _getIdentitySql = string.Format("SELECT CAST(SCOPE_IDENTITY()  AS BIGINT) AS [id]");
                     _getPagedListSql = "SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY {OrderBy}) AS PagedNumber, {SelectColumns} FROM {TableName} {WhereClause}) AS u WHERE PagedNUMBER BETWEEN (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
                     break;
@@ -125,10 +138,13 @@ namespace Dapper
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
             sb.AppendFormat(" from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            //sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.AppendFormat(" where {0} = {1}id", GetColumnName(onlyKey), _parameterPrefix);
+
 
             var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            //dynParms.Add("@id", id);
+            dynParms.Add(string.Format("{0}id", _parameterPrefix), id);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
@@ -363,7 +379,10 @@ namespace Dapper
 
             if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
             {
-                sb.Append(";" + _getIdentitySql);
+                if (_dialect != Dialect.Oracle)
+                    sb.Append(";" + _getIdentitySql);
+                else
+                    sb.AppendFormat(_getIdentitySql, GetColumnName(idProps.First()));
             }
             else
             {
@@ -375,11 +394,34 @@ namespace Dapper
 
             var r = connection.Query(sb.ToString(), entityToInsert, transaction, true, commandTimeout);
 
-            if (keytype == typeof(Guid) || keyHasPredefinedValue)
+            if (_dialect == Dialect.Oracle)
             {
-                return (TKey)idProps.First().GetValue(entityToInsert, null);
+                if (keytype == typeof(Guid))
+                    throw new Exception("Invalid return type");
+                var param = new DynamicParameters(entityToInsert);
+
+                if (keyHasPredefinedValue)
+                {
+                    dynamic b = connection.Execute(sb.ToString(), param, transaction, commandTimeout);
+                    return (TKey)idProps.First().GetValue(entityToInsert, null);
+                }
+                else
+                {
+                    param.Add(GetColumnName(idProps.First()), null, DbType.Int64, ParameterDirection.ReturnValue);
+                    dynamic b = connection.Execute(sb.ToString(), param, transaction, commandTimeout);
+                    var q = param.Get<dynamic>(GetColumnName(idProps.First()));
+                    return (TKey)q;
+                }
             }
-            return (TKey)r.First().id;
+            else
+            {
+
+                if (keytype == typeof(Guid) || keyHasPredefinedValue)
+                {
+                    return (TKey)idProps.First().GetValue(entityToInsert, null);
+                }
+                return (TKey)r.First().id;
+            }
         }
 
         /// <summary>
@@ -484,10 +526,12 @@ namespace Dapper
 
             var sb = new StringBuilder();
             sb.AppendFormat("Delete from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            //sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.AppendFormat(" where {0} = {1}Id", GetColumnName(onlyKey), _parameterPrefix);
 
             var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            //dynParms.Add("@id", id);
+            dynParms.Add(string.Format("{0}id", _parameterPrefix), id);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));
@@ -640,7 +684,8 @@ namespace Dapper
             {
                 var property = nonIdProps[i];
 
-                sb.AppendFormat("{0} = @{1}", GetColumnName(property), property.Name);
+                //sb.AppendFormat("{0} = @{1}", GetColumnName(property), property.Name);
+                sb.AppendFormat("{0} = {1}{2}", GetColumnName(property), _parameterPrefix, property.Name);
                 if (i < nonIdProps.Length - 1)
                     sb.AppendFormat(", ");
             }
@@ -692,13 +737,16 @@ namespace Dapper
                     }
                 }
                 sb.AppendFormat(
-                    useIsNull ? "{0} is null" : "{0} = @{1}",
-                    GetColumnName(propertyToUse),
+                    //useIsNull ? "{0} is null" : "{0} = @{1}",
+                    useIsNull ? "{0} is null" : "{0} = {1}{2}",
+                    //GetColumnName(propertyToUse),
+                    GetColumnName(propertyToUse), _parameterPrefix,
                     propertyInfos.ElementAt(i).Name);
 
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
             }
+
         }
 
         //build insert values which include all properties in the class that are:
@@ -721,9 +769,14 @@ namespace Dapper
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
                 if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))) continue;
 
-                if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
+                //if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
+                if (property.Name == "Id" && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != "RequiredAttribute") && property.PropertyType != typeof(Guid)) continue;
+                sb.AppendFormat("{0}{1}", _parameterPrefix, property.Name);
+                if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType() != typeof(RequiredAttribute)) && property.PropertyType != typeof(Guid)) continue;
 
-                sb.AppendFormat("@{0}", property.Name);
+
+                //sb.AppendFormat("@{0}", property.Name);
+                sb.AppendFormat("{0}{1}", _parameterPrefix, property.Name);
                 if (i < props.Count() - 1)
                     sb.Append(", ");
             }
@@ -890,7 +943,7 @@ namespace Dapper
             return columnName;
         }
 
-        private static string Encapsulate(string databaseword)
+        public static string Encapsulate(string databaseword)
         {
             return string.Format(_encapsulation, databaseword);
         }
@@ -922,6 +975,7 @@ namespace Dapper
             PostgreSQL,
             SQLite,
             MySQL,
+            Oracle
         }
 
         public interface ITableNameResolver
@@ -936,6 +990,11 @@ namespace Dapper
 
         public class TableNameResolver : ITableNameResolver
         {
+            public static string Encapsulate(string databaseword)
+            {
+                return string.Format(_encapsulation, databaseword);
+            }
+
             public virtual string ResolveTableName(Type type)
             {
                 var tableName = Encapsulate(type.Name);
@@ -964,6 +1023,11 @@ namespace Dapper
 
         public class ColumnNameResolver : IColumnNameResolver
         {
+            public static string Encapsulate(string databaseword)
+            {
+                return string.Format(_encapsulation, databaseword);
+            }
+
             public virtual string ResolveColumnName(PropertyInfo propertyInfo)
             {
                 var columnName = Encapsulate(propertyInfo.Name);
