@@ -47,16 +47,16 @@ namespace Dapper
             {
                 if (i > 0)
                     sb.Append(" and ");
-                sb.AppendFormat("{0} = @{0}", GetColumnName(idProps[i]).RemoveBrackets());
+                sb.AppendFormat("{0} = @{1}", GetColumnName(idProps[i]), idProps[i].Name);
             }
 
             var dynParms = new DynamicParameters();
             if (idProps.Count == 1)
-                dynParms.Add("@" + GetColumnName(idProps.First()).RemoveBrackets(), id);
+                dynParms.Add("@" + idProps.First().Name, id);
             else
             {
                 foreach (var prop in idProps)
-                    dynParms.Add("@" + GetColumnName(prop).RemoveBrackets(), id.GetType().GetProperty(prop.Name).GetValue(id, null));
+                    dynParms.Add("@" + prop.Name, id.GetType().GetProperty(prop.Name).GetValue(id, null));
             }
 
             if (Debugger.IsAttached)
@@ -410,16 +410,16 @@ namespace Dapper
             {
                 if (i > 0)
                     sb.Append(" and ");
-                sb.AppendFormat("{0} = @{0}", GetColumnName(idProps[i]).RemoveBrackets());
+                sb.AppendFormat("{0} = @{1}", GetColumnName(idProps[i]), idProps[i].Name);
             }
 
             var dynParms = new DynamicParameters();
             if (idProps.Count == 1)
-                dynParms.Add("@" + GetColumnName(idProps.First()).RemoveBrackets(), id);
+                dynParms.Add("@" + idProps.First().Name, id);
             else
             {
                 foreach (var prop in idProps)
-                    dynParms.Add("@" + GetColumnName(prop).RemoveBrackets(), prop.GetValue(id));
+                    dynParms.Add("@" + prop.Name, prop.GetValue(id));
             }
 
             if (Debugger.IsAttached)
