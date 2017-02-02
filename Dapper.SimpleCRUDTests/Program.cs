@@ -6,7 +6,7 @@ using System.IO;
 using System.Reflection;
 using MySql.Data.MySqlClient;
 using Npgsql;
-using System.Data.OracleClient;
+using Oracle.ManagedDataAccess.Client;
 
 namespace Dapper.SimpleCRUDTests
 {
@@ -30,7 +30,8 @@ namespace Dapper.SimpleCRUDTests
             //SetupMySQL();
             //RunTestsMySQL();
 
-            //
+            //Oracle tests do not assume username and password these will have to updated manaully
+            //they are commented out by default since Oracle setup is required to run tests
             //SetupOracle();
             //RunTestsOracle();
         }
@@ -354,6 +355,7 @@ namespace Dapper.SimpleCRUDTests
             {
                 if (method.Name.Contains("Schema")) continue;
                 if (method.Name.Contains("Guid")) continue;
+                if (method.Name.Contains("Specified")) continue;
                 var testwatch = Stopwatch.StartNew();
                 Console.Write("Running " + method.Name + " in Oracle");
                 method.Invoke(Oracletester, null);

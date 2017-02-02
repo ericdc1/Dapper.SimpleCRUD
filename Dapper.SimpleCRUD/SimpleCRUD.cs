@@ -371,15 +371,19 @@ namespace Dapper
                 {
                     keyHasPredefinedValue = true;
                 }
-                sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
+                if (_dialect == Dialect.Oracle)
+                    throw new Exception("Invalid return type",new Exception("GUID type not supported by Oracle Dialect"));
+                //sb.AppendFormat(_getIdentitySql, GetColumnName(idProps.First()));
+                else
+                    sb.Append(";select '" + idProps.First().GetValue(entityToInsert, null) + "' as id");
             }
 
             if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
             {
-                if (_dialect != Dialect.Oracle)
-                    sb.Append(";" + _getIdentitySql);
-                else
+                if (_dialect == Dialect.Oracle)
                     sb.AppendFormat(_getIdentitySql, GetColumnName(idProps.First()));
+                else
+                    sb.Append(";" + _getIdentitySql);
             }
             else
             {
@@ -391,8 +395,6 @@ namespace Dapper
 
             if (_dialect == Dialect.Oracle)
             {
-                if (keytype == typeof(Guid))
-                    throw new Exception("Invalid return type");
                 var param = new DynamicParameters(entityToInsert);
 
                 if (keyHasPredefinedValue)
@@ -416,7 +418,7 @@ namespace Dapper
                     return (TKey)idProps.First().GetValue(entityToInsert, null);
                 }
                 return (TKey)r.First().id;
-            }         
+            }
 
         }
 
@@ -730,9 +732,9 @@ namespace Dapper
                     }
                 }
                 sb.AppendFormat(
-                useIsNull ? "{0} is null" : "{0} = {1}{2}",
+                   useIsNull ? "{0} is null" : "{0} = {1}{2}",
                 GetColumnName(propertyToUse), _parameterPrefix,
-                propertyInfos.ElementAt(i).Name);
+                    propertyInfos.ElementAt(i).Name);
 
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
@@ -929,8 +931,6 @@ namespace Dapper
 
         private static string Encapsulate(string databaseword)
         {
-            if (databaseword != null && databaseword.Length > 1 && databaseword[0] == '[') //has been already provided capsulated.
-                return databaseword;
             return string.Format(_encapsulation, databaseword);
         }
         /// <summary>
