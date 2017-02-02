@@ -174,7 +174,7 @@ namespace Dapper.SimpleCRUDTests
             }
             else if (_dbtype == SimpleCRUD.Dialect.Oracle)
             {
-                connection = new OracleConnection(String.Format("data source={0};password={1};user id={2}", "DEVELOPMENT", "SAVEWATER", "NDMSDE"));
+                connection = new OracleConnection(String.Format("data source={0};password={1};user id={2}", "INSTANCE", "PASS12!", "USERNAME"));
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.Oracle);
             }
             else
