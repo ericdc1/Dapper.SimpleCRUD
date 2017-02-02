@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System;
 using MySql.Data.MySqlClient;
 using Npgsql;
+using Oracle.ManagedDataAccess.Client;
 
 namespace Dapper.SimpleCRUDTests
 {
@@ -171,6 +172,11 @@ namespace Dapper.SimpleCRUDTests
                 connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "admin", "admin", "testdb"));
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.MySQL);
             }
+            else if (_dbtype == SimpleCRUD.Dialect.Oracle)
+            {
+                connection = new OracleConnection(String.Format("data source={0};password={1};user id={2}", "INSTANCE", "PASS12!", "USERNAME"));
+                SimpleCRUD.SetDialect(SimpleCRUD.Dialect.Oracle);
+            }
             else
             {
                 connection = new SqlConnection(@"Data Source = (LocalDB)\v11.0;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True;MultipleActiveResultSets=true;");
@@ -309,8 +315,10 @@ namespace Dapper.SimpleCRUDTests
                connection.Insert(new User { Name = "TestsGetListWithParameters2", Age = 10 });
                connection.Insert(new User { Name = "TestsGetListWithParameters3", Age = 10 });
                connection.Insert(new User { Name = "TestsGetListWithParameters4", Age = 11 });
-
-               var user = connection.GetList<User>("where Age > @Age", new { Age = 10 });
+                string whereclause = "where Age > @Age";
+                if (SimpleCRUD.GetDialect() == "Oracle")
+                    whereclause = "where Age > :Age";
+                var user = connection.GetList<User>(whereclause, new { Age = 10 });
                user.Count().IsEqualTo(1);
                connection.Execute("Delete from Users");
            }
@@ -708,9 +716,11 @@ namespace Dapper.SimpleCRUDTests
                 connection.Insert(new User { Name = "TestFilteredGetListParametersAsync1", Age = 10 });
                 connection.Insert(new User { Name = "TestFilteredGetListParametersAsync2", Age = 10 });
                 connection.Insert(new User { Name = "TestFilteredGetListParametersAsync3", Age = 10 });
-                connection.Insert(new User { Name = "TestFilteredGetListParametersAsync4", Age = 11 });
-
-                var user = connection.GetListAsync<User>("where Age = @Age", new { Age = 10 });
+                connection.Insert(new User { Name = "TestFilteredGetListParametersAsync4", Age = 11 });                
+                string whereclause = "where Age = @Age";
+                if (SimpleCRUD.GetDialect() == "Oracle")
+                    whereclause = "where Age = :Age";
+                var user = connection.GetListAsync<User>(whereclause, new { Age = 10 });
                 user.Result.Count().IsEqualTo(3);
                 connection.Execute("Delete from Users");
             }
@@ -857,8 +867,10 @@ namespace Dapper.SimpleCRUDTests
                     connection.Insert(new User { Name = "Person " + x, Age = x, CreatedDate = DateTime.Now, ScheduledDayOff = DayOfWeek.Thursday });
                     x++;
                 } while (x < 30);
-
-                var resultlist = connection.GetListPaged<User>(1, 30, "where Age > @Age", null, new {Age = 14});
+                string whereclause = "where Age > @Age";
+                if (SimpleCRUD.GetDialect() == "Oracle")
+                    whereclause = "where Age > :Age";
+                var resultlist = connection.GetListPaged<User>(1, 30, whereclause, null, new {Age = 14});
                 resultlist.Count().IsEqualTo(15);
                 resultlist.First().Name.IsEqualTo("Person 15");
                 connection.Execute("Delete from Users");
@@ -951,8 +963,10 @@ namespace Dapper.SimpleCRUDTests
                     connection.Insert(new User { Name = "Person " + x, Age = x, CreatedDate = DateTime.Now, ScheduledDayOff = DayOfWeek.Thursday });
                     x++;
                 } while (x < 10);
-
-                connection.DeleteList<User>("where age >= @Age", new { Age = 9 });
+                string whereclause = "where Age > @Age";
+                if (SimpleCRUD.GetDialect() == "Oracle")
+                    whereclause = "where Age > :Age";
+                connection.DeleteList<User>(whereclause, new { Age = 9 });
                 var resultlist = connection.GetList<User>();
                 resultlist.Count().IsEqualTo(8);
                 connection.Execute("Delete from Users");
@@ -1088,7 +1102,10 @@ namespace Dapper.SimpleCRUDTests
                 item.IgnoreSelect.IsNull();
 
                 //verify the column is really there via straight dapper
-                var fromDapper = connection.Query<IgnoreColumns>("Select * from IgnoreColumns where Id = @Id", new{id = itemId}).First();
+                string query = "Select * from IgnoreColumns where Id = @Id";
+                if (SimpleCRUD.GetDialect() == "Oracle")
+                    query = "Select * from IgnoreColumns where Id = :id";
+                var fromDapper = connection.Query<IgnoreColumns>(query, new{id = itemId}).First();
                 fromDapper.IgnoreSelect.IsEqualTo("OriginalSelect");
                
                 //change value and update
@@ -1099,7 +1116,10 @@ namespace Dapper.SimpleCRUDTests
                 item = connection.Get<IgnoreColumns>(itemId);
                 item.IgnoreUpdate.IsEqualTo("OriginalUpdate");
 
-                var allColumnDapper = connection.Query<IgnoreColumns>("Select IgnoreAll from IgnoreColumns where Id = @Id", new { id = itemId }).First();
+                query = "Select IgnoreAll from IgnoreColumns where Id = @Id";
+                if (SimpleCRUD.GetDialect() == "Oracle")
+                    query = "Select IgnoreAll from IgnoreColumns where Id = :Id";
+                var allColumnDapper = connection.Query<IgnoreColumns>(query, new { id = itemId }).First();
                 allColumnDapper.IgnoreAll.IsNull();
 
                 connection.Delete<IgnoreColumns>(itemId);
