@@ -991,10 +991,21 @@ namespace Dapper
         /// Optional Table attribute.
         /// </summary>
         /// <param name="tableName"></param>
-        public TableAttribute(string tableName)
+        public TableAttribute(string tableName) : this(tableName, null)
+        { }
+        
+
+        /// <summary>
+        /// Optional Table attribute.
+        /// </summary>
+        /// <param name="tableName"></param>
+        /// <param name="schemaName"></param>
+        public TableAttribute(string tableName, string schemaName)
         {
             Name = tableName;
+            Schema = schemaName;
         }
+
         /// <summary>
         /// Name of the table
         /// </summary>
