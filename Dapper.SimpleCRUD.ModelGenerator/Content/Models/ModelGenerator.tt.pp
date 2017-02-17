@@ -37,6 +37,8 @@ It is based on the T4 template from the PetaPoco project which in turn is based 
     IncludeViews = true;
     IncludeRelationships = true;
 	ExcludeTablePrefixes = new string[]{"aspnet_","webpages_"};
+	ForcedConnectionString = "Data Source=.\\SQLEXPRESS;Initial Catalog=AssettiVeicolo;Persist Security Info=True;User ID=AssettiVeicoloUser;Password=assetti";
+	ForcedProviderName = "System.Data.SqlClient";
 
     // Read schema
 	var tables = LoadTables();
@@ -102,6 +104,8 @@ The contents of this file are subject to the New BSD
 */
 
 string ConnectionStringName = "";
+string ForcedConnectionString = "";
+string ForcedProviderName = "";
 string ConfigPath = "";
 string Namespace = "";
 string ClassPrefix = "";
@@ -208,7 +212,7 @@ string CheckNullable(Column col)
     return result;
 }
 
-string GetConnectionString(ref string connectionStringName, out string providerName)
+string GetConnectionString(ref string connectionStringName, ref string forcedConnectionString, ref string forcedProviderName, out string providerName)
 {
     var _CurrentProject = GetCurrentProject();
 
@@ -228,6 +232,13 @@ string GetConnectionString(ref string connectionStringName, out string providerN
     //if the connectionString is empty - which is the defauls
     //look for count-1 - this is the last connection string
     //and takes into account AppServices and LocalSqlServer
+
+	if(!string.IsNullOrEmpty(forcedConnectionString) && !string.IsNullOrEmpty(forcedProviderName))
+	{
+		result = forcedConnectionString;
+		providerName = forcedProviderName;
+	}    
+	else
     if(string.IsNullOrEmpty(connectionStringName))
     {
         if(connSection.ConnectionStrings.Count>1)
@@ -236,6 +247,7 @@ string GetConnectionString(ref string connectionStringName, out string providerN
             result=connSection.ConnectionStrings[connSection.ConnectionStrings.Count-1].ConnectionString;
             providerName=connSection.ConnectionStrings[connSection.ConnectionStrings.Count-1].ProviderName;
         }            
+       
     }
     else
     {
