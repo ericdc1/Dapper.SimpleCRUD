@@ -37,8 +37,10 @@ It is based on the T4 template from the PetaPoco project which in turn is based 
     IncludeViews = true;
     IncludeRelationships = true;
 	ExcludeTablePrefixes = new string[]{"aspnet_","webpages_"};
-	ForcedConnectionString = "Data Source=.\\SQLEXPRESS;Initial Catalog=AssettiVeicolo;Persist Security Info=True;User ID=AssettiVeicoloUser;Password=assetti";
-	ForcedProviderName = "System.Data.SqlClient";
+	//ForcedConnectionString = "Data Source=.\\SQLEXPRESS;Initial Catalog=MyCatalog;Persist Security Info=True;User ID=MyUser;Password=MyPassword";
+	ForcedConnectionString = "";
+	//ForcedProviderName = "System.Data.SqlClient";
+	ForcedProviderName = "";
 
     // Read schema
 	var tables = LoadTables();
