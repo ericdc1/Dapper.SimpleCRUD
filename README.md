@@ -46,8 +46,6 @@ For projects targeting .NET 4.5 or later, the following 8 helpers exist for asyn
 
 If you need something more complex use Dapper's Query or Execute methods!
 
-Note: all extension methods assume the connection is already open, they will fail if the connection is closed.
-
 Install via NuGet - https://nuget.org/packages/Dapper.SimpleCRUD
 
 Check out the model generator [T4 template](https://nuget.org/packages/Dapper.SimpleCRUD.ModelGenerator/) to generate your POCOs. Documentation is at https://github.com/ericdc1/Dapper.SimpleCRUD/wiki/T4-Template
@@ -379,6 +377,34 @@ Example usage:
 ```csharp     
 var count = connection.RecordCount<User>("Where age > 20");
 ```
+
+Composite Keys
+------------------------------------------------------------
+
+- You can use composite keys by decorating multiple properties on your entity with the `[Key]` attribute and the `[Required]` attribute.
+
+```csharp
+public class UserTags
+{
+   [Key]
+   [Required]
+   public string userId { get; set; }
+   [Key]
+   [Required]
+   public int tagId { get; set; }
+   public DateTime created { get; set; }
+}
+```
+
+Example usage: 
+
+```csharp
+var userTags = connection.Get<UserTags>(new { userId = "joe@gmail.com", tagId = 12345 });
+```
+
+Notes:
+- The object passed in as a key *must* contain all properties from your model marked with a `[Key]` attribute or you will get a `System.ArgumentException`. 
+- Property names on the key object are case-sensitive.
 
 Database support
 ---------------------
