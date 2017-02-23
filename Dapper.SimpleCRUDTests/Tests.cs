@@ -961,37 +961,6 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-        public void TestGetWithMultipleKeysShouldFailIfWrongKeysSupplied()
-        {
-            try
-            {
-                using (var connection = GetOpenConnection())
-                {
-                    connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 1) });
-                    connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 2) });
-                    connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 3) });
-
-                    var multiKey = connection.Get<MultiKeyObject>(new { Key1 = 1 });
-                    multiKey.Key1.IsEqualTo(1);
-                    multiKey.Key2.IsEqualTo(new DateTime(2015, 1, 2));
-                }
-            }
-            catch (ArgumentException)
-            {
-                //Exception Expected. return to pass test
-                return;
-            }
-            finally
-            {
-                using (var connection = GetOpenConnection())
-                {
-                    connection.Execute("delete from MultiKeyObject");
-                }
-            }
-
-            throw new Exception("Test should fail");
-        }
-
         public void TestFilteredGetListWithMultipleKeys()
         {
             using (var connection = GetOpenConnection())
@@ -1061,6 +1030,126 @@ namespace Dapper.SimpleCRUDTests
 
                 connection.Execute("delete from MultiKeyObject");
             }
+        }
+
+        public void TestGetWithMultipleKeysAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.InsertAsync(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 1) });
+                connection.InsertAsync(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 2) });
+                connection.InsertAsync(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 3) });
+
+                System.Threading.Thread.Sleep(300);
+
+                var multiKey = connection.GetAsync<MultiKeyObject>(new { Key1 = 1, Key2 = new DateTime(2015, 1, 2) }).Result;
+                multiKey.Key1.IsEqualTo(1);
+                multiKey.Key2.IsEqualTo(new DateTime(2015, 1, 2));
+
+                connection.Execute("delete from MultiKeyObject");
+            }
+        }
+
+        public void TestFilteredGetListWithMultipleKeysAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 1) });
+                connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 2) });
+                connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 3) });
+                connection.Insert(new MultiKeyObject { Key1 = 2, Key2 = new DateTime(2015, 1, 1) });
+
+                var multiKeys = connection.GetListAsync<MultiKeyObject>(new { Key1 = 1 }).Result;
+                multiKeys.Count().IsEqualTo(3);
+                connection.Execute("delete from MultiKeyObject");
+            }
+        }
+
+        public void TestDeleteByMultipleKeyObjectAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 1) });
+                connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 2) });
+                connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 3) });
+                connection.Insert(new MultiKeyObject { Key1 = 2, Key2 = new DateTime(2015, 1, 1) });
+
+                var multiKey = connection.Get<MultiKeyObject>(new { Key1 = 1, Key2 = new DateTime(2015, 1, 2) });
+                int x = connection.DeleteAsync(multiKey).Result;
+                var multiKeys = connection.GetList<MultiKeyObject>();
+
+                multiKeys.Count().IsEqualTo(3);
+                connection.Execute("delete from MultiKeyObject");
+            }
+        }
+
+        public void TestDeleteByMultipleKeyAttributesAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 1) });
+                connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 2) });
+                connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 3) });
+                connection.Insert(new MultiKeyObject { Key1 = 2, Key2 = new DateTime(2015, 1, 1) });
+
+                int x = connection.DeleteAsync<MultiKeyObject>(new { Key1 = 1, Key2 = new DateTime(2015, 1, 2) }).Result;
+                var multiKeys = connection.GetList<MultiKeyObject>();
+
+                multiKeys.Count().IsEqualTo(3);
+                connection.Execute("delete from MultiKeyObject");
+            }
+        }
+
+        public void TestUpdateMultipleKeyObjectAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 1), Name = "1" });
+                connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 2), Name = "2" });
+                connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 3), Name = "3" });
+                connection.Insert(new MultiKeyObject { Key1 = 2, Key2 = new DateTime(2015, 1, 1), Name = "4" });
+
+                var multiKey = connection.Get<MultiKeyObject>(new { Key1 = 1, Key2 = new DateTime(2015, 1, 2) });
+                multiKey.Name = "22";
+
+                int x = connection.UpdateAsync(multiKey).Result;
+
+                var refreshed = connection.Get<MultiKeyObject>(new { Key1 = 1, Key2 = new DateTime(2015, 1, 2) });
+                refreshed.Name.IsEqualTo("22");
+
+                connection.Execute("delete from MultiKeyObject");
+            }
+        }
+
+        public void TestGetWithMultipleKeysShouldFailIfWrongKeysSupplied()
+        {
+            try
+            {
+                using (var connection = GetOpenConnection())
+                {
+                    connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 1) });
+                    connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 2) });
+                    connection.Insert(new MultiKeyObject { Key1 = 1, Key2 = new DateTime(2015, 1, 3) });
+
+                    var multiKey = connection.Get<MultiKeyObject>(new { Key1 = 1 });
+                    multiKey.Key1.IsEqualTo(1);
+                    multiKey.Key2.IsEqualTo(new DateTime(2015, 1, 2));
+                }
+            }
+            catch (ArgumentException)
+            {
+                //Exception Expected. return to pass test
+                return;
+            }
+            finally
+            {
+                using (var connection = GetOpenConnection())
+                {
+                    connection.Execute("delete from MultiKeyObject");
+                }
+            }
+
+            throw new Exception("Test should fail");
         }
 
         public void TestDeleteByMultipleKeyAttributesShouldFailIfWrongKeysSupplied()
