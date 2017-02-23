@@ -135,6 +135,14 @@ namespace Dapper.SimpleCRUDTests
         public int Age { get; set; }
     }
 
+    public class KeyMaster
+    {
+        [Key, Required]
+        public DateTime Key2 { get; set; }
+
+        [Key, Required]
+        public int Key1 { get; set; }
+    }
 
     #endregion
 
@@ -935,5 +943,19 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+        public void TestFilteredGetListWithMultipleKeys()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new KeyMaster { Key1 = 1, Key2 = new DateTime(2015, 1, 1) });
+                connection.Insert(new KeyMaster { Key1 = 1, Key2 = new DateTime(2015, 1, 2) });
+                connection.Insert(new KeyMaster { Key1 = 1, Key2 = new DateTime(2015, 1, 3) });
+                connection.Insert(new KeyMaster { Key1 = 2, Key2 = new DateTime(2015, 1, 1) });
+
+                var keyMasters = connection.GetList<KeyMaster>(new { Key1 = 1 });
+                keyMasters.Count().IsEqualTo(3);
+                connection.Execute("delete from KeyMaster");
+            }
+        }
     }
 }
