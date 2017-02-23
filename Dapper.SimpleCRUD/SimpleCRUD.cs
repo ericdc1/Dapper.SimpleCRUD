@@ -409,7 +409,6 @@ namespace Dapper
         {
             var idProps = GetIdProperties(entityToDelete).ToList();
 
-
             if (!idProps.Any())
                 throw new ArgumentException("Entity must have at least one [Key] or Id property");
 
@@ -437,11 +436,11 @@ namespace Dapper
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
-        /// <param name="id"></param>
+        /// <param name="key"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of records effected</returns>
-        public static int Delete<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static int Delete<T>(this IDbConnection connection, object key, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
@@ -449,18 +448,15 @@ namespace Dapper
 
             if (!idProps.Any())
                 throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Delete<T> only supports an entity with a single [Key] or Id property");
 
             var onlyKey = idProps.First();
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("Delete from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.AppendFormat("Delete from {0} where", name);
+            BuildWhereForIdProps(idProps, sb);
 
-            var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            DynamicParameters dynParms = GetDynamicParamsForKey(idProps, key);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));
