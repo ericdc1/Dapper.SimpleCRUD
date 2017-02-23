@@ -103,36 +103,59 @@ namespace Dapper
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
-        /// <param name="id"></param>
+        /// <param name="key"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>Returns a single entity by a single id from table T.</returns>
-        public static T Get<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static T Get<T>(this IDbConnection connection, object key, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
 
             if (!idProps.Any())
                 throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Get<T> only supports an entity with a single [Key] or Id property");
 
-            var onlyKey = idProps.First();
+            IEnumerable<PropertyInfo> invalidKeyProps = CheckForInvalidKeyProps(idProps, key);
+            if (invalidKeyProps?.Count() > 0)
+            {
+                ThrowInvalidKeyPropsException<T>(invalidKeyProps);
+            }
+
             var name = GetTableName(currenttype);
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
-            sb.AppendFormat(" from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.AppendFormat(" from {0} where ", name);
+            BuildWhereForIdProps(idProps, sb);
 
-            var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            DynamicParameters dynParms = GetDynamicParamsForKey(idProps, key);
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
+                Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, key));
 
             return connection.Query<T>(sb.ToString(), dynParms, transaction, true, commandTimeout).FirstOrDefault();
+        }
+
+        private static void ThrowInvalidKeyPropsException<T>(IEnumerable<PropertyInfo> invalidKeyProps)
+        {
+            string exceptionText = "";
+            foreach (PropertyInfo prop in invalidKeyProps)
+            {
+                exceptionText += string.Format("The property {0} is marked as a [Key] on type {1}, but was not found in the provided key object.{2}", prop.Name, typeof(T), Environment.NewLine);
+            }
+            throw new ArgumentException(exceptionText);
+        }
+
+        private static IEnumerable<PropertyInfo> CheckForInvalidKeyProps(List<PropertyInfo> idProps, object key)
+        {
+            if (idProps.Count == 1) yield break;    //key object is a value type without properties
+
+            foreach (var prop in idProps)
+            {
+                if (key.GetType().GetProperty(prop.Name) == null)
+                    yield return prop;
+            }
         }
 
         /// <summary>
@@ -322,8 +345,6 @@ namespace Dapper
 
             if (!idProps.Any())
                 throw new ArgumentException("Insert<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Insert<T> only supports an entity with a single [Key] or Id property");
 
             var keyHasPredefinedValue = false;
             var baseType = typeof(TKey);
@@ -344,6 +365,12 @@ namespace Dapper
             sb.Append(" (");
             BuildInsertValues(entityToInsert, sb);
             sb.Append(")");
+
+            if(idProps.Count > 1)
+            {
+                connection.Execute(sb.ToString(), entityToInsert, transaction, commandTimeout);
+                return default(TKey);
+            }
 
             if (keytype == typeof(Guid))
             {
@@ -435,7 +462,6 @@ namespace Dapper
         {
             var idProps = GetIdProperties(entityToDelete).ToList();
 
-
             if (!idProps.Any())
                 throw new ArgumentException("Entity must have at least one [Key] or Id property");
 
@@ -463,30 +489,31 @@ namespace Dapper
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
-        /// <param name="id"></param>
+        /// <param name="key"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of records effected</returns>
-        public static int Delete<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static int Delete<T>(this IDbConnection connection, object key, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
 
-
             if (!idProps.Any())
                 throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Delete<T> only supports an entity with a single [Key] or Id property");
 
-            var onlyKey = idProps.First();
+            IEnumerable<PropertyInfo> invalidKeyProps = CheckForInvalidKeyProps(idProps, key);
+            if (invalidKeyProps?.Count() > 0)
+            {
+                ThrowInvalidKeyPropsException<T>(invalidKeyProps);
+            }
+
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("Delete from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.AppendFormat("Delete from {0} where", name);
+            BuildWhereForIdProps(idProps, sb);
 
-            var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            DynamicParameters dynParms = GetDynamicParamsForKey(idProps, key);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));
@@ -511,7 +538,6 @@ namespace Dapper
         /// <returns>The number of records effected</returns>
         public static int DeleteList<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
 
@@ -760,6 +786,35 @@ namespace Dapper
             }
             if (sb.ToString().EndsWith(", "))
                 sb.Remove(sb.Length - 2, 2);
+        }
+
+        private static void BuildWhereForIdProps(List<PropertyInfo> idProps, StringBuilder sb)
+        {
+            for (int i = 0; i < idProps.Count; i++)
+            {
+                if (i > 0) sb.Append(" and ");
+
+                sb.AppendFormat("{0} = @{1}", GetColumnName(idProps[i]), idProps[i].Name);
+            }
+        }
+
+        private static DynamicParameters GetDynamicParamsForKey(List<PropertyInfo> idProps, object key)
+        {
+            var dynParms = new DynamicParameters();
+
+            if (idProps.Count == 1)
+            {
+                dynParms.Add("@" + idProps[0].Name, key);
+            }
+            else
+            {
+                foreach (var prop in idProps)
+                {
+                    dynParms.Add("@" + prop.Name, key.GetType().GetProperty(prop.Name).GetValue(key, null));
+                }
+            }
+
+            return dynParms;
         }
 
         //Get all properties in an entity

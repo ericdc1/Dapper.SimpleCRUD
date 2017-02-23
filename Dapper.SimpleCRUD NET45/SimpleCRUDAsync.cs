@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;
+using System.Reflection;
 
 namespace Dapper
 {
@@ -24,35 +25,37 @@ namespace Dapper
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
-        /// <param name="id"></param>
+        /// <param name="key"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>Returns a single entity by a single id from table T.</returns>
-        public static async Task<T> GetAsync<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static async Task<T> GetAsync<T>(this IDbConnection connection, object key, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
 
             if (!idProps.Any())
                 throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Get<T> only supports an entity with a single [Key] or Id property");
 
-            var onlyKey = idProps.First();
+            IEnumerable<PropertyInfo> invalidKeyProps = CheckForInvalidKeyProps(idProps, key);
+            if (invalidKeyProps?.Count() > 0)
+            {
+                ThrowInvalidKeyPropsException<T>(invalidKeyProps);
+            }
+
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
-            sb.AppendFormat(" from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.AppendFormat(" from {0} where ", name);
+            BuildWhereForIdProps(idProps, sb);
 
-            var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            DynamicParameters dynParms = GetDynamicParamsForKey(idProps, key);
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
+                Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, key));
 
             var query = await connection.QueryAsync<T>(sb.ToString(), dynParms, transaction, commandTimeout);
             return query.FirstOrDefault();
@@ -243,8 +246,6 @@ namespace Dapper
 
             if (!idProps.Any())
                 throw new ArgumentException("Insert<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Insert<T> only supports an entity with a single [Key] or Id property");
 
             var keyHasPredefinedValue = false;
             var baseType = typeof(TKey);
@@ -265,6 +266,12 @@ namespace Dapper
             sb.Append(" (");
             BuildInsertValues(entityToInsert, sb);
             sb.Append(")");
+
+            if (idProps.Count > 1)
+            {
+                connection.Execute(sb.ToString(), entityToInsert, transaction, commandTimeout);
+                return default(TKey);
+            }
 
             if (keytype == typeof(Guid))
             {
@@ -383,30 +390,31 @@ namespace Dapper
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
-        /// <param name="id"></param>
+        /// <param name="key"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of records effected</returns>
-        public static Task<int> DeleteAsync<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static Task<int> DeleteAsync<T>(this IDbConnection connection, object key, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
 
-
             if (!idProps.Any())
                 throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Delete<T> only supports an entity with a single [Key] or Id property");
 
-            var onlyKey = idProps.First();
+            IEnumerable<PropertyInfo> invalidKeyProps = CheckForInvalidKeyProps(idProps, key);
+            if (invalidKeyProps?.Count() > 0)
+            {
+                ThrowInvalidKeyPropsException<T>(invalidKeyProps);
+            }
+
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("Delete from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.AppendFormat("Delete from {0} where", name);
+            BuildWhereForIdProps(idProps, sb);
 
-            var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            DynamicParameters dynParms = GetDynamicParamsForKey(idProps, key);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));
