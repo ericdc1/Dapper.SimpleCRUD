@@ -481,7 +481,6 @@ namespace Dapper
                 ThrowInvalidKeyPropsException<T>(invalidKeyProps);
             }
 
-            var onlyKey = idProps.First();
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
