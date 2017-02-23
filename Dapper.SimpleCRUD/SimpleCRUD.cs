@@ -91,6 +91,12 @@ namespace Dapper
             if (!idProps.Any())
                 throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
 
+            IEnumerable<PropertyInfo> invalidKeyProps = CheckForInvalidKeyProps(idProps, key);
+            if (invalidKeyProps?.Count() > 0)
+            {
+                ThrowInvalidKeyPropsException<T>(invalidKeyProps);
+            }
+
             var name = GetTableName(currenttype);
             var sb = new StringBuilder();
             sb.Append("Select ");
@@ -105,6 +111,27 @@ namespace Dapper
                 Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, key));
 
             return connection.Query<T>(sb.ToString(), dynParms, transaction, true, commandTimeout).FirstOrDefault();
+        }
+
+        private static void ThrowInvalidKeyPropsException<T>(IEnumerable<PropertyInfo> invalidKeyProps)
+        {
+            string exceptionText = "";
+            foreach (PropertyInfo prop in invalidKeyProps)
+            {
+                exceptionText += string.Format("The property {0} is marked as a [Key] on type {1}, but was not found in the provided key object.{2}", prop.Name, typeof(T), Environment.NewLine);
+            }
+            throw new ArgumentException(exceptionText);
+        }
+
+        private static IEnumerable<PropertyInfo> CheckForInvalidKeyProps(List<PropertyInfo> idProps, object key)
+        {
+            if (idProps.Count == 1) yield break;    //key object is a value type without properties
+
+            foreach (var prop in idProps)
+            {
+                if (key.GetType().GetProperty(prop.Name) == null)
+                    yield return prop;
+            }
         }
 
         /// <summary>
@@ -445,9 +472,14 @@ namespace Dapper
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
 
-
             if (!idProps.Any())
                 throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
+
+            IEnumerable<PropertyInfo> invalidKeyProps = CheckForInvalidKeyProps(idProps, key);
+            if (invalidKeyProps?.Count() > 0)
+            {
+                ThrowInvalidKeyPropsException<T>(invalidKeyProps);
+            }
 
             var onlyKey = idProps.First();
             var name = GetTableName(currenttype);
@@ -481,7 +513,6 @@ namespace Dapper
         /// <returns>The number of records effected</returns>
         public static int DeleteList<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-       
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
 
