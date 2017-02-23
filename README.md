@@ -18,15 +18,15 @@ This extension adds the following 8 helpers:
 - Get(id) - gets one record based on the primary key 
 - GetList&lt;Type&gt;() - gets list of records all records from a table
 - GetList&lt;Type&gt;(anonymous object for where clause) - gets list of all records matching the where options
-- GetList&lt;Type&gt;(string for conditions) - gets list of all records matching the conditions
-- GetListPaged&lt;Type&gt;(int pagenumber, int itemsperpage, string for conditions, string for order) - gets paged list of all records matching the conditions
+- GetList&lt;Type&gt;(string for conditions, anonymous object with parameters) - gets list of all records matching the conditions
+- GetListPaged&lt;Type&gt;(int pagenumber, int itemsperpage, string for conditions, string for order, anonymous object with parameters) - gets paged list of all records matching the conditions
 - Insert(entity) - Inserts a record and returns the new primary key
 - Update(entity) - Updates a record
 - Delete&lt;Type&gt;(id) - Deletes a record based on primary key
 - Delete(entity) - Deletes a record based on the typed entity
 - DeleteList&lt;Type&gt;(anonymous object for where clause) - deletes all records matching the where options
-- DeleteList&lt;Type&gt;(string for conditions) - deletes list of all records matching the conditions
-- RecordCount&lt;Type&gt;(string for conditions) -gets count of all records matching the conditions 
+- DeleteList&lt;Type&gt;(string for conditions, anonymous object with parameters) - deletes list of all records matching the conditions
+- RecordCount&lt;Type&gt;(string for conditions,anonymous object with parameters) -gets count of all records matching the conditions 
 
 
 For projects targeting .NET 4.5 or later, the following 8 helpers exist for async operations:
@@ -34,15 +34,15 @@ For projects targeting .NET 4.5 or later, the following 8 helpers exist for asyn
 - GetAsync(id) - gets one record based on the primary key 
 - GetListAsync&lt;Type&gt;() - gets list of records all records from a table
 - GetListAsync&lt;Type&gt;(anonymous object for where clause) - gets list of all records matching the where options
-- GetListAsync&lt;Type&gt;(string for conditions) - gets list of all records matching the conditions
-- GetListPagedAsync&lt;Type&gt;(int pagenumber, int itemsperpage, string for conditions, string for order)  - gets paged list of all records matching the conditions
+- GetListAsync&lt;Type&gt;(string for conditions, anonymous object with parameters) - gets list of all records matching the conditions
+- GetListPagedAsync&lt;Type&gt;(int pagenumber, int itemsperpage, string for conditions, string for order, anonymous object with parameters)  - gets paged list of all records matching the conditions
 - InsertAsync(entity) - Inserts a record and returns the new primary key
 - UpdateAsync(entity) - Updates a record
 - DeleteAsync&lt;Type&gt;(id) - Deletes a record based on primary key
 - DeleteAsync(entity) - Deletes a record based on the typed entity
 - DeleteListAsync&lt;Type&gt;(anonymous object for where clause) - deletes all records matching the where options
-- DeleteListAsync&lt;Type&gt;(string for conditions) - deletes list of all records matching the conditions
-- RecordCountAsync&lt;Type&gt;(string for conditions) -gets count of all records matching the conditions 
+- DeleteListAsync&lt;Type&gt;(string for conditions, anonymous object with parameters) - deletes list of all records matching the conditions
+- RecordCountAsync&lt;Type&gt;(string for conditions, anonymous object with parameters) -gets count of all records matching the conditions 
 
 If you need something more complex use Dapper's Query or Execute methods!
 
@@ -165,7 +165,7 @@ Execute a query with a where clause and map the results to a strongly typed List
 ------------------------------------------------------------
 
 ```csharp
-public static IEnumerable<T> GetList<T>(this IDbConnection connection, string conditions)
+public static IEnumerable<T> GetList<T>(this IDbConnection connection, string conditions, object parameters = null)
 ```
 
 Example usage: 
@@ -180,20 +180,28 @@ public class User
   
 var user = connection.GetList<User>("where age = 10 or Name like '%Smith%'");  
 ```
+
+or with parameters
+
+```csharp
+var encodeForLike = term => term.Replace("[", "[[]").Replace("%", "[%]");
+string likename = "%" + encodeForLike("Smith") + "%";
+var user = connection.GetList<User>("where age = @Age or Name like @Name", new {Age = 10, Name = likename});  
+```
 Results in 
 ```sql
 Select * from [User] where age = 10 or Name like '%Smith%'
 ```
 
 Notes:
-- This uses your raw SQL so be careful to not create SQL injection holes
+- This uses your raw SQL so be careful to not create SQL injection holes or use the Parameters option
 - There is nothing stopping you from adding an order by clause using this method 
 
 Execute a query with a where clause and map the results to a strongly typed List with Paging
 ------------------------------------------------------------
 
 ```csharp
-public static IEnumerable<T> GetListPaged<T>(this IDbConnection connection, int pageNumber, int rowsPerPage, string conditions, string orderby)
+public static IEnumerable<T> GetListPaged<T>(this IDbConnection connection, int pageNumber, int rowsPerPage, string conditions, string orderby, object parameters = null)
 ```
 
 Example usage: 
@@ -212,9 +220,17 @@ Results in (SQL Server dialect)
 ```sql
 SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY Name desc) AS PagedNumber, Id, Name, Age FROM [User] where age = 10 or Name like '%Smith%') AS u WHERE PagedNUMBER BETWEEN ((1 - 1) * 10 + 1) AND (1 * 10)
 ```
+or with parameters
+```csharp
+var user = connection.GetListPaged<User>(1,10,"where age = @Age","Name desc", new {Age = 10});  
+```
+Results in (SQL Server dialect)
+```sql
+SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY Name desc) AS PagedNumber, Id, Name, Age FROM [User] where age = 10) AS u WHERE PagedNUMBER BETWEEN ((1 - 1) * 10 + 1) AND (1 * 10)
+```
 
 Notes:
-- This uses your raw SQL so be careful to not create SQL injection holes
+- This uses your raw SQL so be careful to not create SQL injection holes or use the Parameters option
 - It is recommended to use https://github.com/martijnboland/MvcPaging for the paging helper for your views 
   - @Html.Pager(10, 1, 100) - items per page, page number, total records
 
@@ -358,7 +374,7 @@ Delete multiple records with where clause
 ------------------------------------------------------------
 
 ```csharp
-public static int DeleteList<T>(this IDbConnection connection, string conditions, IDbTransaction transaction = null, int? commandTimeout = null)
+public static int DeleteList<T>(this IDbConnection connection, string conditions, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
 ```
 
 Example usage: 
@@ -366,18 +382,52 @@ Example usage:
 ```csharp     
 connection.DeleteList<User>("Where age > 20");
 ```
+or with parameters
+
+```csharp     
+connection.DeleteList<User>("Where age > @Age", new {Age = 20});
+```
 
 Get count of records 
 ------------------------------------------------------------
 
 ```csharp
-public static int RecordCount<T>(this IDbConnection connection, string conditions = "")
+public static int RecordCount<T>(this IDbConnection connection, string conditions = "", object parameters = null)
 ```
 
 Example usage: 
 
 ```csharp     
 var count = connection.RecordCount<User>("Where age > 20");
+```
+or with parameters
+
+```csharp     
+var count = connection.RecordCount<User>("Where age > @Age", new {Age = 20});
+```
+
+Custom table and column name resolvers
+---------------------
+You can also change the format of table and column names, first create a class implimenting the ITableNameResolver and/or IColumnNameResolver interfaces
+```csharp 
+public class CustomResolver : SimpleCRUD.ITableNameResolver, SimpleCRUD.IColumnNameResolver
+{
+    public string ResolveTableName(Type type)
+    {
+        return string.Format("tbl_{0}", type.Name);
+    }
+
+    public string ResolveColumnName(PropertyInfo propertyInfo)
+    {
+        return string.Format("{0}_{1}", propertyInfo.DeclaringType.Name, propertyInfo.Name);
+    }
+}
+```
+then apply the resolvers when intializing your application
+```csharp 
+    var resolver = new CustomResolver();
+    SimpleCRUD.SetTableNameResolver(resolver);
+    SimpleCRUD.SetColumnNameResolver(resolver);
 ```
 
 Database support
@@ -413,10 +463,12 @@ The following attributes can be applied to properties in your model
 
 [IgnoreUpdate] - Excludes the property from updates
 
+[NotMapped] - Excludes the property from all operations
+
 
 Do you have a comprehensive list of examples?
 ---------------------
-Dapper.SimpleCRUD has a basic test suite in the [test project](https://github.com/ericdc1/dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD.Tests/Tests.cs)
+Dapper.SimpleCRUD has a basic test suite in the [test project](https://github.com/ericdc1/dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUDTests/Tests.cs)
 
 There is also a sample website showing working examples of the the core functionality in the [demo website](https://github.com/ericdc1/Dapper.SimpleCRUD/tree/master/DemoWebsite)
 
