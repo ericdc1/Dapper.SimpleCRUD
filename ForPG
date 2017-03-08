@@ -1,0 +1,3 @@
+I 'm forking this project to resolve the problem on postgresql.
+which the sql script generate by source Dapper.SimpleCRUD cannot run on postgresql.
+because the table name and columns name rounded by "[" and "]".
