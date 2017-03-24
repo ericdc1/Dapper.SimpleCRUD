@@ -70,7 +70,7 @@ namespace Dapper
                 case Dialect.Oracle:
                     _dialect = Dialect.Oracle;
                     _encapsulation = "\"{0}\"";
-                    _getIdentitySql = ""; string.Format("select CURRVAL() as id from {TableName}");
+                    _getIdentitySql = "";
                     _getPagedListSql = "SELECT * FROM (SELECT ROWNUM PagedNUMBER, u.* FROM(SELECT {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy}) u) WHERE PagedNUMBER BETWEEN (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
                     break;
                 default:
