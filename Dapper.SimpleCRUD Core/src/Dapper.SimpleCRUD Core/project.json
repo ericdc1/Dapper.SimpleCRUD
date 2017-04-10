@@ -3,6 +3,7 @@
 
   "dependencies": {
     "Dapper": "1.50.2",
+    "Microsoft.CSharp": "4.3.0",
     "NETStandard.Library": "1.6.0",
     "System.Data.Common": "4.3.0",
     "System.Data.SqlClient": "4.3.0",

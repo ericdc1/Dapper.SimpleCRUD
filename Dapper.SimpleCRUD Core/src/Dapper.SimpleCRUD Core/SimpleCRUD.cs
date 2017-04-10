@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using System.Data.Common;
 using Dapper;
+using Microsoft.CSharp.RuntimeBinder;
 
 namespace Dapper
 {
