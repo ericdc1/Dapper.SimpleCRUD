@@ -193,8 +193,9 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                var id = connection.Insert(new User { Name = "User1", Age = 10 });
-                id.IsEqualTo(1);
+                var id = connection.Insert(new User { Name = "TestInsertWithSpecifiedTableName", Age = 10 });
+                var user = connection.Get<User>(id);
+                user.Name.IsEqualTo("TestInsertWithSpecifiedTableName");
                 connection.Delete<User>(id);
 
             }
