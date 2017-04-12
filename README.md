@@ -2,8 +2,8 @@ Dapper.SimpleCRUD - simple CRUD helpers for Dapper
 ========================================
 Features
 --------
-<img  align="right" src="https://raw.githubusercontent.com/ericdc1/Dapper.SimpleCRUD/master/images/SimpleCRUD-200x200.png" alt="SimpleCRUD">
-Dapper.SimpleCRUD is a [single file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD/SimpleCRUD.cs) you can drop in to your project that will extend your IDbConnection interface. (If you want dynamic support, you need an [additional file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD%20NET45/SimpleCRUDAsync.cs).)
+<img align="right" src="https://raw.githubusercontent.com/ericdc1/Dapper.SimpleCRUD/master/images/SimpleCRUD-200x200.png" alt="SimpleCRUD">
+Dapper.SimpleCRUD is a [single file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD/SimpleCRUD.cs) you can drop in to your project that will extend your IDbConnection interface. (If you want dynamic support, you need an [additional file][1].)
 
 Who wants to write basic read/insert/update/delete statements? 
 
@@ -194,7 +194,7 @@ Select * from [User] where age = 10 or Name like '%Smith%'
 ```
 
 Notes:
-- This uses your raw SQL so be careful to not create SQL injection holes or use the Parameters option
+- **This uses your raw SQL so be careful to not create SQL injection holes or use the Parameters option**
 - There is nothing stopping you from adding an order by clause using this method 
 
 Execute a query with a where clause and map the results to a strongly typed List with Paging
@@ -230,8 +230,8 @@ SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY Name desc) AS PagedNumber, Id, 
 ```
 
 Notes:
-- This uses your raw SQL so be careful to not create SQL injection holes or use the Parameters option
-- It is recommended to use https://github.com/martijnboland/MvcPaging for the paging helper for your views 
+- **This uses your raw SQL so be careful to not create SQL injection holes or use the Parameters option**
+- *It is recommended to use https://github.com/martijnboland/MvcPaging for the paging helper for your views*
   - @Html.Pager(10, 1, 100) - items per page, page number, total records
 
 
@@ -254,7 +254,7 @@ public class User
    public string LastName { get; set; }
    public int Age { get; set; }
 
-   //Additional properties not in database
+   // Additional properties not in database
    [Editable(false)]
    public string FullName { get { return string.Format("{0} {1}", FirstName, LastName); } }
    public List<User> Friends { get; set; }
@@ -296,7 +296,7 @@ public class User
    public string LastName { get; set; }
    public int Age { get; set; }
 
-   //Additional properties not in database
+   // Additional properties not in database
    [Editable(false)]
    public string FullName { get { return string.Format("{0} {1}", FirstName, LastName); } }
    public List<User> Friends { get; set; }
@@ -433,6 +433,7 @@ then apply the resolvers when intializing your application
 Database support
 ---------------------
 * There is an option to change database dialect. Default is Microsoft SQL Server but can be changed to PostgreSQL, SQLite or MySQL and possibly others down the road. 
+
 ```csharp 
    SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
    
@@ -472,3 +473,6 @@ Dapper.SimpleCRUD has a basic test suite in the [test project](https://github.co
 
 There is also a sample website showing working examples of the the core functionality in the [demo website](https://github.com/ericdc1/Dapper.SimpleCRUD/tree/master/DemoWebsite)
 
+
+
+  [1]: https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD%20NET45/SimpleCRUDAsync.cs
