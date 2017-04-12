@@ -125,7 +125,6 @@ namespace Dapper
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            var whereprops = GetAllProperties(conditions).ToArray();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
