@@ -141,6 +141,13 @@ namespace Dapper.SimpleCRUDTests
         public string Name { get; set; }
         public int Age { get; set; }
     }
+    public class KeyMaster
+    {
+        [Key, Required]
+        public int Key1 { get; set; }
+        [Key, Required]
+        public int Key2 { get; set; }
+    }
 
     #endregion
 
@@ -263,6 +270,20 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute("Delete from Users");
             }
         }
+        public void TestFilteredGetListWithMultipleKeys()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new KeyMaster { Key1 = 1, Key2 = 1 });
+                connection.Insert(new KeyMaster { Key1 = 1, Key2 = 2 });
+                connection.Insert(new KeyMaster { Key1 = 1, Key2 = 3 });
+                connection.Insert(new KeyMaster { Key1 = 2, Key2 = 4 });
+
+                var keyMasters = connection.GetList<KeyMaster>(new { Key1 = 1 });
+                keyMasters.Count().IsEqualTo(3);
+                connection.Execute("Delete from KeyMaster");
+            }
+        }
 
         public void TestFilteredWithSQLGetList()
         {
@@ -302,19 +323,19 @@ namespace Dapper.SimpleCRUDTests
         }
 
         public void TestsGetListWithParameters()
-       {
-           using (var connection = GetOpenConnection())
-           {
-               connection.Insert(new User { Name = "TestsGetListWithParameters1", Age = 10 });
-               connection.Insert(new User { Name = "TestsGetListWithParameters2", Age = 10 });
-               connection.Insert(new User { Name = "TestsGetListWithParameters3", Age = 10 });
-               connection.Insert(new User { Name = "TestsGetListWithParameters4", Age = 11 });
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new User { Name = "TestsGetListWithParameters1", Age = 10 });
+                connection.Insert(new User { Name = "TestsGetListWithParameters2", Age = 10 });
+                connection.Insert(new User { Name = "TestsGetListWithParameters3", Age = 10 });
+                connection.Insert(new User { Name = "TestsGetListWithParameters4", Age = 11 });
 
-               var user = connection.GetList<User>("where Age > @Age", new { Age = 10 });
-               user.Count().IsEqualTo(1);
-               connection.Execute("Delete from Users");
-           }
-       }
+                var user = connection.GetList<User>("where Age > @Age", new { Age = 10 });
+                user.Count().IsEqualTo(1);
+                connection.Execute("Delete from Users");
+            }
+        }
 
         public void TestGetWithReadonlyProperty()
         {
@@ -435,6 +456,18 @@ namespace Dapper.SimpleCRUDTests
                 var car = connection.Get<Car>(id);
                 connection.Delete(car);
                 connection.Get<Car>(id).IsNull();
+            }
+        }
+
+        public void TestDeleteByMultipleKeyObjectWithAttributes()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var keyMaster = new KeyMaster { Key1 = 1, Key2 = 2 };
+                connection.Insert(keyMaster);
+                var car = connection.Get<KeyMaster>(new { Key1 = 1, Key2 = 2 });
+                connection.Delete(car);
+                connection.Get<KeyMaster>(keyMaster).IsNull();
             }
         }
 
@@ -650,6 +683,19 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+        public void TestMultipleKeyGetAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var keyMaster = new KeyMaster { Key1 = 1, Key2 = 2 };
+                connection.Insert(keyMaster);
+                var result = connection.GetAsync<KeyMaster>(new { Key1 = 1, Key2 = 2 });
+                result.Result.Key1.IsEqualTo(1);
+                result.Result.Key2.IsEqualTo(2);
+                connection.Delete(keyMaster);
+            }
+        }
+
         public void TestDeleteByIdAsync()
         {
             using (var connection = GetOpenConnection())
@@ -671,6 +717,19 @@ namespace Dapper.SimpleCRUDTests
                 connection.DeleteAsync(user);
                 connection.Get<User>(id).IsNull();
                 connection.Delete<User>(id);
+            }
+        }
+
+        public void TestDeleteByMultipleKeyObject()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var keyMaster = new KeyMaster { Key1 = 1, Key2 = 2 };
+                connection.Insert(keyMaster);
+                connection.Get<KeyMaster>(keyMaster);
+                connection.Delete<KeyMaster>(new { Key1 = 1, Key2 = 2 });
+                connection.Get<KeyMaster>(keyMaster).IsNull();
+                connection.Delete(keyMaster);
             }
         }
 
@@ -858,7 +917,7 @@ namespace Dapper.SimpleCRUDTests
                     x++;
                 } while (x < 30);
 
-                var resultlist = connection.GetListPaged<User>(1, 30, "where Age > @Age", null, new {Age = 14});
+                var resultlist = connection.GetListPaged<User>(1, 30, "where Age > @Age", null, new { Age = 14 });
                 resultlist.Count().IsEqualTo(15);
                 resultlist.First().Name.IsEqualTo("Person 15");
                 connection.Execute("Delete from Users");
@@ -934,7 +993,7 @@ namespace Dapper.SimpleCRUDTests
                     x++;
                 } while (x < 10);
 
-                connection.DeleteList<User>(new {age = 9});
+                connection.DeleteList<User>(new { age = 9 });
                 var resultlist = connection.GetList<User>();
                 resultlist.Count().IsEqualTo(9);
                 connection.Execute("Delete from Users");
@@ -997,7 +1056,7 @@ namespace Dapper.SimpleCRUDTests
                 resultlist.Count().IsEqualTo(30);
                 connection.RecordCount<User>().IsEqualTo(30);
 
-                connection.RecordCount<User>(new { age = 10}).IsEqualTo(1);
+                connection.RecordCount<User>(new { age = 10 }).IsEqualTo(1);
 
 
                 connection.Execute("Delete from Users");
@@ -1051,6 +1110,19 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+        public async void TestInsertWithMultiplePrimaryKeysAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var keyMaster = new KeyMaster { Key1 = 1, Key2 = 2 };
+                await connection.InsertAsync(keyMaster);
+                var result = connection.GetAsync<KeyMaster>(new { Key1 = 1, Key2 = 2 });
+                result.Result.Key1.IsEqualTo(1);
+                result.Result.Key2.IsEqualTo(2);
+                connection.Execute("Delete from KeyMaster");
+            }
+        }
+
 
         public void TestGetListNullableWhere()
         {
@@ -1082,19 +1154,19 @@ namespace Dapper.SimpleCRUDTests
                 var itemId = connection.Insert(new IgnoreColumns() { IgnoreInsert = "OriginalInsert", IgnoreUpdate = "OriginalUpdate", IgnoreSelect = "OriginalSelect", IgnoreAll = "OriginalAll" });
                 var item = connection.Get<IgnoreColumns>(itemId);
                 //verify insert column was ignored
-                item.IgnoreInsert.IsNull(); 
+                item.IgnoreInsert.IsNull();
 
                 //verify select value wasn't selected 
                 item.IgnoreSelect.IsNull();
 
                 //verify the column is really there via straight dapper
-                var fromDapper = connection.Query<IgnoreColumns>("Select * from IgnoreColumns where Id = @Id", new{id = itemId}).First();
+                var fromDapper = connection.Query<IgnoreColumns>("Select * from IgnoreColumns where Id = @Id", new { id = itemId }).First();
                 fromDapper.IgnoreSelect.IsEqualTo("OriginalSelect");
-               
+
                 //change value and update
                 item.IgnoreUpdate = "ChangedUpdate";
                 connection.Update(item);
-                
+
                 //verify that update didn't take effect
                 item = connection.Get<IgnoreColumns>(itemId);
                 item.IgnoreUpdate.IsEqualTo("OriginalUpdate");
