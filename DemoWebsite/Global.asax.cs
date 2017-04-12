@@ -58,7 +58,7 @@ namespace DemoWebsite
                 connection.Execute(@" create TABLE Users (UserId int IDENTITY(1,1) not null Primary Key, FirstName nvarchar(100) not null, LastName nvarchar(100) not null, intAge int not null) ");
                 connection.Insert(new UserViewModel() {Age = 42, FirstName = "Jim", LastName = "Smith"});
                 connection.Execute(@" CREATE TABLE GUIDTest (guid uniqueidentifier NOT NULL,name varchar(50) NOT NULL, CONSTRAINT PK_GUIDTest PRIMARY KEY CLUSTERED (guid ASC))");
-                connection.Insert<Guid>(new GUIDTestViewModel {name = "Example"});
+                connection.Insert<Guid, GUIDTest>(new GUIDTestViewModel {name = "Example"});
 
                 int x = 1;
                 do

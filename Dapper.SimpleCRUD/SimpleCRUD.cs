@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Data;
 using System.Diagnostics;
 using System.Linq;
@@ -120,7 +119,7 @@ namespace Dapper
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
             sb.AppendFormat(" from {0} where ", name);
 
             for (var i = 0; i < idProps.Count; i++)
@@ -171,7 +170,7 @@ namespace Dapper
             var whereprops = GetAllProperties(whereConditions).ToArray();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
             sb.AppendFormat(" from {0}", name);
 
             if (whereprops.Any())
@@ -213,7 +212,7 @@ namespace Dapper
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
             sb.AppendFormat(" from {0}", name);
 
             sb.Append(" " + conditions);
@@ -278,7 +277,7 @@ namespace Dapper
             }
 
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
             query = query.Replace("{SelectColumns}", sb.ToString());
             query = query.Replace("{TableName}", name);
             query = query.Replace("{PageNumber}", pageNumber.ToString());
@@ -307,13 +306,13 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The ID (primary key) of the newly inserted record if it is identity using the int? type, otherwise null</returns>
-        public static int? Insert(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static int? Insert<TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-            return Insert<int?>(connection, entityToInsert, transaction, commandTimeout);
+            return Insert<int?, TEntity>(connection, entityToInsert, transaction, commandTimeout);
         }
 
         /// <summary>
-        /// <para>Inserts a row into the database</para>
+        /// <para>Inserts a row into the database, using ONLY the properties defined by TEntity</para>
         /// <para>By default inserts into the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Insert filters out Id column and any columns with the [Key] attribute</para>
@@ -326,7 +325,7 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The ID (primary key) of the newly inserted record if it is identity using the defined type, otherwise null</returns>
-        public static TKey Insert<TKey>(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static TKey Insert<TKey, TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToInsert).ToList();
 
@@ -346,11 +345,11 @@ namespace Dapper
             var sb = new StringBuilder();
             sb.AppendFormat("insert into {0}", name);
             sb.Append(" (");
-            BuildInsertParameters(entityToInsert, sb);
+            BuildInsertParameters<TEntity>(sb);
             sb.Append(") ");
             sb.Append("values");
             sb.Append(" (");
-            BuildInsertValues(entityToInsert, sb);
+            BuildInsertValues<TEntity>(sb);
             sb.Append(")");
 
             if (keytype == typeof(Guid))
@@ -388,9 +387,9 @@ namespace Dapper
             }
             return (TKey)r.First().id;
         }
-
+        
         /// <summary>
-        /// <para>Updates a record or records in the database</para>
+        /// <para>Updates a record or records in the database with only the properties of TEntity</para>
         /// <para>By default updates records in the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Updates records where the Id property and properties with the [Key] attribute match those in the database.</para>
@@ -403,7 +402,7 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of effected records</returns>
-        public static int Update(this IDbConnection connection, object entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static int Update<TEntity>(this IDbConnection connection, TEntity entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToUpdate).ToList();
 
@@ -648,7 +647,7 @@ namespace Dapper
         }
 
         //build update statement based on list on an entity
-        private static void BuildUpdateSet(object entityToUpdate, StringBuilder sb)
+        private static void BuildUpdateSet<T>(T entityToUpdate, StringBuilder sb)
         {
             var nonIdProps = GetUpdateableProperties(entityToUpdate).ToArray();
 
@@ -682,7 +681,7 @@ namespace Dapper
             }
         }
 
-        private static void BuildWhere(StringBuilder sb, IEnumerable<PropertyInfo> idProps, object sourceEntity, object whereConditions = null)
+        private static void BuildWhere<TEntity>(StringBuilder sb, IEnumerable<PropertyInfo> idProps, TEntity sourceEntity, object whereConditions = null)
         {
             var propertyInfos = idProps.ToArray();
             for (var i = 0; i < propertyInfos.Count(); i++)
@@ -693,7 +692,7 @@ namespace Dapper
                 //the anonymous object used for search doesn't have the custom attributes attached to them so this allows us to build the correct where clause
                 //by converting the model type to the database column name via the column attribute
                 var propertyToUse = propertyInfos.ElementAt(i);
-                var sourceProperties = GetScaffoldableProperties(sourceEntity).ToArray();
+                var sourceProperties = GetScaffoldableProperties<TEntity>().ToArray();
                 for (var x = 0; x < sourceProperties.Count(); x++)
                 {
                     if (sourceProperties.ElementAt(x).Name == propertyInfos.ElementAt(i).Name)
@@ -723,9 +722,9 @@ namespace Dapper
         //Not marked with the [Key] attribute (without required attribute)
         //Not marked with [IgnoreInsert]
         //Not marked with [NotMapped]
-        private static void BuildInsertValues(object entityToInsert, StringBuilder sb)
+        private static void BuildInsertValues<T>(StringBuilder sb)
         {
-            var props = GetScaffoldableProperties(entityToInsert).ToArray();
+            var props = GetScaffoldableProperties<T>().ToArray();
             for (var i = 0; i < props.Count(); i++)
             {
                 var property = props.ElementAt(i);
@@ -754,9 +753,9 @@ namespace Dapper
         //marked with [IgnoreInsert]
         //named Id
         //marked with [NotMapped]
-        private static void BuildInsertParameters(object entityToInsert, StringBuilder sb)
+        private static void BuildInsertParameters<T>(StringBuilder sb)
         {
-            var props = GetScaffoldableProperties(entityToInsert).ToArray();
+            var props = GetScaffoldableProperties<T>().ToArray();
 
             for (var i = 0; i < props.Count(); i++)
             {
@@ -780,16 +779,20 @@ namespace Dapper
         }
 
         //Get all properties in an entity
-        private static IEnumerable<PropertyInfo> GetAllProperties(object entity)
+        private static IEnumerable<PropertyInfo> GetAllProperties<T>(T entity) where T : class
         {
-            if (entity == null) entity = new { };
+            if (entity == null) return new PropertyInfo[0];
             return entity.GetType().GetProperties();
         }
 
         //Get all properties that are not decorated with the Editable(false) attribute
-        private static IEnumerable<PropertyInfo> GetScaffoldableProperties(object entity)
+        private static IEnumerable<PropertyInfo> GetScaffoldableProperties<T>()
         {
-            var props = entity.GetType().GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(EditableAttribute).Name && !IsEditable(p)) == false);
+            IEnumerable<PropertyInfo> props = typeof(T).GetProperties();
+
+            props = props.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(EditableAttribute).Name && !IsEditable(p)) == false);
+
+
             return props.Where(p => p.PropertyType.IsSimpleType() || IsEditable(p));
         }
 
@@ -834,9 +837,9 @@ namespace Dapper
         //Not marked ReadOnly
         //Not marked IgnoreInsert
         //Not marked NotMapped
-        private static IEnumerable<PropertyInfo> GetUpdateableProperties(object entity)
+        private static IEnumerable<PropertyInfo> GetUpdateableProperties<T>(T entity)
         {
-            var updateableProperties = GetScaffoldableProperties(entity);
+            var updateableProperties = GetScaffoldableProperties<T>();
             //remove ones with ID
             updateableProperties = updateableProperties.Where(p => !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase));
             //remove ones with key attribute
