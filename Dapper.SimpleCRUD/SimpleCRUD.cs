@@ -675,7 +675,7 @@ namespace Dapper
                 sb.Append(GetColumnName(propertyInfos.ElementAt(i)));
                 //if there is a custom column name add an "as customcolumnname" to the item so it maps properly
                 if (propertyInfos.ElementAt(i).GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == typeof(ColumnAttribute).Name) != null)
-                    sb.Append(" as " + Encapsulate(propertyInfos.ElementAt(i).Name));
+                    sb.Append(" as " + SimpleCRUD.Encapsulate(propertyInfos.ElementAt(i).Name));
                 addedAny = true;
 
             }
@@ -957,17 +957,17 @@ namespace Dapper
         {
             public virtual string ResolveTableName(Type type)
             {
-                var tableName = Encapsulate(type.Name);
+                var tableName = SimpleCRUD.Encapsulate(type.Name);
 
                 var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == typeof(TableAttribute).Name) as dynamic;
                 if (tableattr != null)
                 {
-                    tableName = Encapsulate(tableattr.Name);
+                    tableName = SimpleCRUD.Encapsulate(tableattr.Name);
                     try
                     {
                         if (!String.IsNullOrEmpty(tableattr.Schema))
                         {
-                            string schemaName = Encapsulate(tableattr.Schema);
+                            string schemaName = SimpleCRUD.Encapsulate(tableattr.Schema);
                             tableName = String.Format("{0}.{1}", schemaName, tableName);
                         }
                     }
@@ -985,12 +985,12 @@ namespace Dapper
         {
             public virtual string ResolveColumnName(PropertyInfo propertyInfo)
             {
-                var columnName = Encapsulate(propertyInfo.Name);
+                var columnName = SimpleCRUD.Encapsulate(propertyInfo.Name);
 
                 var columnattr = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == typeof(ColumnAttribute).Name) as dynamic;
                 if (columnattr != null)
                 {
-                    columnName = Encapsulate(columnattr.Name);
+                    columnName = SimpleCRUD.Encapsulate(columnattr.Name);
                     if (Debugger.IsAttached)
                         Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
                 }
