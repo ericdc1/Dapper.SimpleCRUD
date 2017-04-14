@@ -284,7 +284,7 @@ namespace Dapper
                 }
             }
 
-            if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
+            if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) <= 0)
             {
                 sb.Append(";" + _getIdentitySql);
             }
