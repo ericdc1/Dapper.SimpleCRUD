@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Data.SqlClient;
-using System.Data.SQLite;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using MySql.Data.MySqlClient;
 using Npgsql;
+
+#if !NETSTANDARD
+using System.Data.SQLite;
+#endif
 
 namespace Dapper.SimpleCRUDTests
 {
@@ -21,9 +24,10 @@ namespace Dapper.SimpleCRUDTests
             //SetupPg(); 
             //RunTestsPg();   
 
+#if !NETSTANDARD
             SetupSqLite();
             RunTestsSqLite();
-
+#endif
             //MySQL tests assume port 3306 with username admin and password admin
             //they are commented out by default since mysql setup is required to run tests
             //SetupMySQL();
@@ -32,7 +36,7 @@ namespace Dapper.SimpleCRUDTests
 
         private static void Setup()
         {
-            using (var connection = new SqlConnection(@"Data Source=(LocalDB)\v11.0;Initial Catalog=Master;Integrated Security=True"))
+            using (var connection = new SqlConnection(@"Data Source=.\sqlexpress;Initial Catalog=Master;Integrated Security=True"))
             {
                 connection.Open();
                 try
@@ -45,7 +49,7 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute(@" CREATE DATABASE DapperSimpleCrudTestDb; ");
             }
 
-            using (var connection = new SqlConnection(@"Data Source = (LocalDB)\v11.0;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True"))
+            using (var connection = new SqlConnection(@"Data Source = .\sqlexpress;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True"))
             {
                 connection.Open();
                 connection.Execute(@" create table Users (Id int IDENTITY(1,1) not null, Name nvarchar(100) not null, Age int not null, ScheduledDayOff int null, CreatedDate datetime DEFAULT(getdate())) ");
@@ -93,11 +97,14 @@ namespace Dapper.SimpleCRUDTests
 
         }
 
+#if !NETSTANDARD
         private static void SetupSqLite()
         {
             File.Delete(Directory.GetCurrentDirectory() + "\\MyDatabase.sqlite");
+
             SQLiteConnection.CreateFile("MyDatabase.sqlite");
             var connection = new SQLiteConnection("Data Source=MyDatabase.sqlite;Version=3;");
+
             using (connection)
             {
                 connection.Open();
@@ -115,7 +122,7 @@ namespace Dapper.SimpleCRUDTests
 
             }
         }
-
+#endif
         private static void SetupMySQL()
         {
             using (var connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "admin", "admin", "sys")))
@@ -160,7 +167,7 @@ namespace Dapper.SimpleCRUDTests
             // Write result
             Console.WriteLine("Time elapsed: {0}", stopwatch.Elapsed);
 
-            using (var connection = new SqlConnection(@"Data Source=(LocalDB)\v11.0;Initial Catalog=Master;Integrated Security=True"))
+            using (var connection = new SqlConnection(@"Data Source=.\sqlexpress;Initial Catalog=Master;Integrated Security=True"))
             {
                 connection.Open();
                 try
