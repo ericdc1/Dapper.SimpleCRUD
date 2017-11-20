@@ -135,9 +135,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Dapper.SimpleCRUD NET45\Dapper.SimpleCRUD NET45.csproj">
-      <Project>{a54f7ab7-f6de-43aa-9b31-2065cc6f16d8}</Project>
-      <Name>Dapper.SimpleCRUD NET45</Name>
+    <ProjectReference Include="..\Dapper.SimpleCRUD\Dapper.SimpleCRUD.csproj">
+      <Project>{9c42445f-4a30-43a1-a480-445b25ce2bd8}</Project>
+      <Name>Dapper.SimpleCRUD</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -114,7 +114,7 @@ namespace Dapper
 
             if (!idProps.Any())
                 throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
-            
+
             var name = GetTableName(currenttype);
             var sb = new StringBuilder();
             sb.Append("Select ");
@@ -387,7 +387,7 @@ namespace Dapper
             }
             return (TKey)r.First().id;
         }
-        
+
         /// <summary>
         /// <para>Updates a record or records in the database with only the properties of TEntity</para>
         /// <para>By default updates records in the table matching the class name</para>
@@ -482,7 +482,7 @@ namespace Dapper
 
             if (!idProps.Any())
                 throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
-            
+
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
