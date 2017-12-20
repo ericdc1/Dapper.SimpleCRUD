@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+    <metadata>
+        <id>Dapper.SimpleCRUD.NetCore</id>
+        <version>1.0.0</version>
+        <title>Dapper.SimpleCRUD.NetCore</title>
+        <authors>jmanuelcorral</authors>
+        <owners>Dapper.SimpleCRUD.NetCore</owners>
+        <licenseUrl>https://github.com/jmanuelcorral/Dapper.SimpleCRUD/blob/master/License.txt</licenseUrl>
+        <projectUrl>https://github.com/jmanuelcorral/Dapper.SimpleCRUD</projectUrl>
+        <iconUrl>https://raw.githubusercontent.com/ericdc1/Dapper.SimpleCRUD/master/images/SimpleCRUD-200x200.png</iconUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>Package Description</description>
+        <summary>A fork from the Original Dapper.SimpleCRUD for netCore</summary>
+        <releaseNotes>Adapted for work in dot net core</releaseNotes>
+        <dependencies>
+            <group targetFramework=".NETCoreApp1.1">
+                <dependency id="Dapper" version="1.50.2" exclude="Build,Analyzers" />
+                <dependency id="System.Diagnostics.TraceSource" version="4.3.0" exclude="Build,Analyzers" />
+                <dependency id="Microsoft.NETCore.App" version="1.1.2" exclude="Build,Analyzers" />
+            </group>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="lib\netcoreapp1.1\Dapper.SimpleCRUD.NetCore.dll" target="lib\netcoreapp1.1\Dapper.SimpleCRUD.NetCore.dll" />
+    </files>
+</package>
