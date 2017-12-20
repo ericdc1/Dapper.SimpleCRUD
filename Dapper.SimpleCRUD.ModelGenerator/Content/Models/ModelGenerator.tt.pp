@@ -29,14 +29,14 @@ It is based on the T4 template from the PetaPoco project which in turn is based 
  -----------------------------------------------------------------------------------------
 */
 	// Settings
-    ConnectionStringName = ""; // Uses last connection string in config if not specified
-	ConfigPath = @""; //Looks in current project for web.config or app.config by default. This overrides to a relative path - useful for seperate class library projects.
-    Namespace = "$rootnamespace$.Models";
+    ConnectionStringName = "DefaultConnectionString"; // Uses last connection string in config if not specified
+	ConfigPath = Host.ResolveAssemblyReference("$(SolutionDir)")+"Project.WebApiPc\\Web.config"; //Looks in current project for web.config or app.config by default. This overrides to a relative path - useful for seperate class library projects.
+    Namespace = "Project.Entity";
 	ClassPrefix = "";
 	ClassSuffix = "";
     IncludeViews = true;
     IncludeRelationships = true;
-	ExcludeTablePrefixes = new string[]{"aspnet_","webpages_"};
+	ExcludeTablePrefixes = new string[]{"aspnet_","webpages_","sysdiagrams"};
 
     // Read schema
 	var tables = LoadTables();
@@ -69,15 +69,20 @@ foreach(Table tbl in from t in tables where !t.Ignore select t){
 	{
 <#foreach(Column col in from c in tbl.Columns where !c.Ignore select c)
 {#>
-	<# if (tbl.IsPrimaryKeyColumn(col.PropertyName)) { #>
-	[Key]
-	<#}#>
-	public virtual <#=col.PropertyType #><#=CheckNullable(col)#> <#=col.PropertyName #> { get; set; }
+<# if (!string.IsNullOrWhiteSpace(col.Remark)) { #>
+        /// <summary>
+        /// <#= col.Remark #>
+        /// </summary>
+<#}#>
+<# if (tbl.PK!=null && tbl.PK.Name==col.PropertyName) { #>
+        [Key]
+<#}#>
+        public virtual <#=col.PropertyType #><#=CheckNullable(col)#> <#=col.PropertyName #> { get; set; }
 <#}#>
 <# if (IncludeRelationships) { #>
 <#foreach(Key key in from k in tbl.OuterKeys select k)
 {#>
-		public virtual <#=tables[key.ReferencedTableName].ClassName #> <# if (tables[key.ReferencedTableName].ClassName==tbl.ClassName) { #>FK_<#}#><#=tables[key.ReferencedTableName].ClassName #> { get; set; }
+		public virtual <#=tables[key.ReferencedTableName].ClassName #> <#=tables[key.ReferencedTableName].ClassName #> { get; set; }
 <#}#>
 <#foreach(Key key in from k in tbl.InnerKeys select k)
 {#>
@@ -124,10 +129,13 @@ public class Table
 	public string SequenceName;
 	public bool Ignore;
 
-	public bool IsPrimaryKeyColumn(string columnName)
-	{
-		return Columns.Single(x=>string.Compare(x.Name, columnName, true)==0).IsPK;
-	}
+    public Column PK
+    {
+        get
+        {
+            return this.Columns.SingleOrDefault(x=>x.IsPK);
+        }
+    }
 
 	public Column GetColumn(string columnName)
 	{
@@ -153,6 +161,7 @@ public class Column
     public bool IsNullable;
 	public bool IsAutoIncrement;
 	public bool Ignore;
+	public string Remark;
 }
 
 public class Key
@@ -524,15 +533,11 @@ class SqlServerSchemaReader : SchemaReader
 			tbl.Columns=LoadColumns(tbl);
 		            
 			// Mark the primary key
-			string[] PrimaryKeys=GetPK(tbl.Name);
-
-			foreach (string primaryKey in PrimaryKeys)
+			string PrimaryKey=GetPK(tbl.Name);
+			var pkColumn=tbl.Columns.SingleOrDefault(x=>x.Name.ToLower().Trim()==PrimaryKey.ToLower().Trim());
+			if(pkColumn!=null)
 			{
-				var pkColumn=tbl.Columns.SingleOrDefault(x=>x.Name.ToLower().Trim()==primaryKey.ToLower().Trim());
-				if(pkColumn!=null)
-				{
-					pkColumn.IsPK=true;
-				}
+				pkColumn.IsPK=true;
 			}
 
 			try
@@ -588,6 +593,7 @@ class SqlServerSchemaReader : SchemaReader
 					col.PropertyType=GetPropertyType(rdr["DataType"].ToString());
 					col.IsNullable=rdr["IsNullable"].ToString()=="YES";
 					col.IsAutoIncrement=((int)rdr["IsIdentity"])==1;
+					col.Remark=rdr["Remark"].ToString();
 					result.Add(col);
 				}
 			}
@@ -656,7 +662,7 @@ class SqlServerSchemaReader : SchemaReader
 		}
 	}
 
-	string[] GetPK(string table){
+	string GetPK(string table){
 		
 		string sql=@"SELECT c.name AS ColumnName
                 FROM sys.indexes AS i 
@@ -664,8 +670,6 @@ class SqlServerSchemaReader : SchemaReader
                 INNER JOIN sys.objects AS o ON i.object_id = o.object_id 
                 LEFT OUTER JOIN sys.columns AS c ON ic.object_id = c.object_id AND c.column_id = ic.column_id
                 WHERE (i.type = 1) AND (o.name = @tableName)";
-
-		List<string> primaryKeys = new List<string>();
 
 		using (var cmd=_factory.CreateCommand())
 		{
@@ -677,19 +681,13 @@ class SqlServerSchemaReader : SchemaReader
 			p.Value=table;
 			cmd.Parameters.Add(p);
 
-			using(var result=cmd.ExecuteReader())
-			{
-				if(result!=null && result.HasRows)
-				{
-					while (result.Read())
-					{
-						primaryKeys.Add(result.GetString(0));
-					}   
-				}
-			}
+			var result=cmd.ExecuteScalar();
+
+			if(result!=null)
+				return result.ToString();    
 		}	         
 		
-		return primaryKeys.ToArray();
+		return "";
 	}
 	
 	string GetPropertyType(string sqlType)
@@ -767,7 +765,8 @@ class SqlServerSchemaReader : SchemaReader
 			CHARACTER_MAXIMUM_LENGTH AS MaxLength, 
 			DATETIME_PRECISION AS DatePrecision,
 			COLUMNPROPERTY(object_id('[' + TABLE_SCHEMA + '].[' + TABLE_NAME + ']'), COLUMN_NAME, 'IsIdentity') AS IsIdentity,
-			COLUMNPROPERTY(object_id('[' + TABLE_SCHEMA + '].[' + TABLE_NAME + ']'), COLUMN_NAME, 'IsComputed') as IsComputed
+			COLUMNPROPERTY(object_id('[' + TABLE_SCHEMA + '].[' + TABLE_NAME + ']'), COLUMN_NAME, 'IsComputed') as IsComputed,
+			(SELECT TOP 1 t.value FROM sys.extended_properties t WHERE t.major_id=OBJECT_ID(COLUMNS.TABLE_NAME) AND minor_id=COLUMNS.ORDINAL_POSITION) Remark
 		FROM  INFORMATION_SCHEMA.COLUMNS
 		WHERE TABLE_NAME=@tableName AND TABLE_SCHEMA=@schemaName
 		ORDER BY OrdinalPosition ASC";
