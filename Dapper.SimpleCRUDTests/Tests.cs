@@ -1,13 +1,16 @@
 ﻿using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
-using System.Data.SQLite;
 using System.Diagnostics;
 using System.Linq;
 using System.Collections.Generic;
 using System;
 using MySql.Data.MySqlClient;
 using Npgsql;
+
+#if !NETSTANDARD
+using System.Data.SQLite;
+#endif
 
 namespace Dapper.SimpleCRUDTests
 {
@@ -23,7 +26,7 @@ namespace Dapper.SimpleCRUDTests
     //For .Net 4.5> [System.ComponentModel.DataAnnotations.Schema.Table("Users")]  or the attribute built into SimpleCRUD
     [Table("Users")]
     public class User : UserEditableSettings
-{
+    {
         //we modified so enums were automatically handled, we should also automatically handle nullable enums
         public DayOfWeek? ScheduledDayOff { get; set; }
 
@@ -175,7 +178,11 @@ namespace Dapper.SimpleCRUDTests
             }
             else if (_dbtype == SimpleCRUD.Dialect.SQLite)
             {
+#if NETSTANDARD
+                throw new Exception(".NET Standard test library currently doesn't support sqllite. As of 11/20/2017, System.Data.SQLite doesn't support .net standard, and microsoft.data.sqlite doesn't handle guids well.");
+#else
                 connection = new SQLiteConnection("Data Source=MyDatabase.sqlite;Version=3;");
+#endif
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.SQLite);
             }
             else if (_dbtype == SimpleCRUD.Dialect.MySQL)
@@ -185,7 +192,7 @@ namespace Dapper.SimpleCRUDTests
             }
             else
             {
-                connection = new SqlConnection(@"Data Source = (LocalDB)\v11.0;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True;MultipleActiveResultSets=true;");
+                connection = new SqlConnection(@"Data Source = .\sqlexpress;Initial Catalog=DapperSimpleCrudTestDb;Integrated Security=True;MultipleActiveResultSets=true;");
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.SQLServer);
             }
 
@@ -221,30 +228,10 @@ namespace Dapper.SimpleCRUDTests
             using (var connection = GetOpenConnection())
             {
                 //arrange
-                var user = new User {Name = "User1", Age = 10, ScheduledDayOff = DayOfWeek.Friday};
-
-                //act
-                var id = connection.Insert<int?, UserEditableSettings>(user);
-
-                //assert
-                var insertedUser = connection.Get<User>(id);
-                insertedUser.ScheduledDayOff.IsNull();
-
-                connection.Delete<User>(id);
-            }
-        }
-
-        public void TestInsertUsingGenericLimitedFieldsAsync()
-        {
-            using (var connection = GetOpenConnection())
-            {
-                //arrange
                 var user = new User { Name = "User1", Age = 10, ScheduledDayOff = DayOfWeek.Friday };
 
                 //act
-                var idTask = connection.InsertAsync<int?, UserEditableSettings>(user);
-                idTask.Wait();
-                var id = idTask.Result;
+                var id = connection.Insert<int?, UserEditableSettings>(user);
 
                 //assert
                 var insertedUser = connection.Get<User>(id);
@@ -313,6 +300,8 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute("Delete from Users");
             }
         }
+
+
         public void TestFilteredGetListWithMultipleKeys()
         {
             using (var connection = GetOpenConnection())
@@ -327,6 +316,7 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute("Delete from KeyMaster");
             }
         }
+
 
         public void TestFilteredWithSQLGetList()
         {
@@ -507,34 +497,6 @@ namespace Dapper.SimpleCRUDTests
                 userAsEditableSettings.Name = "User++";
 
                 connection.Update(userAsEditableSettings);
-
-                //act
-                var insertedUser = connection.Get<User>(user.Id);
-
-                //assert
-                insertedUser.Name.IsEqualTo("User++");
-                insertedUser.ScheduledDayOff.IsEqualTo(DayOfWeek.Friday);
-
-                connection.Delete<User>(user.Id);
-            }
-        }
-
-        /// <summary>
-        /// We expect scheduled day off to NOT be updated, since it's not a property of UserEditableSettings
-        /// </summary>
-        public void TestUpdateUsingGenericLimitedFieldsAsync()
-        {
-            using (var connection = GetOpenConnection())
-            {
-                //arrange
-                var user = new User { Name = "User1", Age = 10, ScheduledDayOff = DayOfWeek.Friday };
-                user.Id = connection.Insert(user) ?? 0;
-
-                user.ScheduledDayOff = DayOfWeek.Thursday;
-                var userAsEditableSettings = (UserEditableSettings)user;
-                userAsEditableSettings.Name = "User++";
-
-                connection.UpdateAsync(userAsEditableSettings).Wait();
 
                 //act
                 var insertedUser = connection.Get<User>(user.Id);
@@ -737,6 +699,7 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+#if !NET40
         //async  tests
         public void TestMultiInsertASync()
         {
@@ -920,6 +883,79 @@ namespace Dapper.SimpleCRUDTests
 
         }
 
+        public void TestInsertWithSpecifiedPrimaryKeyAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.InsertAsync(new UserWithoutAutoIdentity() { Id = 999, Name = "User999Async", Age = 10 });
+                id.Result.IsEqualTo(999);
+                var user = connection.GetAsync<UserWithoutAutoIdentity>(999);
+                user.Result.Name.IsEqualTo("User999Async");
+                connection.Execute("Delete from UserWithoutAutoIdentity");
+            }
+        }
+
+
+        public async void TestInsertWithMultiplePrimaryKeysAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var keyMaster = new KeyMaster { Key1 = 1, Key2 = 2 };
+                await connection.InsertAsync(keyMaster);
+                var result = connection.GetAsync<KeyMaster>(new { Key1 = 1, Key2 = 2 });
+                result.Result.Key1.IsEqualTo(1);
+                result.Result.Key2.IsEqualTo(2);
+                connection.Execute("Delete from KeyMaster");
+            }
+        }
+        public void TestInsertUsingGenericLimitedFieldsAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                //arrange
+                var user = new User { Name = "User1", Age = 10, ScheduledDayOff = DayOfWeek.Friday };
+
+                //act
+                var idTask = connection.InsertAsync<int?, UserEditableSettings>(user);
+                idTask.Wait();
+                var id = idTask.Result;
+
+                //assert
+                var insertedUser = connection.Get<User>(id);
+                insertedUser.ScheduledDayOff.IsNull();
+
+                connection.Delete<User>(id);
+            }
+        }
+
+        /// <summary>
+        /// We expect scheduled day off to NOT be updated, since it's not a property of UserEditableSettings
+        /// </summary>
+        public void TestUpdateUsingGenericLimitedFieldsAsync()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                //arrange
+                var user = new User { Name = "User1", Age = 10, ScheduledDayOff = DayOfWeek.Friday };
+                user.Id = connection.Insert(user) ?? 0;
+
+                user.ScheduledDayOff = DayOfWeek.Thursday;
+                var userAsEditableSettings = (UserEditableSettings)user;
+                userAsEditableSettings.Name = "User++";
+
+                connection.UpdateAsync(userAsEditableSettings).Wait();
+
+                //act
+                var insertedUser = connection.Get<User>(user.Id);
+
+                //assert
+                insertedUser.Name.IsEqualTo("User++");
+                insertedUser.ScheduledDayOff.IsEqualTo(DayOfWeek.Friday);
+
+                connection.Delete<User>(user.Id);
+            }
+        }
+#endif
         //column attribute tests
 
         public void TestInsertWithSpecifiedColumnName()
@@ -1195,33 +1231,6 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute("Delete from UserWithoutAutoIdentity");
             }
         }
-
-
-        public void TestInsertWithSpecifiedPrimaryKeyAsync()
-        {
-            using (var connection = GetOpenConnection())
-            {
-                var id = connection.InsertAsync(new UserWithoutAutoIdentity() { Id = 999, Name = "User999Async", Age = 10 });
-                id.Result.IsEqualTo(999);
-                var user = connection.GetAsync<UserWithoutAutoIdentity>(999);
-                user.Result.Name.IsEqualTo("User999Async");
-                connection.Execute("Delete from UserWithoutAutoIdentity");
-            }
-        }
-
-        public async void TestInsertWithMultiplePrimaryKeysAsync()
-        {
-            using (var connection = GetOpenConnection())
-            {
-                var keyMaster = new KeyMaster { Key1 = 1, Key2 = 2 };
-                await connection.InsertAsync(keyMaster);
-                var result = connection.GetAsync<KeyMaster>(new { Key1 = 1, Key2 = 2 });
-                result.Result.Key1.IsEqualTo(1);
-                result.Result.Key2.IsEqualTo(2);
-                connection.Execute("Delete from KeyMaster");
-            }
-        }
-
 
         public void TestGetListNullableWhere()
         {

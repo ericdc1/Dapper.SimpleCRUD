@@ -27,7 +27,7 @@ namespace DemoWebsite
         private static void SetupDB()
         {
             var dbrecreated = false;
-            using (var connection = new SqlConnection(@"Data Source=(LocalDB)\v11.0;Initial Catalog=Master;Integrated Security=True"))
+            using (var connection = new SqlConnection(@"Data Source=.\sqlexpress;Initial Catalog=Master;Integrated Security=True"))
             {
                 connection.Open();
                 try

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0"?>
-<package >
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Dapper.SimpleCRUD</id>
     <version>1.13.0</version>
@@ -48,19 +48,56 @@
 	</releaseNotes>
     <copyright>Copyright Eric Coffman 2016</copyright>
     <tags>orm dapper micro-orm CRUD</tags>
-  <iconUrl>https://raw.githubusercontent.com/ericdc1/Dapper.SimpleCRUD/master/images/SimpleCRUD-200x200.png</iconUrl>
-    <dependencies>
-      <dependency id="Dapper" version="[1.42,2.0)" />
+    <iconUrl>https://raw.githubusercontent.com/ericdc1/Dapper.SimpleCRUD/master/images/SimpleCRUD-200x200.png</iconUrl>
+    <dependencies>	  
+	  <group targetFramework=".NETStandard2.0">
+        <dependency id="Microsoft.CSharp" version="4.4.0" />
+		<dependency id="Dapper" version="[1.50.2,2.0)" />
+	  </group>     
+	  
+	  <group targetFramework=".NETFramework4.5">
+		<dependency id="Dapper" version="[1.50.2,2.0)" />
+	  </group>     
+	  
+	  <group targetFramework=".NETFramework4.0">
+        <dependency id="Dapper" version="[1.50.2,2.0)" />
+	  </group>     
     </dependencies>
+	
+	<frameworkAssemblies>
+	  <frameworkAssembly assemblyName="System" targetFramework=".NETFramework4.0" />
+      <frameworkAssembly assemblyName="System.Core" targetFramework=".NETFramework4.0" />
+      <frameworkAssembly assemblyName="Microsoft.CSharp" targetFramework=".NETFramework4.0" />
+      <frameworkAssembly assemblyName="System.Data" targetFramework=".NETFramework4.0" />
+      <frameworkAssembly assemblyName="System.Web" targetFramework=".NETFramework4.0" />
+      <frameworkAssembly assemblyName="System.Drawing" targetFramework=".NETFramework4.0" />
+      <frameworkAssembly assemblyName="System.Security" targetFramework=".NETFramework4.0" />
+      <frameworkAssembly assemblyName="System.Xml" targetFramework=".NETFramework4.0" />
+      <frameworkAssembly assemblyName="System.Configuration" targetFramework=".NETFramework4.0" />
+	  
+	  <frameworkAssembly assemblyName="System" targetFramework=".NETFramework4.5" />
+      <frameworkAssembly assemblyName="System.Core" targetFramework=".NETFramework4.5" />
+      <frameworkAssembly assemblyName="Microsoft.CSharp" targetFramework=".NETFramework4.5" />
+      <frameworkAssembly assemblyName="System.Data" targetFramework=".NETFramework4.5" />
+      <frameworkAssembly assemblyName="System.Web" targetFramework=".NETFramework4.5" />
+      <frameworkAssembly assemblyName="System.Drawing" targetFramework=".NETFramework4.5" />
+      <frameworkAssembly assemblyName="System.Security" targetFramework=".NETFramework4.5" />
+      <frameworkAssembly assemblyName="System.Xml" targetFramework=".NETFramework4.5" />
+      <frameworkAssembly assemblyName="System.Configuration" targetFramework=".NETFramework4.5" />	
+    </frameworkAssemblies>
   </metadata>
   
   <files>
-    <file src="Dapper.SimpleCrud NET45\bin\Release\Dapper.SimpleCRUD.dll" target="lib\net45" />
-    <file src="Dapper.SimpleCrud NET45\bin\Release\Dapper.SimpleCRUD.pdb" target="lib\net45" />
-    <file src="Dapper.SimpleCrud NET45\bin\Release\Dapper.SimpleCRUD.xml" target="lib\net45" />
+	<file src="Dapper.SimpleCRUD\bin\Release\netstandard2.0\Dapper.SimpleCRUD.dll" target="lib\netstandard2.0" />
+    <file src="Dapper.SimpleCRUD\bin\Release\netstandard2.0\Dapper.SimpleCRUD.pdb" target="lib\netstandard2.0" />
+    <file src="Dapper.SimpleCRUD\bin\Release\netstandard2.0\Dapper.SimpleCRUD.xml" target="lib\netstandard2.0" />
+  
+    <file src="Dapper.SimpleCRUD\bin\Release\net45\Dapper.SimpleCRUD.dll" target="lib\net45" />
+    <file src="Dapper.SimpleCRUD\bin\Release\net45\Dapper.SimpleCRUD.pdb" target="lib\net45" />
+    <file src="Dapper.SimpleCRUD\bin\Release\net45\Dapper.SimpleCRUD.xml" target="lib\net45" />
 	
-    <file src="Dapper.SimpleCrud\bin\Release\Dapper.SimpleCRUD.dll" target="lib\net40" />
-    <file src="Dapper.SimpleCrud\bin\Release\Dapper.SimpleCRUD.pdb" target="lib\net40" />
-    <file src="Dapper.SimpleCrud\bin\Release\Dapper.SimpleCRUD.xml" target="lib\net40" />
+    <file src="Dapper.SimpleCRUD\bin\Release\net40\Dapper.SimpleCRUD.dll" target="lib\net40" />
+    <file src="Dapper.SimpleCRUD\bin\Release\net40\Dapper.SimpleCRUD.pdb" target="lib\net40" />
+    <file src="Dapper.SimpleCRUD\bin\Release\net40\Dapper.SimpleCRUD.xml" target="lib\net40" />
   </files>
 </package>
