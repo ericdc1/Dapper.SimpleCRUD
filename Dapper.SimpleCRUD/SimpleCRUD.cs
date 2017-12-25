@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
@@ -25,8 +26,8 @@ namespace Dapper
         private static string _getIdentitySql;
         private static string _getPagedListSql;
 
-        private static readonly IDictionary<Type, string> TableNames = new Dictionary<Type, string>();
-        private static readonly IDictionary<string, string> ColumnNames = new Dictionary<string, string>();
+        private static readonly ConcurrentDictionary<Type, string> TableNames = new ConcurrentDictionary<Type, string>();
+        private static readonly ConcurrentDictionary<string, string> ColumnNames = new ConcurrentDictionary<string, string>();
 
         private static ITableNameResolver _tableNameResolver = new TableNameResolver();
         private static IColumnNameResolver _columnNameResolver = new ColumnNameResolver();
