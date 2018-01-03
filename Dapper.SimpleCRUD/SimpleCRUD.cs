@@ -696,7 +696,7 @@ namespace Dapper
                 var sourceProperties = GetScaffoldableProperties<TEntity>().ToArray();
                 for (var x = 0; x < sourceProperties.Count(); x++)
                 {
-                    if (sourceProperties.ElementAt(x).Name == propertyInfos.ElementAt(i).Name)
+                    if (sourceProperties.ElementAt(x).Name == propertyToUse.Name)
                     {
                         if (whereConditions != null && propertyToUse.CanRead && (propertyToUse.GetValue(whereConditions, null) == null || propertyToUse.GetValue(whereConditions, null) == DBNull.Value))
                         {
