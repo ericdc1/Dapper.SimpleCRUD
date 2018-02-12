@@ -390,6 +390,41 @@ namespace Dapper
         }
 
         /// <summary>
+        /// <para>Inserts a row into the database, using ONLY the properties defined by TEntity</para>
+        /// <para>By default inserts into the table matching the class name</para>
+        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+        /// <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
+        /// <para>Supports transaction and command timeout</para>
+        /// </summary>
+        /// <param name="connection"></param>
+        /// <param name="entityToInsert"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
+        public static void InsertFullDefinedEntity<TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+            var idProps = GetIdProperties(entityToInsert).ToList();
+
+            if (!idProps.Any())
+                throw new ArgumentException("Insert<T> only supports an entity with a [Key] or Id property");
+            
+            var name = GetTableName(entityToInsert);
+            var sb = new StringBuilder();
+            sb.AppendFormat("insert into {0}", name);
+            sb.Append(" (");
+            BuildInsertParameters<TEntity>(sb);
+            sb.Append(") ");
+            sb.Append("values");
+            sb.Append(" (");
+            BuildInsertValues<TEntity>(sb);
+            sb.Append(")");
+            
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("Insert: {0}", sb));
+
+            connection.Execute(sb.ToString(), entityToInsert, transaction, commandTimeout, CommandType.Text);
+        }
+
+        /// <summary>
         /// <para>Updates a record or records in the database with only the properties of TEntity</para>
         /// <para>By default updates records in the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
