@@ -27,7 +27,10 @@ namespace Dapper
         private static string _getPagedListSql;
 
         private static readonly ConcurrentDictionary<Type, string> TableNames = new ConcurrentDictionary<Type, string>();
+        private static readonly ConcurrentDictionary<Type, string> InsertFullDefinedEntityQueries = new ConcurrentDictionary<Type, string>();
+        private static readonly ConcurrentDictionary<Type, string> GetEntityQueries = new ConcurrentDictionary<Type, string>();
         private static readonly ConcurrentDictionary<string, string> ColumnNames = new ConcurrentDictionary<string, string>();
+        private static readonly ConcurrentDictionary<Type, IList<PropertyInfo>> TypeProperties = new ConcurrentDictionary<Type, IList<PropertyInfo>>();
 
         private static ITableNameResolver _tableNameResolver = new TableNameResolver();
         private static IColumnNameResolver _columnNameResolver = new ColumnNameResolver();
@@ -112,24 +115,32 @@ namespace Dapper
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
-
+            
             if (!idProps.Any())
                 throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
 
-            var name = GetTableName(currenttype);
-            var sb = new StringBuilder();
-            sb.Append("Select ");
-            //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
-            sb.AppendFormat(" from {0} where ", name);
-
-            for (var i = 0; i < idProps.Count; i++)
+            var selectQuery = GetEntityQueries.GetOrAdd(currenttype, type =>
             {
-                if (i > 0)
-                    sb.Append(" and ");
-                sb.AppendFormat("{0} = @{1}", GetColumnName(idProps[i]), idProps[i].Name);
-            }
+                var name = GetTableName(currenttype);
+                var sb = new StringBuilder();
+                sb.Append("Select ");
+                //create a new empty instance of the type to get the base properties
+                BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
+                sb.AppendFormat(" from {0} where ", name);
 
+                for (var i = 0; i < idProps.Count; i++)
+                {
+                    if (i > 0)
+                        sb.Append(" and ");
+                    sb.AppendFormat("{0} = @{1}", GetColumnName(idProps[i]), idProps[i].Name);
+                }
+
+                if (Debugger.IsAttached)
+                    Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
+
+                return (sb.ToString());
+            });
+            
             var dynParms = new DynamicParameters();
             if (idProps.Count == 1)
                 dynParms.Add("@" + idProps.First().Name, id);
@@ -138,11 +149,8 @@ namespace Dapper
                 foreach (var prop in idProps)
                     dynParms.Add("@" + prop.Name, id.GetType().GetProperty(prop.Name).GetValue(id, null));
             }
-
-            if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
-
-            return connection.Query<T>(sb.ToString(), dynParms, transaction, true, commandTimeout).FirstOrDefault();
+            
+            return connection.Query<T>(selectQuery, dynParms, transaction, true, commandTimeout).FirstOrDefault();
         }
 
         /// <summary>
@@ -177,7 +185,7 @@ namespace Dapper
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)), whereConditions);
+                BuildWhere<T>(sb, whereprops, whereConditions);
             }
 
             if (Debugger.IsAttached)
@@ -402,26 +410,25 @@ namespace Dapper
         /// <param name="commandTimeout"></param>
         public static void InsertFullDefinedEntity<TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-            var idProps = GetIdProperties(entityToInsert).ToList();
+            var insertQuery = InsertFullDefinedEntityQueries.GetOrAdd(typeof(TEntity), type =>
+            {
+                var name = GetTableName(entityToInsert);
+                var sb = new StringBuilder();
+                sb.AppendFormat("insert into {0}", name);
+                sb.Append(" (");
+                BuildInsertParameters<TEntity>(sb);
+                sb.Append(") ");
+                sb.Append("values");
+                sb.Append(" (");
+                BuildInsertValues<TEntity>(sb);
+                sb.Append(")");
+                if (Debugger.IsAttached)
+                    Trace.WriteLine(String.Format("Insert: {0}", sb));
 
-            if (!idProps.Any())
-                throw new ArgumentException("Insert<T> only supports an entity with a [Key] or Id property");
+                return sb.ToString();
+            });
             
-            var name = GetTableName(entityToInsert);
-            var sb = new StringBuilder();
-            sb.AppendFormat("insert into {0}", name);
-            sb.Append(" (");
-            BuildInsertParameters<TEntity>(sb);
-            sb.Append(") ");
-            sb.Append("values");
-            sb.Append(" (");
-            BuildInsertValues<TEntity>(sb);
-            sb.Append(")");
-            
-            if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Insert: {0}", sb));
-
-            connection.Execute(sb.ToString(), entityToInsert, transaction, commandTimeout, CommandType.Text);
+            connection.Execute(insertQuery, entityToInsert, transaction, commandTimeout, CommandType.Text);
         }
 
         /// <summary>
@@ -453,7 +460,7 @@ namespace Dapper
             sb.AppendFormat(" set ");
             BuildUpdateSet(entityToUpdate, sb);
             sb.Append(" where ");
-            BuildWhere(sb, idProps, entityToUpdate);
+            BuildWhere<TEntity>(sb, idProps);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Update: {0}", sb));
@@ -488,7 +495,7 @@ namespace Dapper
             sb.AppendFormat("delete from {0}", name);
 
             sb.Append(" where ");
-            BuildWhere(sb, idProps, entityToDelete);
+            BuildWhere<T>(sb, idProps);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete: {0}", sb));
@@ -573,7 +580,7 @@ namespace Dapper
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
+                BuildWhere<T>(sb, whereprops);
             }
 
             if (Debugger.IsAttached)
@@ -673,7 +680,7 @@ namespace Dapper
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
+                BuildWhere<T>(sb, whereprops);
             }
 
             if (Debugger.IsAttached)
@@ -717,7 +724,7 @@ namespace Dapper
             }
         }
 
-        private static void BuildWhere<TEntity>(StringBuilder sb, IEnumerable<PropertyInfo> idProps, TEntity sourceEntity, object whereConditions = null)
+        private static void BuildWhere<TEntity>(StringBuilder sb, IEnumerable<PropertyInfo> idProps, object whereConditions = null)
         {
             var propertyInfos = idProps.ToArray();
             for (var i = 0; i < propertyInfos.Count(); i++)
@@ -814,17 +821,24 @@ namespace Dapper
                 sb.Remove(sb.Length - 2, 2);
         }
 
+        //Get all properties sorted ans cached in defined order in an entity
+        private static IEnumerable<PropertyInfo> GetAllPropertiesOrdered(Type type) 
+        {
+            var result = TypeProperties.GetOrAdd(type, t => t.GetProperties());
+            return result;
+        }
+
         //Get all properties in an entity
         private static IEnumerable<PropertyInfo> GetAllProperties<T>(T entity) where T : class
         {
             if (entity == null) return new PropertyInfo[0];
-            return entity.GetType().GetProperties();
+            return GetAllPropertiesOrdered(entity.GetType());
         }
 
         //Get all properties that are not decorated with the Editable(false) attribute
         private static IEnumerable<PropertyInfo> GetScaffoldableProperties<T>()
         {
-            IEnumerable<PropertyInfo> props = typeof(T).GetProperties();
+            IEnumerable<PropertyInfo> props = GetAllPropertiesOrdered(typeof(T));
 
             props = props.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(EditableAttribute).Name && !IsEditable(p)) == false);
 
@@ -902,8 +916,9 @@ namespace Dapper
         //For Get(id) and Delete(id) we don't have an entity, just the type so this method is used
         private static IEnumerable<PropertyInfo> GetIdProperties(Type type)
         {
-            var tp = type.GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)).ToList();
-            return tp.Any() ? tp : type.GetProperties().Where(p => p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase));
+            
+            var tp = GetAllPropertiesOrdered(type).Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)).ToList();
+            return tp.Any() ? tp : GetAllPropertiesOrdered(type).Where(p => p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase));
         }
 
         //Gets the table name for this entity
