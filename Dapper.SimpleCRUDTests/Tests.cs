@@ -785,7 +785,8 @@ namespace Dapper.SimpleCRUDTests
             {
                 var id = connection.Insert(new User { Name = "TestDeleteByObjectAsync", Age = 10 });
                 var user = connection.Get<User>(id);
-                connection.DeleteAsync(user);
+                var tsk = connection.DeleteAsync(user);
+                tsk.Wait(); 
                 connection.Get<User>(id).IsNull();
                 connection.Delete<User>(id);
             }
