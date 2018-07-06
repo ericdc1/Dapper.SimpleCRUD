@@ -1,2 +1,2 @@
-nuget pack Dapper.SimpleCRUD.nuspec
+.\nuget.exe pack Dapper.SimpleCRUD.nuspec
 pause

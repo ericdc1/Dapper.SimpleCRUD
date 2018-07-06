@@ -15,7 +15,6 @@ namespace Dapper
     /// </summary>
     public static partial class SimpleCRUD
     {
-
         static SimpleCRUD()
         {
             SetDialect(_dialect);
