@@ -669,16 +669,17 @@ namespace Dapper
             var addedAny = false;
             for (var i = 0; i < propertyInfos.Count(); i++)
             {
-                if (propertyInfos.ElementAt(i).GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreSelectAttribute).Name || attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
+                var property = propertyInfos.ElementAt(i);
+
+                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreSelectAttribute).Name || attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
 
                 if (addedAny)
                     sb.Append(",");
-                sb.Append(GetColumnName(propertyInfos.ElementAt(i)));
+                sb.Append(GetColumnName(property));
                 //if there is a custom column name add an "as customcolumnname" to the item so it maps properly
-                if (propertyInfos.ElementAt(i).GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == typeof(ColumnAttribute).Name) != null)
-                    sb.Append(" as " + Encapsulate(propertyInfos.ElementAt(i).Name));
+                if (property.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == typeof(ColumnAttribute).Name) != null)
+                    sb.Append(" as " + Encapsulate(property.Name));
                 addedAny = true;
-
             }
         }
 
@@ -696,21 +697,20 @@ namespace Dapper
                 var sourceProperties = GetScaffoldableProperties<TEntity>().ToArray();
                 for (var x = 0; x < sourceProperties.Count(); x++)
                 {
-                    if (sourceProperties.ElementAt(x).Name == propertyInfos.ElementAt(i).Name)
+                    if (sourceProperties.ElementAt(x).Name == propertyToUse.Name)
                     {
-                        propertyToUse = sourceProperties.ElementAt(x);
-
-                        if (whereConditions != null && propertyInfos.ElementAt(i).CanRead && (propertyInfos.ElementAt(i).GetValue(whereConditions, null) == null || propertyInfos.ElementAt(i).GetValue(whereConditions, null) == DBNull.Value))
+                        if (whereConditions != null && propertyToUse.CanRead && (propertyToUse.GetValue(whereConditions, null) == null || propertyToUse.GetValue(whereConditions, null) == DBNull.Value))
                         {
                             useIsNull = true;
                         }
+                        propertyToUse = sourceProperties.ElementAt(x);
                         break;
                     }
                 }
                 sb.AppendFormat(
                     useIsNull ? "{0} is null" : "{0} = @{1}",
                     GetColumnName(propertyToUse),
-                    propertyInfos.ElementAt(i).Name);
+                    propertyToUse.Name);
 
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
@@ -733,9 +733,11 @@ namespace Dapper
                       && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)
                       && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
                     continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreInsertAttribute).Name)) continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))) continue;
+                if (property.GetCustomAttributes(true).Any(attr => 
+                    attr.GetType().Name == typeof(IgnoreInsertAttribute).Name) ||
+                    attr.GetType().Name == typeof(NotMappedAttribute).Name ||
+                    attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property)
+                ) continue;
 
                 if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
 
@@ -765,10 +767,12 @@ namespace Dapper
                       && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)
                       && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
                     continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreInsertAttribute).Name)) continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
-
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))) continue;
+                if (property.GetCustomAttributes(true).Any(attr => 
+                    attr.GetType().Name == typeof(IgnoreInsertAttribute).Name) ||
+                    attr.GetType().Name == typeof(NotMappedAttribute).Name ||
+                    attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property)
+                ) continue;
+                
                 if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
 
                 sb.Append(GetColumnName(property));
