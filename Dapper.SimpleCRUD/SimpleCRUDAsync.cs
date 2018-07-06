@@ -101,7 +101,7 @@ namespace Dapper
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)), whereConditions);
+                BuildWhere<T>(sb, whereprops, whereConditions);
             }
 
             if (Debugger.IsAttached)
@@ -307,7 +307,7 @@ namespace Dapper
             var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
             return (TKey)r.First().id;
         }
-        
+
         /// <summary>
         ///  <para>Updates a record or records in the database asynchronously</para>
         ///  <para>By default updates records in the table matching the class name</para>
@@ -337,7 +337,7 @@ namespace Dapper
             sb.AppendFormat(" set ");
             BuildUpdateSet(entityToUpdate, sb);
             sb.Append(" where ");
-            BuildWhere(sb, idProps, entityToUpdate);
+            BuildWhere<TEntity>(sb, idProps);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Update: {0}", sb));
@@ -372,7 +372,7 @@ namespace Dapper
             sb.AppendFormat("delete from {0}", name);
 
             sb.Append(" where ");
-            BuildWhere(sb, idProps, entityToDelete);
+            BuildWhere<T>(sb, idProps);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete: {0}", sb));
@@ -398,7 +398,7 @@ namespace Dapper
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
-            
+
             if (!idProps.Any())
                 throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
 
@@ -429,7 +429,6 @@ namespace Dapper
             return connection.ExecuteAsync(sb.ToString(), dynParms, transaction, commandTimeout);
         }
 
-
         /// <summary>
         /// <para>Deletes a list of records in the database</para>
         /// <para>By default deletes records in the table matching the class name</para>
@@ -447,7 +446,6 @@ namespace Dapper
         /// <returns>The number of records effected</returns>
         public static Task<int> DeleteListAsync<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
 
@@ -457,7 +455,7 @@ namespace Dapper
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
+                BuildWhere<T>(sb, whereprops);
             }
 
             if (Debugger.IsAttached)
@@ -505,7 +503,7 @@ namespace Dapper
         /// <para>By default queries the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>conditions is an SQL where clause ex: "where name='bob'" or "where age>=@Age" - not required </para>
-        /// <para>parameters is an anonymous type to pass in named parameter values: new { Age = 15 }</para>   
+        /// <para>parameters is an anonymous type to pass in named parameter values: new { Age = 15 }</para>
         /// <para>Supports transaction and command timeout</para>
         /// /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -555,7 +553,7 @@ namespace Dapper
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
+                BuildWhere<T>(sb, whereprops);
             }
 
             if (Debugger.IsAttached)
