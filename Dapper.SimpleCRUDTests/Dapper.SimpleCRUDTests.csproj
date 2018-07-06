@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.0;net45;net40</TargetFrameworks>
+    <TargetFrameworks>net45;net40;netcoreapp2.0</TargetFrameworks>
     <ApplicationIcon />
     <OutputType>Exe</OutputType>
-    <StartupObject />
+    <StartupObject>Dapper.SimpleCRUDTests.Program</StartupObject>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.0'">
@@ -48,13 +48,18 @@
     <PackageReference Include="Npgsql" Version="2.2.7" />
     <PackageReference Include="System.Data.SQLite" Version="1.0.106" />
   </ItemGroup>
-
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="1.50.2" />
+    <PackageReference Include="Dapper.StrongName" Version="1.50.2" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Dapper.SimpleCRUD\Dapper.SimpleCRUD.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp2.0'">
+    <PackageReference Include="Dapper.StrongName">
+      <Version>1.50.4</Version>
+    </PackageReference>
   </ItemGroup>
 
   <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.0'">

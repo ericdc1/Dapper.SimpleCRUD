@@ -241,6 +241,15 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+        public void TestInsertFullDefinedEntity()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.InsertFullDefinedEntity(new BigCar {CarId = 0, Make = "Big", Model = "Car" });
+                connection.Delete<BigCar>(0);
+            }
+        }
+
         public void TestSimpleGet()
         {
             using (var connection = GetOpenConnection())
@@ -776,7 +785,8 @@ namespace Dapper.SimpleCRUDTests
             {
                 var id = connection.Insert(new User { Name = "TestDeleteByObjectAsync", Age = 10 });
                 var user = connection.Get<User>(id);
-                connection.DeleteAsync(user);
+                var tsk = connection.DeleteAsync(user);
+                tsk.Wait(); 
                 connection.Get<User>(id).IsNull();
                 connection.Delete<User>(id);
             }
