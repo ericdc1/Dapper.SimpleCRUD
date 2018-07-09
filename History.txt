@@ -33,3 +33,4 @@
 * version 1.11.1 Bug fix for resolvers to allow attributes from different namespaces (SimpleCRUD and Data Annotations)
 * version 1.12.0 Added notmapped attribute to match DataAnnotations (thanks Mattykins). Allow insert with string primary key (thanks xalikoutis)
 * version 1.13.0 Accept parameters on getlist, getlistpaged, deletelist, recordcount, and matching async methods 
+* version 2.0.0 Bug fixes, .Net Core support

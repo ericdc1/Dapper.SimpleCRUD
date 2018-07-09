@@ -55,12 +55,6 @@ namespace Dapper
                     _getIdentitySql = string.Format("SELECT LASTVAL() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
                     break;
-                case Dialect.SQLite:
-                    _dialect = Dialect.SQLite;
-                    _encapsulation = "\"{0}\"";
-                    _getIdentitySql = string.Format("SELECT LAST_INSERT_ROWID() AS id");
-                    _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
-                    break;
                 case Dialect.MySQL:
                     _dialect = Dialect.MySQL;
                     _encapsulation = "`{0}`";
@@ -734,9 +728,9 @@ namespace Dapper
                       && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
                     continue;
                 if (property.GetCustomAttributes(true).Any(attr => 
-                    attr.GetType().Name == typeof(IgnoreInsertAttribute).Name) ||
+                    attr.GetType().Name == typeof(IgnoreInsertAttribute).Name ||
                     attr.GetType().Name == typeof(NotMappedAttribute).Name ||
-                    attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property)
+                    attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))
                 ) continue;
 
                 if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
@@ -768,10 +762,9 @@ namespace Dapper
                       && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
                     continue;
                 if (property.GetCustomAttributes(true).Any(attr => 
-                    attr.GetType().Name == typeof(IgnoreInsertAttribute).Name) ||
+                    attr.GetType().Name == typeof(IgnoreInsertAttribute).Name ||
                     attr.GetType().Name == typeof(NotMappedAttribute).Name ||
-                    attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property)
-                ) continue;
+                    attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))) continue;
                 
                 if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
 
@@ -946,7 +939,6 @@ namespace Dapper
         {
             SQLServer,
             PostgreSQL,
-            SQLite,
             MySQL,
         }
 

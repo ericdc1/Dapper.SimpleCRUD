@@ -8,10 +8,6 @@ using System;
 using MySql.Data.MySqlClient;
 using Npgsql;
 
-#if !NETSTANDARD
-using System.Data.SQLite;
-#endif
-
 namespace Dapper.SimpleCRUDTests
 {
     #region DTOClasses
@@ -175,15 +171,6 @@ namespace Dapper.SimpleCRUDTests
             {
                 connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "5432", "postgres", "postgrespass", "testdb"));
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
-            }
-            else if (_dbtype == SimpleCRUD.Dialect.SQLite)
-            {
-#if NETSTANDARD
-                throw new Exception(".NET Standard test library currently doesn't support sqllite. As of 11/20/2017, System.Data.SQLite doesn't support .net standard, and microsoft.data.sqlite doesn't handle guids well.");
-#else
-                connection = new SQLiteConnection("Data Source=MyDatabase.sqlite;Version=3;");
-#endif
-                SimpleCRUD.SetDialect(SimpleCRUD.Dialect.SQLite);
             }
             else if (_dbtype == SimpleCRUD.Dialect.MySQL)
             {
@@ -718,14 +705,14 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-        public void MultiInsertWithGuidAsync()
+        public async void MultiInsertWithGuidAsync()
         {
             using (var connection = GetOpenConnection())
             {
-                connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
-                connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
-                connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
-                connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
+                await connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
+                await connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
+                await connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
+                await connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
                 //tiny wait to let the inserts happen
                 System.Threading.Thread.Sleep(300);
                 var list = connection.GetList<GUIDTest>(new { Name = "MultiInsertWithGuidAsync" });

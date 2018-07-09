@@ -6,9 +6,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-//sorry .net 4.0, this is why you can't have nice things.
-#if !NET40
-
 namespace Dapper
 {
     /// <summary>
@@ -566,4 +563,3 @@ namespace Dapper
     }
 }
 
-#endif

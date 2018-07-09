@@ -3,7 +3,7 @@ Dapper.SimpleCRUD - simple CRUD helpers for Dapper
 Features
 --------
 <img  align="right" src="https://raw.githubusercontent.com/ericdc1/Dapper.SimpleCRUD/master/images/SimpleCRUD-200x200.png" alt="SimpleCRUD">
-Dapper.SimpleCRUD is a [single file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD/SimpleCRUD.cs) you can drop in to your project that will extend your IDbConnection interface. (If you want dynamic support, you need an [additional file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD%20NET45/SimpleCRUDAsync.cs).)
+Dapper.SimpleCRUD is a [single file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD/SimpleCRUD.cs) you can drop in to your project that will extend your IDbConnection interface. (If you want dynamic support, you need an [additional file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD/SimpleCRUDAsync.cs).)
 
 Who wants to write basic read/insert/update/delete statements? 
 
@@ -432,12 +432,10 @@ then apply the resolvers when intializing your application
 
 Database support
 ---------------------
-* There is an option to change database dialect. Default is Microsoft SQL Server but can be changed to PostgreSQL, SQLite or MySQL and possibly others down the road. 
+* There is an option to change database dialect. Default is Microsoft SQL Server but can be changed to PostgreSQL or MySQL. We dropped SQLite support with the .Net Core release. 
 ```csharp 
    SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
-   
-   SimpleCRUD.SetDialect(SimpleCRUD.Dialect.SQLite);
-   
+    
    SimpleCRUD.SetDialect(SimpleCRUD.Dialect.MySQL);
 ```
 
@@ -470,5 +468,4 @@ Do you have a comprehensive list of examples?
 ---------------------
 Dapper.SimpleCRUD has a basic test suite in the [test project](https://github.com/ericdc1/dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUDTests/Tests.cs)
 
-There is also a sample website showing working examples of the the core functionality in the [demo website](https://github.com/ericdc1/Dapper.SimpleCRUD/tree/master/DemoWebsite)
 

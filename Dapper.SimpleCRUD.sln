@@ -10,11 +10,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{4C0A11
 		.nuget\NuGet.targets = .nuget\NuGet.targets
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoWebsite", "DemoWebsite\DemoWebsite.csproj", "{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapper.SimpleCRUD", "Dapper.SimpleCRUD\Dapper.SimpleCRUD.csproj", "{9C42445F-4A30-43A1-A480-445B25CE2BD8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapper.SimpleCRUDTests", "Dapper.SimpleCRUDTests\Dapper.SimpleCRUDTests.csproj", "{165025ED-34C7-4519-BEDC-37B2859735AF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dapper.SimpleCRUDTests", "Dapper.SimpleCRUDTests\Dapper.SimpleCRUDTests.csproj", "{165025ED-34C7-4519-BEDC-37B2859735AF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,16 +24,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{BCF52CCE-03CF-443E-BC02-7D92A1E78D60}.Release|x86.ActiveCfg = Release|Any CPU
 		{9C42445F-4A30-43A1-A480-445B25CE2BD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9C42445F-4A30-43A1-A480-445B25CE2BD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9C42445F-4A30-43A1-A480-445B25CE2BD8}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
