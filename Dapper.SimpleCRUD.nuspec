@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Dapper.SimpleCRUD</id>
-    <version>2.0.0-beta</version>
+    <version>2.0.0.0</version>
     <title>Dapper.SimpleCRUD</title>
     <authors>Eric Coffman</authors>
     <owners>Eric Coffman</owners>
@@ -14,8 +14,9 @@
 	  By default uses Id column as the primary key but this can be overridden with an attribute
 	  By default queries the table matching the class name but this can be overridden with an attribute
           By default queries the column matching the property name but this can be overridden with an attribute  
-          - Supports SQL Server, PostgreSQL, SQLite, and MySQL 
-          - Includes async methods when targeting .Net 4.5+
+          - Supports SQL Server, PostgreSQL, and MySQL 
+          - Includes async methods
+          - Supports .Net Core
     </description>
     <summary>
     	Simple Get, GetList, GetListPaged, Insert, Update, Delete, DeleteList, and RecordCount extensions for Dapper. Uses smart defaults for attribute free classes but can be overridden as needed. 
@@ -44,8 +45,7 @@
 	* version 1.11.1 Bug fix for resolvers to allow attributes from different namespaces (SimpleCRUD and Data Annotations)
 	* version 1.12.0 Added notmapped attribute to match DataAnnotations (thanks Mattykins). Allow insert with string primary key (thanks xalikoutis)
 	* version 1.13.0 Accept parameters on getlist, getlistpaged, deletelist, recordcount, and matching async methods 
-	* version 2.0.0 Bug fixes, .Net Core support
-)
+	* version 2.0.0 Bug fixes, .Net Core support, remove Sqlite support
 	</releaseNotes>
     <copyright>Copyright Eric Coffman 2018</copyright>
     <tags>orm dapper micro-orm CRUD</tags>

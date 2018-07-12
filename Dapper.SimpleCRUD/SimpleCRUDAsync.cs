@@ -98,7 +98,7 @@ namespace Dapper
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)), whereConditions);
+                BuildWhere<T>(sb, whereprops, whereConditions);
             }
 
             if (Debugger.IsAttached)
@@ -312,13 +312,13 @@ namespace Dapper
         ///  <para>Updates records where the Id property and properties with the [Key] attribute match those in the database.</para>
         ///  <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
         ///  <para>Supports transaction and command timeout</para>
-        ///  <para>Returns number of rows effected</para>
+        ///  <para>Returns number of rows affected</para>
         ///  </summary>
         ///  <param name="connection"></param>
         ///  <param name="entityToUpdate"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <returns>The number of effected records</returns>
+        /// <returns>The number of affected records</returns>
         public static Task<int> UpdateAsync<TEntity>(this IDbConnection connection, TEntity entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null, System.Threading.CancellationToken? token = null)
         {
             var idProps = GetIdProperties(entityToUpdate).ToList();
@@ -334,7 +334,7 @@ namespace Dapper
             sb.AppendFormat(" set ");
             BuildUpdateSet(entityToUpdate, sb);
             sb.Append(" where ");
-            BuildWhere(sb, idProps, entityToUpdate);
+            BuildWhere<TEntity>(sb, idProps, entityToUpdate);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Update: {0}", sb));
@@ -348,14 +348,14 @@ namespace Dapper
         /// <para>-By default deletes records in the table matching the class name</para>
         /// <para>Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Supports transaction and command timeout</para>
-        /// <para>Returns the number of records effected</para>
+        /// <para>Returns the number of records affected</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="entityToDelete"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <returns>The number of records effected</returns>
+        /// <returns>The number of records affected</returns>
         public static Task<int> DeleteAsync<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToDelete).ToList();
@@ -369,7 +369,7 @@ namespace Dapper
             sb.AppendFormat("delete from {0}", name);
 
             sb.Append(" where ");
-            BuildWhere(sb, idProps, entityToDelete);
+            BuildWhere<T>(sb, idProps, entityToDelete);
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete: {0}", sb));
@@ -382,7 +382,7 @@ namespace Dapper
         /// <para>By default deletes records in the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Deletes records where the Id property and properties with the [Key] attribute match those in the database</para>
-        /// <para>The number of records effected</para>
+        /// <para>The number of records affected</para>
         /// <para>Supports transaction and command timeout</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -390,7 +390,7 @@ namespace Dapper
         /// <param name="id"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <returns>The number of records effected</returns>
+        /// <returns>The number of records affected</returns>
         public static Task<int> DeleteAsync<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
@@ -433,7 +433,7 @@ namespace Dapper
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Deletes records where that match the where clause</para>
         /// <para>whereConditions is an anonymous type to filter the results ex: new {Category = 1, SubCategory=2}</para>
-        /// <para>The number of records effected</para>
+        /// <para>The number of records affected</para>
         /// <para>Supports transaction and command timeout</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -441,7 +441,7 @@ namespace Dapper
         /// <param name="whereConditions"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <returns>The number of records effected</returns>
+        /// <returns>The number of records affected</returns>
         public static Task<int> DeleteListAsync<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
 
@@ -454,7 +454,7 @@ namespace Dapper
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
+                BuildWhere<T>(sb, whereprops);
             }
 
             if (Debugger.IsAttached)
@@ -477,7 +477,7 @@ namespace Dapper
         /// <param name="parameters"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <returns>The number of records effected</returns>
+        /// <returns>The number of records affected</returns>
         public static Task<int> DeleteListAsync<T>(this IDbConnection connection, string conditions, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             if (string.IsNullOrEmpty(conditions))
@@ -552,7 +552,7 @@ namespace Dapper
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
+                BuildWhere<T>(sb, whereprops);
             }
 
             if (Debugger.IsAttached)
