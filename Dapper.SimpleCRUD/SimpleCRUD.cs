@@ -62,6 +62,14 @@ namespace Dapper
                     _getIdentitySql = string.Format("SELECT LAST_INSERT_ID() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {Offset},{RowsPerPage}";
                     break;
+
+                case Dialect.DB2:
+                    _dialect = Dialect.DB2;
+                    _encapsulation = "\"{0}\"";
+                    _getIdentitySql = string.Format("SELECT CAST(IDENTITY_VAL_LOCAL() AS INT) AS \"id\" FROM SYSIBM.SYSDUMMY1");
+                    _getPagedListSql = "Select * from (Select {SelectColumns}, row_number() over(order by {OrderBy}) as PagedNumber from {TableName} {WhereClause} Order By {OrderBy}) as t where t.PagedNumber between (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
+                    break;
+
                 default:
                     _dialect = Dialect.SQLServer;
                     _encapsulation = "[{0}]";
@@ -941,6 +949,7 @@ namespace Dapper
             SQLServer,
             PostgreSQL,
             MySQL,
+            DB2
         }
 
         public interface ITableNameResolver
