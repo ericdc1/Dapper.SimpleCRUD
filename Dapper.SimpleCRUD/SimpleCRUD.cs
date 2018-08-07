@@ -302,8 +302,14 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The ID (primary key) of the newly inserted record if it is identity using the int? type, otherwise null</returns>
-        public static int? Insert<TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static object Insert<TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            var idProps = GetIdProperties(entityToInsert).ToList();
+            if (idProps.Any())
+            {
+                if(idProps.ElementAt(0).PropertyType == typeof(Guid))
+                    return Insert<Guid,TEntity>(connection, entityToInsert, transaction, commandTimeout);
+            }
             return Insert<int?, TEntity>(connection, entityToInsert, transaction, commandTimeout);
         }
 
@@ -330,6 +336,9 @@ namespace Dapper
 
             var keyHasPredefinedValue = false;
             var baseType = typeof(TKey);
+            
+            
+            
             var underlyingType = Nullable.GetUnderlyingType(baseType);
             var keytype = underlyingType ?? baseType;
             if (keytype != typeof(int) && keytype != typeof(uint) && keytype != typeof(long) && keytype != typeof(ulong) && keytype != typeof(short) && keytype != typeof(ushort) && keytype != typeof(Guid) && keytype != typeof(string))
