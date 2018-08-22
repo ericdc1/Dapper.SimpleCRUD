@@ -66,7 +66,7 @@ namespace Dapper
                     _dialect = Dialect.SQLServer;
                     _encapsulation = "[{0}]";
                     _getIdentitySql = string.Format("SELECT CAST(SCOPE_IDENTITY()  AS BIGINT) AS [id]");
-                    _getPagedListSql = "SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY {OrderBy}) AS PagedNumber, {SelectColumns} FROM {TableName} {WhereClause}) AS u WHERE PagedNUMBER BETWEEN (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
+                    _getPagedListSql = "SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY {OrderBy}) AS PagedNumber, {SelectColumns} FROM {TableName} {TableHint} {WhereClause}) AS u WHERE PagedNUMBER BETWEEN (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
                     break;
             }
         }
@@ -94,7 +94,7 @@ namespace Dapper
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>By default filters on the Id column</para>
         /// <para>-Id column name can be overridden by adding an attribute on your primary key property [Key]</para>
-        /// <para>Supports transaction and command timeout</para>
+        /// <para>Supports transaction, command timeout and table hints (SQL Server)</para>
         /// <para>Returns a single entity by a single id from table T</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -102,9 +102,13 @@ namespace Dapper
         /// <param name="id"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
+        /// <param name="tableHint"></param>
         /// <returns>Returns a single entity by a single id from table T.</returns>
-        public static T Get<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static T Get<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null, string tableHint = "")
         {
+            if (!String.IsNullOrWhiteSpace(tableHint) && !String.Equals(GetDialect(), Dialect.SQLServer.ToString(), StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Table hints are only supported for SQL Server");
+
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
 
@@ -116,7 +120,7 @@ namespace Dapper
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
-            sb.AppendFormat(" from {0} where ", name);
+            sb.AppendFormat(" from {0} {1} where ", name, tableHint);
 
             for (var i = 0; i < idProps.Count; i++)
             {
@@ -144,7 +148,7 @@ namespace Dapper
         /// <para>By default queries the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>whereConditions is an anonymous type to filter the results ex: new {Category = 1, SubCategory=2}</para>
-        /// <para>Supports transaction and command timeout</para>
+        /// <para>Supports transaction, command timeout and table hints (SQL Server)</para>
         /// <para>Returns a list of entities that match where conditions</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -152,9 +156,13 @@ namespace Dapper
         /// <param name="whereConditions"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
+        /// <param name="tableHint"></param>
         /// <returns>Gets a list of entities with optional exact match where conditions</returns>
-        public static IEnumerable<T> GetList<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static IEnumerable<T> GetList<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null, string tableHint = "")
         {
+            if (!String.IsNullOrWhiteSpace(tableHint) && !String.Equals(GetDialect(), Dialect.SQLServer.ToString(), StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Table hints are only supported for SQL Server");
+
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
             if (!idProps.Any())
@@ -167,7 +175,7 @@ namespace Dapper
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
-            sb.AppendFormat(" from {0}", name);
+            sb.AppendFormat(" from {0} {1}", name, tableHint);
 
             if (whereprops.Any())
             {
@@ -186,7 +194,7 @@ namespace Dapper
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>conditions is an SQL where clause and/or order by clause ex: "where name='bob'" or "where age>=@Age"</para>
         /// <para>parameters is an anonymous type to pass in named parameter values: new { Age = 15 }</para>
-        /// <para>Supports transaction and command timeout</para>
+        /// <para>Supports transaction, command timeout and table hints (SQL Server)</para>
         /// <para>Returns a list of entities that match where conditions</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -195,9 +203,13 @@ namespace Dapper
         /// <param name="parameters"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
+        /// <param name="tableHint"></param>
         /// <returns>Gets a list of entities with optional SQL where conditions</returns>
-        public static IEnumerable<T> GetList<T>(this IDbConnection connection, string conditions, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static IEnumerable<T> GetList<T>(this IDbConnection connection, string conditions, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null, string tableHint = "")
         {
+            if (!String.IsNullOrWhiteSpace(tableHint) && !String.Equals(GetDialect(), Dialect.SQLServer.ToString(), StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Table hints are only supported for SQL Server");
+
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
             if (!idProps.Any())
@@ -209,7 +221,7 @@ namespace Dapper
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
-            sb.AppendFormat(" from {0}", name);
+            sb.AppendFormat(" from {0} {1}", name, tableHint);
 
             sb.Append(" " + conditions);
 
@@ -238,7 +250,7 @@ namespace Dapper
         /// <para>conditions is an SQL where clause ex: "where name='bob'" or "where age>=@Age" - not required </para>
         /// <para>orderby is a column or list of columns to order by ex: "lastname, age desc" - not required - default is by primary key</para>
         /// <para>parameters is an anonymous type to pass in named parameter values: new { Age = 15 }</para>
-        /// <para>Supports transaction and command timeout</para>
+        /// <para>Supports transaction, command timeout and table hints (SQL Server)</para>
         /// <para>Returns a list of entities that match where conditions</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -250,11 +262,15 @@ namespace Dapper
         /// <param name="parameters"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
+        /// <param name="tableHint"></param>
         /// <returns>Gets a paged list of entities with optional exact match where conditions</returns>
-        public static IEnumerable<T> GetListPaged<T>(this IDbConnection connection, int pageNumber, int rowsPerPage, string conditions, string orderby, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static IEnumerable<T> GetListPaged<T>(this IDbConnection connection, int pageNumber, int rowsPerPage, string conditions, string orderby, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null, string tableHint = "")
         {
             if (string.IsNullOrEmpty(_getPagedListSql))
                 throw new Exception("GetListPage is not supported with the current SQL Dialect");
+
+            if (!String.IsNullOrWhiteSpace(tableHint) && !String.Equals(GetDialect(), Dialect.SQLServer.ToString(), StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Table hints are only supported for SQL Server");
 
             if (pageNumber < 1)
                 throw new Exception("Page must be greater than 0");
@@ -276,6 +292,7 @@ namespace Dapper
             BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
             query = query.Replace("{SelectColumns}", sb.ToString());
             query = query.Replace("{TableName}", name);
+            query = query.Replace("{TableHint}", tableHint);
             query = query.Replace("{PageNumber}", pageNumber.ToString());
             query = query.Replace("{RowsPerPage}", rowsPerPage.ToString());
             query = query.Replace("{OrderBy}", orderby);
@@ -582,7 +599,7 @@ namespace Dapper
         /// <para>By default queries the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Returns a number of records entity by a single id from table T</para>
-        /// <para>Supports transaction and command timeout</para>
+        /// <para>Supports transaction, command timeout and table hints (SQL Server)</para>
         /// <para>conditions is an SQL where clause ex: "where name='bob'" or "where age>=@Age" - not required </para>
         /// <para>parameters is an anonymous type to pass in named parameter values: new { Age = 15 }</para>
         /// </summary>
@@ -592,14 +609,18 @@ namespace Dapper
         /// <param name="parameters"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
+        /// <param name="tableHint"></param>
         /// <returns>Returns a count of records.</returns>
-        public static int RecordCount<T>(this IDbConnection connection, string conditions = "", object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static int RecordCount<T>(this IDbConnection connection, string conditions = "", object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null, string tableHint = "")
         {
+            if (!String.IsNullOrWhiteSpace(tableHint) && !String.Equals(GetDialect(), Dialect.SQLServer.ToString(), StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Table hints are only supported for SQL Server");
+
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
             var sb = new StringBuilder();
             sb.Append("Select count(1)");
-            sb.AppendFormat(" from {0}", name);
+            sb.AppendFormat(" from {0} {1}", name, tableHint);
             sb.Append(" " + conditions);
 
             if (Debugger.IsAttached)
@@ -612,7 +633,7 @@ namespace Dapper
         /// <para>By default queries the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Returns a number of records entity by a single id from table T</para>
-        /// <para>Supports transaction and command timeout</para>
+        /// <para>Supports transaction, command timeout and table hints (SQL Server)</para>
         /// <para>whereConditions is an anonymous type to filter the results ex: new {Category = 1, SubCategory=2}</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -620,16 +641,20 @@ namespace Dapper
         /// <param name="whereConditions"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
+        /// <param name="tableHint"></param>
         /// <returns>Returns a count of records.</returns>
-        public static int RecordCount<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static int RecordCount<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null, string tableHint = "")
         {
+            if (!String.IsNullOrWhiteSpace(tableHint) && !String.Equals(GetDialect(), Dialect.SQLServer.ToString(), StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Table hints are only supported for SQL Server");
+
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
             var whereprops = GetAllProperties(whereConditions).ToArray();
             sb.Append("Select count(1)");
-            sb.AppendFormat(" from {0}", name);
+            sb.AppendFormat(" from {0} {1}", name, tableHint);
             if (whereprops.Any())
             {
                 sb.Append(" where ");
