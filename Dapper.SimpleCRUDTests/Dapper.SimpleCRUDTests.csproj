@@ -12,6 +12,12 @@
     <PackageReference Include="MySql.Data" Version="8.0.11" />
     <PackageReference Include="Npgsql" Version="4.0.2" />
     <PackageReference Include="System.Data.SQLite" Version="1.0.108" />
+    <PackageReference Include="IBM.Data.DB2.Core" Version="1.2.2.100" />
+    <PackageReference Include="System.IO.FileSystem.Primitives" Version="4.3.0" />
+    <PackageReference Include="System.Runtime.Handles" Version="4.3.0" />
+    <PackageReference Include="System.Runtime.InteropServices" Version="4.3.0" />
+    <PackageReference Include="System.Text.Encoding.Extensions" Version="4.3.0" />
+    <PackageReference Include="System.Threading" Version="4.3.0" />
   </ItemGroup>
 
   <!-- .NET 4.5 references, compilation flags and build options -->
@@ -30,6 +36,7 @@
     <PackageReference Include="MySql.Data" Version="8.0.11" />
     <PackageReference Include="Npgsql" Version="4.0.2" />
     <PackageReference Include="System.Data.SQLite" Version="1.0.108" />
+    <PackageReference Include="IBM.Data.DB2" Version="10.0.5.5" />
 
   </ItemGroup>
 
