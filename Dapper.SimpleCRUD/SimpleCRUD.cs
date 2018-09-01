@@ -66,7 +66,7 @@ namespace Dapper
                 case Dialect.DB2:
                     _dialect = Dialect.DB2;
                     _encapsulation = "\"{0}\"";
-                    _getIdentitySql = string.Format("SELECT CAST(IDENTITY_VAL_LOCAL() AS INT) AS \"id\" FROM SYSIBM.SYSDUMMY1");
+                    _getIdentitySql = string.Format("SELECT CAST(IDENTITY_VAL_LOCAL() AS DEC(31,0)) AS \"id\" FROM SYSIBM.SYSDUMMY1");
                     _getPagedListSql = "Select * from (Select {SelectColumns}, row_number() over(order by {OrderBy}) as PagedNumber from {TableName} {WhereClause} Order By {OrderBy}) as t where t.PagedNumber between (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
                     break;
 
