@@ -736,7 +736,7 @@ namespace Dapper
                       && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)
                       && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
                     continue;
-                if (property.GetCustomAttributes(true).Any(attr => 
+                if (property.GetCustomAttributes(true).Any(attr =>
                     attr.GetType().Name == typeof(IgnoreInsertAttribute).Name ||
                     attr.GetType().Name == typeof(NotMappedAttribute).Name ||
                     attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))
@@ -770,11 +770,11 @@ namespace Dapper
                       && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)
                       && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
                     continue;
-                if (property.GetCustomAttributes(true).Any(attr => 
+                if (property.GetCustomAttributes(true).Any(attr =>
                     attr.GetType().Name == typeof(IgnoreInsertAttribute).Name ||
                     attr.GetType().Name == typeof(NotMappedAttribute).Name ||
                     attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))) continue;
-                
+
                 if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
 
                 sb.Append(GetColumnName(property));
@@ -966,7 +966,16 @@ namespace Dapper
         {
             public virtual string ResolveTableName(Type type)
             {
-                var tableName = Encapsulate(type.Name);
+                string tableName;
+
+                if (GetDialect() == Dialect.DB2.ToString())
+                {
+                    tableName = type.Name;
+                }
+                else
+                {
+                    tableName = Encapsulate(type.Name);
+                }
 
                 var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == typeof(TableAttribute).Name) as dynamic;
                 if (tableattr != null)
@@ -994,7 +1003,16 @@ namespace Dapper
         {
             public virtual string ResolveColumnName(PropertyInfo propertyInfo)
             {
-                var columnName = Encapsulate(propertyInfo.Name);
+                string columnName;
+
+                if (GetDialect() == Dialect.DB2.ToString())
+                {
+                    columnName = propertyInfo.Name;
+                }
+                else
+                {
+                    columnName = Encapsulate(propertyInfo.Name);
+                }
 
                 var columnattr = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == typeof(ColumnAttribute).Name) as dynamic;
                 if (columnattr != null)

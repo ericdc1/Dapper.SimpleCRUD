@@ -324,17 +324,8 @@ namespace Dapper.SimpleCRUDTests
                 connection.Insert(new User { Name = "TestFilteredWithSQLGetList3", Age = 10 });
                 connection.Insert(new User { Name = "TestFilteredWithSQLGetList4", Age = 11 });
 
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    var user = connection.GetList<User>(@"where ""Name"" like 'TestFilteredWithSQLGetList%' and ""Age"" = 10");
-                    user.Count().IsEqualTo(3);
-                }
-                else
-                {
-                    var user = connection.GetList<User>("where Name like 'TestFilteredWithSQLGetList%' and Age = 10");
-                    user.Count().IsEqualTo(3);
-                }
-
+                var user = connection.GetList<User>("where Name like 'TestFilteredWithSQLGetList%' and Age = 10");
+                user.Count().IsEqualTo(3);
                 connection.Execute("Delete from Users");
             }
         }
@@ -370,16 +361,8 @@ namespace Dapper.SimpleCRUDTests
                 connection.Insert(new User { Name = "TestsGetListWithParameters3", Age = 10 });
                 connection.Insert(new User { Name = "TestsGetListWithParameters4", Age = 11 });
 
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    var user = connection.GetList<User>(@"where ""Age"" > @Age", new { Age = 10 });
-                    user.Count().IsEqualTo(1);
-                }
-                else
-                {
-                    var user = connection.GetList<User>("where Age > @Age", new { Age = 10 });
-                    user.Count().IsEqualTo(1);
-                }
+                var user = connection.GetList<User>("where Age > @Age", new { Age = 10 });
+                user.Count().IsEqualTo(1);
                 connection.Execute("Delete from Users");
             }
         }
@@ -614,14 +597,7 @@ namespace Dapper.SimpleCRUDTests
             using (var connection = GetOpenConnection())
             {
                 //note - there's not support for inserts without a non-int id, so drop down to a normal execute
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    connection.Execute(@"INSERT INTO ""City"" (""Name"", ""Population"") VALUES ('Morgantown', 31000)");
-                }
-                else
-                {
-                    connection.Execute("INSERT INTO CITY (NAME, POPULATION) VALUES ('Morgantown', 31000)");
-                }
+                connection.Execute("INSERT INTO CITY (NAME, POPULATION) VALUES ('Morgantown', 31000)");
                 var city = connection.Get<City>("Morgantown");
                 city.Population.IsEqualTo(31000);
             }
@@ -632,14 +608,7 @@ namespace Dapper.SimpleCRUDTests
             using (var connection = GetOpenConnection())
             {
                 //note - there's not support for inserts without a non-int id, so drop down to a normal execute
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    connection.Execute(@"INSERT INTO ""City"" (""Name"", ""Population"") VALUES ('Fairmont', 18737)");
-                }
-                else
-                {
-                    connection.Execute("INSERT INTO CITY (NAME, POPULATION) VALUES ('Fairmont', 18737)");
-                }
+                connection.Execute("INSERT INTO CITY (NAME, POPULATION) VALUES ('Fairmont', 18737)");
                 connection.Delete<City>("Fairmont").IsEqualTo(1);
             }
         }
@@ -663,8 +632,6 @@ namespace Dapper.SimpleCRUDTests
             SimpleCRUD.GetDialect().IsEqualTo(SimpleCRUD.Dialect.SQLServer.ToString());
             SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
             SimpleCRUD.GetDialect().IsEqualTo(SimpleCRUD.Dialect.PostgreSQL.ToString());
-            SimpleCRUD.SetDialect(SimpleCRUD.Dialect.DB2);
-            SimpleCRUD.GetDialect().IsEqualTo(SimpleCRUD.Dialect.DB2.ToString());
         }
 
 
@@ -861,17 +828,8 @@ namespace Dapper.SimpleCRUDTests
                 connection.Insert(new User { Name = "TestFilteredGetListParametersAsync3", Age = 10 });
                 connection.Insert(new User { Name = "TestFilteredGetListParametersAsync4", Age = 11 });
 
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    var user = connection.GetListAsync<User>(@"where ""Age"" = @Age", new { Age = 10 });
-                    user.Result.Count().IsEqualTo(3);
-                }
-                else
-                {
-                    var user = connection.GetListAsync<User>("where Age = @Age", new { Age = 10 });
-                    user.Result.Count().IsEqualTo(3);
-                }
-
+                var user = connection.GetListAsync<User>("where Age = @Age", new { Age = 10 });
+                user.Result.Count().IsEqualTo(3);
                 connection.Execute("Delete from Users");
             }
         }
@@ -891,14 +849,8 @@ namespace Dapper.SimpleCRUDTests
                 resultlist.Count().IsEqualTo(30);
                 connection.RecordCountAsync<User>().Result.IsEqualTo(30);
 
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    connection.RecordCountAsync<User>(@"where ""Age"" = 10 or ""Age"" = 11").Result.IsEqualTo(2);
-                }
-                else
-                {
-                    connection.RecordCountAsync<User>("where age = 10 or age = 11").Result.IsEqualTo(2);
-                }
+                connection.RecordCountAsync<User>("where age = 10 or age = 11").Result.IsEqualTo(2);
+
 
                 connection.Execute("Delete from Users");
             }
@@ -920,14 +872,8 @@ namespace Dapper.SimpleCRUDTests
                 resultlist.Count().IsEqualTo(30);
                 connection.RecordCountAsync<User>().Result.IsEqualTo(30);
 
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    connection.RecordCountAsync<User>(new { Age = 10 }).Result.IsEqualTo(1);
-                }
-                else
-                {
-                    connection.RecordCountAsync<User>(new { age = 10 }).Result.IsEqualTo(1);
-                }
+                connection.RecordCountAsync<User>(new { age = 10 }).Result.IsEqualTo(1);
+
 
                 connection.Execute("Delete from Users");
             }
@@ -1103,19 +1049,9 @@ namespace Dapper.SimpleCRUDTests
                     x++;
                 } while (x < 30);
 
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    var resultlist = connection.GetListPaged<User>(1, 30, @"where ""Age"" > @Age", null, new { Age = 14 });
-                    resultlist.Count().IsEqualTo(15);
-                    resultlist.First().Name.IsEqualTo("Person 15");
-                }
-                else
-                {
-                    var resultlist = connection.GetListPaged<User>(1, 30, "where Age > @Age", null, new { Age = 14 });
-                    resultlist.Count().IsEqualTo(15);
-                    resultlist.First().Name.IsEqualTo("Person 15");
-                }
-
+                var resultlist = connection.GetListPaged<User>(1, 30, "where Age > @Age", null, new { Age = 14 });
+                resultlist.Count().IsEqualTo(15);
+                resultlist.First().Name.IsEqualTo("Person 15");
                 connection.Execute("Delete from Users");
             }
         }
@@ -1149,24 +1085,12 @@ namespace Dapper.SimpleCRUDTests
                     x++;
                 } while (x < 30);
 
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    var resultlist1 = connection.GetListPaged<User>(1, 3, @"Where ""Name"" LIKE 'Person 2%'", @"""Age"" desc");
-                    resultlist1.Count().IsEqualTo(3);
+                var resultlist1 = connection.GetListPaged<User>(1, 3, "Where Name LIKE 'Person 2%'", "age desc");
+                resultlist1.Count().IsEqualTo(3);
 
-                    var resultlist = connection.GetListPaged<User>(2, 3, @"Where ""Name"" LIKE 'Person 2%'", @"""Age"" desc");
-                    resultlist.Count().IsEqualTo(3);
-                    resultlist.Skip(1).First().Name.IsEqualTo("Person 25");
-                }
-                else
-                {
-                    var resultlist1 = connection.GetListPaged<User>(1, 3, "Where Name LIKE 'Person 2%'", "age desc");
-                    resultlist1.Count().IsEqualTo(3);
-
-                    var resultlist = connection.GetListPaged<User>(2, 3, "Where Name LIKE 'Person 2%'", "age desc");
-                    resultlist.Count().IsEqualTo(3);
-                    resultlist.Skip(1).First().Name.IsEqualTo("Person 25");
-                }
+                var resultlist = connection.GetListPaged<User>(2, 3, "Where Name LIKE 'Person 2%'", "age desc");
+                resultlist.Count().IsEqualTo(3);
+                resultlist.Skip(1).First().Name.IsEqualTo("Person 25");
 
                 connection.Execute("Delete from Users");
             }
@@ -1183,15 +1107,7 @@ namespace Dapper.SimpleCRUDTests
                     x++;
                 } while (x < 30);
 
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    connection.DeleteList<User>(@"Where ""Age"" > 9");
-                }
-                else
-                {
-                    connection.DeleteList<User>("Where age > 9");
-                }
-
+                connection.DeleteList<User>("Where age > 9");
                 var resultlist = connection.GetList<User>();
                 resultlist.Count().IsEqualTo(10);
                 connection.Execute("Delete from Users");
@@ -1209,15 +1125,7 @@ namespace Dapper.SimpleCRUDTests
                     x++;
                 } while (x < 10);
 
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    connection.DeleteList<User>(new { Age = 9 });
-                }
-                else
-                {
-                    connection.DeleteList<User>(new { age = 9 });
-                }
-
+                connection.DeleteList<User>(new { age = 9 });
                 var resultlist = connection.GetList<User>();
                 resultlist.Count().IsEqualTo(9);
                 connection.Execute("Delete from Users");
@@ -1235,15 +1143,7 @@ namespace Dapper.SimpleCRUDTests
                     x++;
                 } while (x < 10);
 
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    connection.DeleteList<User>(@"where ""Age"" >= @Age", new { Age = 9 });
-                }
-                else
-                {
-                    connection.DeleteList<User>("where age >= @Age", new { Age = 9 });
-                }
-
+                connection.DeleteList<User>("where age >= @Age", new { Age = 9 });
                 var resultlist = connection.GetList<User>();
                 resultlist.Count().IsEqualTo(8);
                 connection.Execute("Delete from Users");
@@ -1265,14 +1165,8 @@ namespace Dapper.SimpleCRUDTests
                 resultlist.Count().IsEqualTo(30);
                 connection.RecordCount<User>().IsEqualTo(30);
 
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    connection.RecordCount<User>(@"where ""Age"" = 10 or ""Age"" = 11").IsEqualTo(2);
-                }
-                else
-                {
-                    connection.RecordCount<User>("where age = 10 or age = 11").IsEqualTo(2);
-                }
+                connection.RecordCount<User>("where age = 10 or age = 11").IsEqualTo(2);
+
 
                 connection.Execute("Delete from Users");
             }
@@ -1294,14 +1188,8 @@ namespace Dapper.SimpleCRUDTests
                 resultlist.Count().IsEqualTo(30);
                 connection.RecordCount<User>().IsEqualTo(30);
 
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    connection.RecordCount<User>(new { Age = 10 }).IsEqualTo(1);
-                }
-                else
-                {
-                    connection.RecordCount<User>(new { age = 10 }).IsEqualTo(1);
-                }
+                connection.RecordCount<User>(new { age = 10 }).IsEqualTo(1);
+
 
                 connection.Execute("Delete from Users");
             }
@@ -1321,15 +1209,8 @@ namespace Dapper.SimpleCRUDTests
 
                 var resultlist = connection.GetList<User>();
                 resultlist.Count().IsEqualTo(30);
+                connection.RecordCount<User>("where Age > 15").IsEqualTo(14);
 
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    connection.RecordCount<User>(@"where ""Age"" > 15").IsEqualTo(14);
-                }
-                else
-                {
-                    connection.RecordCount<User>("where Age > 15").IsEqualTo(14);
-                }
 
                 connection.Execute("Delete from Users");
             }
@@ -1384,16 +1265,8 @@ namespace Dapper.SimpleCRUDTests
                 item.IgnoreSelect.IsNull();
 
                 //verify the column is really there via straight dapper
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    var fromDapper = connection.Query<IgnoreColumns>(@"Select * from IgnoreColumns where ""Id"" = @Id", new { Id = itemId }).First();
-                    fromDapper.IgnoreSelect.IsEqualTo("OriginalSelect");
-                }
-                else
-                {
-                    var fromDapper = connection.Query<IgnoreColumns>("Select * from IgnoreColumns where Id = @Id", new { id = itemId }).First();
-                    fromDapper.IgnoreSelect.IsEqualTo("OriginalSelect");
-                }
+                var fromDapper = connection.Query<IgnoreColumns>("Select * from IgnoreColumns where Id = @Id", new { id = itemId }).First();
+                fromDapper.IgnoreSelect.IsEqualTo("OriginalSelect");
 
                 //change value and update
                 item.IgnoreUpdate = "ChangedUpdate";
@@ -1403,16 +1276,8 @@ namespace Dapper.SimpleCRUDTests
                 item = connection.Get<IgnoreColumns>(itemId);
                 item.IgnoreUpdate.IsEqualTo("OriginalUpdate");
 
-                if (SimpleCRUD.GetDialect() == SimpleCRUD.Dialect.DB2.ToString())
-                {
-                    var allColumnDapper = connection.Query<IgnoreColumns>(@"Select ""IgnoreAll"" from IgnoreColumns where ""Id"" = @Id", new { Id = itemId }).First();
-                    allColumnDapper.IgnoreAll.IsNull();
-                }
-                else
-                {
-                    var allColumnDapper = connection.Query<IgnoreColumns>("Select IgnoreAll from IgnoreColumns where Id = @Id", new { id = itemId }).First();
-                    allColumnDapper.IgnoreAll.IsNull();
-                }
+                var allColumnDapper = connection.Query<IgnoreColumns>("Select IgnoreAll from IgnoreColumns where Id = @Id", new { id = itemId }).First();
+                allColumnDapper.IgnoreAll.IsNull();
 
                 connection.Delete<IgnoreColumns>(itemId);
             }
