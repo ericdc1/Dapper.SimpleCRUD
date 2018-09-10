@@ -670,9 +670,10 @@ namespace Dapper
 
                 if (addedAny)
                     sb.Append(",");
-                sb.Append(GetColumnName(property));
+                var columnName = GetColumnName(property);
+                sb.Append(columnName);
                 //if there is a custom column name add an "as customcolumnname" to the item so it maps properly
-                if (property.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == typeof(ColumnAttribute).Name) != null)
+                if (columnName != property.Name || property.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == typeof(ColumnAttribute).Name) != null)
                     sb.Append(" as " + Encapsulate(property.Name));
                 addedAny = true;
             }
