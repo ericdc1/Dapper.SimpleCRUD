@@ -174,7 +174,7 @@ namespace Dapper.SimpleCRUDTests
             }
             else if (_dbtype == SimpleCRUD.Dialect.MySQL)
             {
-                connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "admin", "admin", "testdb"));
+                connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "root", "admin", "testdb"));
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.MySQL);
             }
             else
@@ -192,6 +192,7 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
+
                 var id = connection.Insert(new User { Name = "TestInsertWithSpecifiedTableName", Age = 10 });
                 var user = connection.Get<User>(id);
                 user.Name.IsEqualTo("TestInsertWithSpecifiedTableName");
