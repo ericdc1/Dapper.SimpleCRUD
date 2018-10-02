@@ -107,6 +107,13 @@ namespace Dapper.SimpleCRUDTests
         public string Name { get; set; }
     }
 
+    public class StringTest
+    {
+        [Key]
+        public string stringkey { get; set; }
+        public string name { get; set; }
+    }
+
     public class StrangeColumnNames
     {
         [Key]
@@ -684,6 +691,16 @@ namespace Dapper.SimpleCRUDTests
                 var id = connection.GetList<GUIDTest>().First().Id;
                 connection.Delete<GUIDTest>(id);
                 connection.Get<GUIDTest>(id).IsNull();
+            }
+        }
+        public void TestInsertIntoTableWithStringKey()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Execute(@"CREATE TABLE [dbo].[stringtest]([stringkey] [varchar](50) NOT NULL,[name] [varchar](50) NOT NULL, CONSTRAINT [PK_stringkey] PRIMARY KEY CLUSTERED ([stringkey] ASC))");
+                var id = connection.Insert<string, StringTest>(new StringTest { stringkey = "123xyz", name = "Bob" });
+                id.IsEqualTo("123xyz");
+                connection.Delete<StringTest>(id);
             }
         }
 

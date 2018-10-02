@@ -724,7 +724,7 @@ namespace Dapper
             for (var i = 0; i < props.Count(); i++)
             {
                 var property = props.ElementAt(i);
-                if (property.PropertyType != typeof(Guid)
+                if (property.PropertyType != typeof(Guid) && property.PropertyType != typeof(string)
                       && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)
                       && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
                     continue;
@@ -758,7 +758,7 @@ namespace Dapper
             for (var i = 0; i < props.Count(); i++)
             {
                 var property = props.ElementAt(i);
-                if (property.PropertyType != typeof(Guid)
+                if (property.PropertyType != typeof(Guid) && property.PropertyType != typeof(string)
                       && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)
                       && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
                     continue;
