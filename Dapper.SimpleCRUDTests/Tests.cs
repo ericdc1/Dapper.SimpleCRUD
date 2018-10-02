@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Collections.Generic;
 using System;
+using System.Data.SQLite;
 using MySql.Data.MySqlClient;
 using Npgsql;
 
@@ -178,6 +179,11 @@ namespace Dapper.SimpleCRUDTests
             {
                 connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "5432", "postgres", "postgrespass", "testdb"));
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
+            }
+            else if (_dbtype == SimpleCRUD.Dialect.SQLite)
+            {
+                connection = new SQLiteConnection("Data Source=MyDatabase.sqlite;Version=3;");
+                SimpleCRUD.SetDialect(SimpleCRUD.Dialect.SQLite);
             }
             else if (_dbtype == SimpleCRUD.Dialect.MySQL)
             {
