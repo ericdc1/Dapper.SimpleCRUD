@@ -697,7 +697,6 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.Execute(@"CREATE TABLE [dbo].[stringtest]([stringkey] [varchar](50) NOT NULL,[name] [varchar](50) NOT NULL, CONSTRAINT [PK_stringkey] PRIMARY KEY CLUSTERED ([stringkey] ASC))");
                 var id = connection.Insert<string, StringTest>(new StringTest { stringkey = "123xyz", name = "Bob" });
                 id.IsEqualTo("123xyz");
                 connection.Delete<StringTest>(id);
