@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Dapper.SimpleCRUD</id>
-    <version>2.0.0.0</version>
+    <version>2.0.0.1</version>
     <title>Dapper.SimpleCRUD</title>
     <authors>Eric Coffman</authors>
     <owners>Eric Coffman</owners>
@@ -46,6 +46,7 @@
 	* version 1.12.0 Added notmapped attribute to match DataAnnotations (thanks Mattykins). Allow insert with string primary key (thanks xalikoutis)
 	* version 1.13.0 Accept parameters on getlist, getlistpaged, deletelist, recordcount, and matching async methods 
 	* version 2.0.0 Bug fixes, .Net Core support, remove Sqlite support
+	* version 2.0.1 Re-add SQLite, allow string primary keys
 	</releaseNotes>
     <copyright>Copyright Eric Coffman 2018</copyright>
     <tags>orm dapper micro-orm CRUD</tags>
