@@ -81,7 +81,7 @@ foreach(Table tbl in from t in tables where !t.Ignore select t){
 <#}#>
 <#foreach(Key key in from k in tbl.InnerKeys select k)
 {#>
-		public virtual IEnumerable<<#=tables[key.ReferencingTableName].ClassName #>> <#=tables[key.ReferencingTableName].CleanName #> { get; set; }
+		public virtual IEnumerable<<#=tables[key.ReferencingTableName].ClassName #>> <#=Pluralize(tables[key.ReferencingTableName].CleanName) #> { get; set; }
 <#}#>
 <#}#>
 	}
@@ -354,6 +354,12 @@ static string Singularize(string word)
 {
 	var singularword = System.Data.Entity.Design.PluralizationServices.PluralizationService.CreateService(System.Globalization.CultureInfo.GetCultureInfo("en-us")).Singularize(word);
 	return singularword;
+}
+
+static string Pluralize(string word)
+{
+	var pluralword = System.Data.Entity.Design.PluralizationServices.PluralizationService.CreateService(System.Globalization.CultureInfo.GetCultureInfo("en-us")).Pluralize(word);
+	return pluralword;
 }
 		
 static string RemoveTablePrefixes(string word)
