@@ -1175,6 +1175,7 @@ internal static class TypeExtension
                                    typeof(Guid),
                                    typeof(DateTime),
                                    typeof(DateTimeOffset),
+                                   typeof(TimeSpan),
                                    typeof(byte[])
                                };
         return simpleTypes.Contains(type) || type.IsEnum;
