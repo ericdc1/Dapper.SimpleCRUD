@@ -110,18 +110,31 @@ namespace Dapper
         /// <returns>Returns a single entity by a single id from table T.</returns>
         public static T Get<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            var builder = BuildGetQuery<T>(id);
+            return connection.Query<T>(builder.query, builder.parameters, transaction, true, commandTimeout).FirstOrDefault();
+        }
+
+        private static (StringBuilder sb, List<PropertyInfo> idProps, Type currentType) BuildGenericSelect<T>()
+        {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
-
             if (!idProps.Any())
-                throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
+                throw new ArgumentException("Entity must have at least one [Key] property");
 
             var name = GetTableName(currenttype);
+
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
-            sb.AppendFormat(" from {0} where ", name);
+            sb.AppendFormat(" from {0}", name);
+            return (sb, idProps, currenttype);
+        }
+
+        private static (string query, DynamicParameters parameters) BuildGetQuery<T>(object id)
+        {
+            var (sb, idProps, currentType) = BuildGenericSelect<T>();
+            sb.Append(" where ");
 
             for (var i = 0; i < idProps.Count; i++)
             {
@@ -140,9 +153,9 @@ namespace Dapper
             }
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
+                Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currentType, sb, id));
 
-            return connection.Query<T>(sb.ToString(), dynParms, transaction, true, commandTimeout).FirstOrDefault();
+            return (sb.ToString(), dynParms);
         }
 
         /// <summary>
@@ -160,20 +173,14 @@ namespace Dapper
         /// <returns>Gets a list of entities with optional exact match where conditions</returns>
         public static IEnumerable<T> GetList<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-            var currenttype = typeof(T);
-            var idProps = GetIdProperties(currenttype).ToList();
-            if (!idProps.Any())
-                throw new ArgumentException("Entity must have at least one [Key] property");
+            var builder = BuildGetListQuery<T>(whereConditions);
+            return connection.Query<T>(builder, whereConditions, transaction, true, commandTimeout);
+        }
 
-            var name = GetTableName(currenttype);
-
-            var sb = new StringBuilder();
+        private static string BuildGetListQuery<T>(object whereConditions)
+        {
+            var (sb, idProps, currentType) = BuildGenericSelect<T>();
             var whereprops = GetAllProperties(whereConditions).ToArray();
-            sb.Append("Select ");
-            //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
-            sb.AppendFormat(" from {0}", name);
-
             if (whereprops.Any())
             {
                 sb.Append(" where ");
@@ -181,9 +188,9 @@ namespace Dapper
             }
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb));
+                Trace.WriteLine(String.Format("GetList<{0}>: {1}", currentType, sb));
 
-            return connection.Query<T>(sb.ToString(), whereConditions, transaction, true, commandTimeout);
+            return sb.ToString();
         }
 
         /// <summary>
@@ -203,36 +210,29 @@ namespace Dapper
         /// <returns>Gets a list of entities with optional SQL where conditions</returns>
         public static IEnumerable<T> GetList<T>(this IDbConnection connection, string conditions, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-            var currenttype = typeof(T);
-            var idProps = GetIdProperties(currenttype).ToList();
-            if (!idProps.Any())
-                throw new ArgumentException("Entity must have at least one [Key] property");
+            var query = BuildGetListQuery<T>(conditions);
+            return connection.Query<T>(query, parameters, transaction, true, commandTimeout);
+        }
 
-            var name = GetTableName(currenttype);
-
-            var sb = new StringBuilder();
-            sb.Append("Select ");
-            //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
-            sb.AppendFormat(" from {0}", name);
-
-            sb.Append(" " + conditions);
+        private static string BuildGetListQuery<T>(string whereConditions)
+        {
+            var (sb, idProps, currentType) = BuildGenericSelect<T>();
+            sb.Append(" " + whereConditions);
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb));
-
-            return connection.Query<T>(sb.ToString(), parameters, transaction, true, commandTimeout);
+                Trace.WriteLine(String.Format("GetList<{0}>: {1}", currentType, sb));
+            return sb.ToString();
         }
 
         /// <summary>
-        /// <para>By default queries the table matching the class name</para>
-        /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
-        /// <para>Returns a list of all entities</para>
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="connection"></param>
-        /// <returns>Gets a list of all entities</returns>
-        public static IEnumerable<T> GetList<T>(this IDbConnection connection)
+            /// <para>By default queries the table matching the class name</para>
+            /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
+            /// <para>Returns a list of all entities</para>
+            /// </summary>
+            /// <typeparam name="T"></typeparam>
+            /// <param name="connection"></param>
+            /// <returns>Gets a list of all entities</returns>
+            public static IEnumerable<T> GetList<T>(this IDbConnection connection)
         {
             return connection.GetList<T>(new { });
         }
@@ -257,6 +257,12 @@ namespace Dapper
         /// <param name="commandTimeout"></param>
         /// <returns>Gets a paged list of entities with optional exact match where conditions</returns>
         public static IEnumerable<T> GetListPaged<T>(this IDbConnection connection, int pageNumber, int rowsPerPage, string conditions, string orderby, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+            var query = BuildGetListPagedQuery<T>(pageNumber, rowsPerPage, conditions, orderby);
+            return connection.Query<T>(query, parameters, transaction, true, commandTimeout);
+        }
+
+        private static string BuildGetListPagedQuery<T>(int pageNumber, int rowsPerPage, string conditions, string orderby)
         {
             if (string.IsNullOrEmpty(_getPagedListSql))
                 throw new Exception("GetListPage is not supported with the current SQL Dialect");
@@ -290,7 +296,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetListPaged<{0}>: {1}", currenttype, query));
 
-            return connection.Query<T>(query, parameters, transaction, true, commandTimeout);
+            return query;
         }
 
         /// <summary>
@@ -327,6 +333,22 @@ namespace Dapper
         /// <param name="commandTimeout"></param>
         /// <returns>The ID (primary key) of the newly inserted record if it is identity using the defined type, otherwise null</returns>
         public static TKey Insert<TKey, TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+            var builder = BuildInsertQuery<TKey, TEntity>(entityToInsert);
+            var r = connection.Query(builder.sb, entityToInsert, transaction, true, commandTimeout);
+            return ReturnInsertKey<TKey, TEntity>(builder, entityToInsert, r);
+        }
+
+        private static TKey ReturnInsertKey<TKey, TEntity>((string sb, Type keyType, bool keyHasPredefinedValue, List<PropertyInfo> idProps) builder, TEntity entityToInsert, IEnumerable<dynamic> result)
+        {
+            if (builder.keyType == typeof(Guid) || builder.keyHasPredefinedValue)
+            {
+                return (TKey)builder.idProps.First().GetValue(entityToInsert, null);
+            }
+            return (TKey)result.First().id;
+        }
+
+        private static (string sb, Type keyType, bool keyHasPredefinedValue, List<PropertyInfo> idProps) BuildInsertQuery<TKey, TEntity>(TEntity entityToInsert)
         {
             var idProps = GetIdProperties(entityToInsert).ToList();
 
@@ -380,13 +402,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Insert: {0}", sb));
 
-            var r = connection.Query(sb.ToString(), entityToInsert, transaction, true, commandTimeout);
-
-            if (keytype == typeof(Guid) || keyHasPredefinedValue)
-            {
-                return (TKey)idProps.First().GetValue(entityToInsert, null);
-            }
-            return (TKey)r.First().id;
+            return (sb.ToString(), keytype, keyHasPredefinedValue, idProps);
         }
 
         /// <summary>
@@ -404,6 +420,12 @@ namespace Dapper
         /// <param name="commandTimeout"></param>
         /// <returns>The number of affected records</returns>
         public static int Update<TEntity>(this IDbConnection connection, TEntity entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+            var sb = BuildUpdateQuery<TEntity>(entityToUpdate);
+            return connection.Execute(sb, entityToUpdate, transaction, commandTimeout);
+        }
+
+        private static string BuildUpdateQuery<TEntity>(TEntity entityToUpdate)
         {
             var idProps = GetIdProperties(entityToUpdate).ToList();
 
@@ -423,7 +445,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Update: {0}", sb));
 
-            return connection.Execute(sb.ToString(), entityToUpdate, transaction, commandTimeout);
+            return sb.ToString();
         }
 
         /// <summary>
@@ -441,16 +463,28 @@ namespace Dapper
         /// <returns>The number of records affected</returns>
         public static int Delete<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-            var idProps = GetIdProperties(entityToDelete).ToList();
+            var sb = BuildDeleteQuery<T>(entityToDelete);
+            return connection.Execute(sb.ToString(), entityToDelete, transaction, commandTimeout);
+        }
 
+        private static (StringBuilder sb, List<PropertyInfo> idProps, Type currentType) BuildGenericDeleteQuery<T>()
+        {
+            var currenttype = typeof(T);
+            var idProps = GetIdProperties(currenttype).ToList();
 
             if (!idProps.Any())
-                throw new ArgumentException("Entity must have at least one [Key] or Id property");
+                throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
 
-            var name = GetTableName(entityToDelete);
+            var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("delete from {0}", name);
+            sb.AppendFormat("Delete from {0} ", name);
+            return (sb, idProps, currenttype);
+        }
+
+        private static string BuildDeleteQuery<T>(T entityToDelete)
+        {
+            var (sb, idProps, currentType) = BuildGenericDeleteQuery<T>();
 
             sb.Append(" where ");
             BuildWhere<T>(sb, idProps, entityToDelete);
@@ -458,7 +492,7 @@ namespace Dapper
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete: {0}", sb));
 
-            return connection.Execute(sb.ToString(), entityToDelete, transaction, commandTimeout);
+            return sb.ToString();
         }
 
         /// <summary>
@@ -477,17 +511,14 @@ namespace Dapper
         /// <returns>The number of records affected</returns>
         public static int Delete<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-            var currenttype = typeof(T);
-            var idProps = GetIdProperties(currenttype).ToList();
+            var (sb, dynParms) = BuildDeleteQuery<T>(id);
+            return connection.Execute(sb, dynParms, transaction, commandTimeout);
+        }
 
-
-            if (!idProps.Any())
-                throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
-
-            var name = GetTableName(currenttype);
-
-            var sb = new StringBuilder();
-            sb.AppendFormat("Delete from {0} where ", name);
+        private static (string sb, DynamicParameters dynParms) BuildDeleteQuery<T>(object id)
+        {
+            var (sb, idProps, currentType) = BuildGenericDeleteQuery<T>();
+            sb.Append(" where ");
 
             for (var i = 0; i < idProps.Count; i++)
             {
@@ -506,9 +537,9 @@ namespace Dapper
             }
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));
+                Trace.WriteLine(String.Format("Delete<{0}> {1}", currentType, sb));
 
-            return connection.Execute(sb.ToString(), dynParms, transaction, commandTimeout);
+            return (sb.ToString(), dynParms);
         }
 
         /// <summary>
@@ -528,13 +559,14 @@ namespace Dapper
         /// <returns>The number of records affected</returns>
         public static int DeleteList<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            var sb = BuildDeleteListQuery<T>(whereConditions);
+            return connection.Execute(sb, whereConditions, transaction, commandTimeout);
+        }
 
-            var currenttype = typeof(T);
-            var name = GetTableName(currenttype);
-
-            var sb = new StringBuilder();
+        private static string BuildDeleteListQuery<T>(object whereConditions)
+        {
+            var (sb, idProps, currentType) = BuildGenericDeleteQuery<T>();
             var whereprops = GetAllProperties(whereConditions).ToArray();
-            sb.AppendFormat("Delete from {0}", name);
             if (whereprops.Any())
             {
                 sb.Append(" where ");
@@ -542,9 +574,8 @@ namespace Dapper
             }
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("DeleteList<{0}> {1}", currenttype, sb));
-
-            return connection.Execute(sb.ToString(), whereConditions, transaction, commandTimeout);
+                Trace.WriteLine(String.Format("DeleteList<{0}> {1}", currentType, sb));
+            return sb.ToString();
         }
 
         /// <summary>
@@ -565,22 +596,23 @@ namespace Dapper
         /// <returns>The number of records affected</returns>
         public static int DeleteList<T>(this IDbConnection connection, string conditions, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            var sb = BuildDeleteListQuery<T>(conditions);
+            return connection.Execute(sb, parameters, transaction, commandTimeout);
+        }
+
+        private static string BuildDeleteListQuery<T>(string conditions)
+        {
             if (string.IsNullOrEmpty(conditions))
                 throw new ArgumentException("DeleteList<T> requires a where clause");
             if (!conditions.ToLower().Contains("where"))
                 throw new ArgumentException("DeleteList<T> requires a where clause and must contain the WHERE keyword");
 
-            var currenttype = typeof(T);
-            var name = GetTableName(currenttype);
-
-            var sb = new StringBuilder();
-            sb.AppendFormat("Delete from {0}", name);
+            var (sb, idProps, currentType) = BuildGenericDeleteQuery<T>();
             sb.Append(" " + conditions);
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("DeleteList<{0}> {1}", currenttype, sb));
-
-            return connection.Execute(sb.ToString(), parameters, transaction, commandTimeout);
+                Trace.WriteLine(String.Format("DeleteList<{0}> {1}", currentType, sb));
+            return sb.ToString();
         }
 
         /// <summary>
@@ -600,17 +632,28 @@ namespace Dapper
         /// <returns>Returns a count of records.</returns>
         public static int RecordCount<T>(this IDbConnection connection, string conditions = "", object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            var sb = BuildRecordCountQuery<T>(conditions);
+            return connection.ExecuteScalar<int>(sb, parameters, transaction, commandTimeout);
+        }
+
+        private static string BuildRecordCountQuery<T>(string conditions)
+        {
+            var (sb, currentType) = BuildGenericRecordCountQuery<T>();
+            sb.Append(" " + conditions);
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currentType, sb));
+            return sb.ToString();
+        }
+
+        private static (StringBuilder sb, Type currentType) BuildGenericRecordCountQuery<T>()
+        {
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
             var sb = new StringBuilder();
             sb.Append("Select count(1)");
             sb.AppendFormat(" from {0}", name);
-            sb.Append(" " + conditions);
-
-            if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currenttype, sb));
-
-            return connection.ExecuteScalar<int>(sb.ToString(), parameters, transaction, commandTimeout);
+            return (sb, currenttype);
         }
 
         /// <summary>
@@ -628,13 +671,14 @@ namespace Dapper
         /// <returns>Returns a count of records.</returns>
         public static int RecordCount<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-            var currenttype = typeof(T);
-            var name = GetTableName(currenttype);
+            var sb = BuildRecordCountQuery<T>(whereConditions);
+            return connection.ExecuteScalar<int>(sb, whereConditions, transaction, commandTimeout);
+        }
 
-            var sb = new StringBuilder();
+        private static string BuildRecordCountQuery<T>(object whereConditions)
+        {
+            var (sb, currentType) = BuildGenericRecordCountQuery<T>();
             var whereprops = GetAllProperties(whereConditions).ToArray();
-            sb.Append("Select count(1)");
-            sb.AppendFormat(" from {0}", name);
             if (whereprops.Any())
             {
                 sb.Append(" where ");
@@ -642,9 +686,9 @@ namespace Dapper
             }
 
             if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currenttype, sb));
+                Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currentType, sb));
 
-            return connection.ExecuteScalar<int>(sb.ToString(), whereConditions, transaction, commandTimeout);
+            return sb.ToString();
         }
 
         //build update statement based on list on an entity
