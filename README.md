@@ -1,3 +1,10 @@
+This is my fork of Dapper.SimpleCRUD.
+
+I have refactored the code slighty to help with maintainablity - and I have added SoftDelete feature.
+
+Huge credit to ericdc1 for making such a useful mini dapper helper!
+
+
 Dapper.SimpleCRUD - simple CRUD helpers for Dapper
 ========================================
 Features
