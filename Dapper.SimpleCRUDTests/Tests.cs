@@ -214,6 +214,36 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+        public void TestMassInsert() 
+        {
+            //With cached strinb builder, this tests runs 2.5X faster (From 400ms to 180ms)
+            using (var connection = GetOpenConnection())
+            using (var transaction = connection.BeginTransaction())
+            {
+                for (int i = 0; i < 1000; i++)
+                {
+                    var id = connection.Insert(new User { Name = $"Name #{i}", Age = i }, transaction);
+                }
+            }
+        }
+
+        public void TestMassUpdate() //356
+        {
+            //With cached strinb builder, this tests runs 2.5X faster (From 375ms to 140ms)
+            using (var connection = GetOpenConnection())
+            using (var transaction = connection.BeginTransaction())
+            {
+                var id = connection.Insert(new User { Name = "New User", Age = 0 }, transaction);
+                var user = connection.Get<User>(id, transaction);
+
+                for (int i = 1; i <= 1000; i++)
+                {
+                    user.Age = i;
+                    connection.Update(user, transaction);
+                }
+            }
+        }
+
         public void TestInsertUsingBigIntPrimaryKey()
         {
             using (var connection = GetOpenConnection())
