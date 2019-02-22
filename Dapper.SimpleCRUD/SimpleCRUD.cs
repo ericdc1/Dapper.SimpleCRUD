@@ -801,7 +801,7 @@ namespace Dapper
         }
 
         //Determine if the Attribute has an AllowEdit key and return its boolean state
-        //fake the funk and try to mimick EditableAttribute in System.ComponentModel.DataAnnotations 
+        //fake the funk and try to mimic EditableAttribute in System.ComponentModel.DataAnnotations 
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
         private static bool IsEditable(PropertyInfo pi)
         {
@@ -819,7 +819,7 @@ namespace Dapper
 
 
         //Determine if the Attribute has an IsReadOnly key and return its boolean state
-        //fake the funk and try to mimick ReadOnlyAttribute in System.ComponentModel 
+        //fake the funk and try to mimic ReadOnlyAttribute in System.ComponentModel 
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
         private static bool IsReadOnly(PropertyInfo pi)
         {
@@ -920,7 +920,7 @@ namespace Dapper
             return string.Format(_encapsulation, databaseword);
         }
         /// <summary>
-        /// Generates a guid based on the current date/time
+        /// Generates a GUID based on the current date/time
         /// http://stackoverflow.com/questions/1752004/sequential-guid-generator-c-sharp
         /// </summary>
         /// <returns></returns>
