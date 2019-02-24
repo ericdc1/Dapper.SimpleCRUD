@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Collections.Generic;
 using System;
+using System.Data.SQLite;
 using MySql.Data.MySqlClient;
 using Npgsql;
 
@@ -107,6 +108,13 @@ namespace Dapper.SimpleCRUDTests
         public string Name { get; set; }
     }
 
+    public class StringTest
+    {
+        [Key]
+        public string stringkey { get; set; }
+        public string name { get; set; }
+    }
+
     public class StrangeColumnNames
     {
         [Key]
@@ -172,9 +180,14 @@ namespace Dapper.SimpleCRUDTests
                 connection = new NpgsqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "5432", "postgres", "postgrespass", "testdb"));
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
             }
+            else if (_dbtype == SimpleCRUD.Dialect.SQLite)
+            {
+                connection = new SQLiteConnection("Data Source=MyDatabase.sqlite;Version=3;");
+                SimpleCRUD.SetDialect(SimpleCRUD.Dialect.SQLite);
+            }
             else if (_dbtype == SimpleCRUD.Dialect.MySQL)
             {
-                connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "admin", "admin", "testdb"));
+                connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "root", "admin", "testdb"));
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.MySQL);
             }
             else
@@ -192,11 +205,42 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
+
                 var id = connection.Insert(new User { Name = "TestInsertWithSpecifiedTableName", Age = 10 });
                 var user = connection.Get<User>(id);
                 user.Name.IsEqualTo("TestInsertWithSpecifiedTableName");
                 connection.Delete<User>(id);
 
+            }
+        }
+
+        public void TestMassInsert() 
+        {
+            //With cached strinb builder, this tests runs 2.5X faster (From 400ms to 180ms)
+            using (var connection = GetOpenConnection())
+            using (var transaction = connection.BeginTransaction())
+            {
+                for (int i = 0; i < 1000; i++)
+                {
+                    var id = connection.Insert(new User { Name = $"Name #{i}", Age = i }, transaction);
+                }
+            }
+        }
+
+        public void TestMassUpdate() //356
+        {
+            //With cached strinb builder, this tests runs 2.5X faster (From 375ms to 140ms)
+            using (var connection = GetOpenConnection())
+            using (var transaction = connection.BeginTransaction())
+            {
+                var id = connection.Insert(new User { Name = "New User", Age = 0 }, transaction);
+                var user = connection.Get<User>(id, transaction);
+
+                for (int i = 1; i <= 1000; i++)
+                {
+                    user.Age = i;
+                    connection.Update(user, transaction);
+                }
             }
         }
 
@@ -683,6 +727,15 @@ namespace Dapper.SimpleCRUDTests
                 var id = connection.GetList<GUIDTest>().First().Id;
                 connection.Delete<GUIDTest>(id);
                 connection.Get<GUIDTest>(id).IsNull();
+            }
+        }
+        public void TestInsertIntoTableWithStringKey()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                var id = connection.Insert<string, StringTest>(new StringTest { stringkey = "123xyz", name = "Bob" });
+                id.IsEqualTo("123xyz");
+                connection.Delete<StringTest>(id);
             }
         }
 

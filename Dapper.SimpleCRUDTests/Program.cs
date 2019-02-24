@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data.SqlClient;
+using System.Data.SQLite;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -14,6 +15,9 @@ namespace Dapper.SimpleCRUDTests
         {
             Setup();
             RunTests();
+
+            SetupSqLite();
+            RunTestsSqLite();
 
             //PostgreSQL tests assume port 5432 with username postgres and password postgrespass
             //they are commented out by default since postgres setup is required to run tests
@@ -56,6 +60,8 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute(@" create table IgnoreColumns (Id int IDENTITY(1,1) not null Primary Key, IgnoreInsert nvarchar(100) null, IgnoreUpdate nvarchar(100) null, IgnoreSelect nvarchar(100)  null, IgnoreAll nvarchar(100) null) ");
                 connection.Execute(@" CREATE TABLE GradingScale ([ScaleID] [int] IDENTITY(1,1) NOT NULL, [AppID] [int] NULL, [ScaleName] [nvarchar](50) NOT NULL, [IsDefault] [bit] NOT NULL)");
                 connection.Execute(@" CREATE TABLE KeyMaster ([Key1] [int] NOT NULL, [Key2] [int] NOT NULL, CONSTRAINT [PK_KeyMaster] PRIMARY KEY CLUSTERED ([Key1] ASC, [Key2] ASC))");
+                connection.Execute(@" CREATE TABLE [dbo].[stringtest]([stringkey] [varchar](50) NOT NULL,[name] [varchar](50) NOT NULL, CONSTRAINT [PK_stringkey] PRIMARY KEY CLUSTERED ([stringkey] ASC))");
+
             }
             Console.WriteLine("Created database");
         }
@@ -89,9 +95,32 @@ namespace Dapper.SimpleCRUDTests
 
         }
 
+        private static void SetupSqLite()
+        {
+            File.Delete(Directory.GetCurrentDirectory() + "\\MyDatabase.sqlite");
+            SQLiteConnection.CreateFile("MyDatabase.sqlite");
+            var connection = new SQLiteConnection("Data Source=MyDatabase.sqlite;Version=3;");
+            using (connection)
+            {
+                connection.Open();
+                connection.Execute(@" create table Users (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name nvarchar(100) not null, Age int not null, ScheduledDayOff int null, CreatedDate datetime default current_timestamp ) ");
+                connection.Execute(@" create table Car (CarId INTEGER PRIMARY KEY AUTOINCREMENT, Id INTEGER null, Make nvarchar(100) not null, Model nvarchar(100) not null) ");
+                connection.Execute(@" create table BigCar (CarId INTEGER PRIMARY KEY AUTOINCREMENT, Make nvarchar(100) not null, Model nvarchar(100) not null) ");
+                connection.Execute(@" insert into BigCar (CarId,Make,Model) Values (2147483649,'car','car') ");
+                connection.Execute(@" create table City (Name nvarchar(100) not null, Population int not null) ");
+                connection.Execute(@" CREATE TABLE GUIDTest([Id] [uniqueidentifier] NOT NULL,[name] [varchar](50) NOT NULL, CONSTRAINT [PK_GUIDTest] PRIMARY KEY  ([Id] ASC))");
+                connection.Execute(@" create table StrangeColumnNames (ItemId INTEGER PRIMARY KEY AUTOINCREMENT, word nvarchar(100) not null, colstringstrangeword nvarchar(100) not null, KeywordedProperty nvarchar(100) null) ");
+                connection.Execute(@" create table UserWithoutAutoIdentity (Id INTEGER PRIMARY KEY, Name nvarchar(100) not null, Age int not null) ");
+                connection.Execute(@" create table IgnoreColumns (Id INTEGER PRIMARY KEY AUTOINCREMENT, IgnoreInsert nvarchar(100) null, IgnoreUpdate nvarchar(100) null, IgnoreSelect nvarchar(100)  null, IgnoreAll nvarchar(100) null) ");
+                connection.Execute(@" CREATE TABLE KeyMaster (Key1 INTEGER NOT NULL, Key2 INTEGER NOT NULL, PRIMARY KEY ([Key1], [Key2]))");
+                connection.Execute(@" CREATE TABLE stringtest (stringkey nvarchar(50) NOT NULL,name nvarchar(50) NOT NULL, PRIMARY KEY ([stringkey] ASC))");
+
+            }
+        }
+
         private static void SetupMySQL()
         {
-            using (var connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "admin", "admin", "sys")))
+            using (var connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "root", "admin", "sys")))
             {
                 connection.Open();
                 // drop  database 
@@ -100,7 +129,7 @@ namespace Dapper.SimpleCRUDTests
             }
             System.Threading.Thread.Sleep(1000);
 
-            using (var connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "admin", "admin", "testdb")))
+            using (var connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "root", "admin", "testdb")))
             {
                 connection.Open();
                 connection.Execute(@" create table Users (Id INTEGER PRIMARY KEY AUTO_INCREMENT, Name nvarchar(100) not null, Age int not null, ScheduledDayOff int null, CreatedDate datetime default current_timestamp ) ");
@@ -111,6 +140,8 @@ namespace Dapper.SimpleCRUDTests
                 connection.Execute(@" CREATE TABLE GUIDTest(Id CHAR(38) NOT NULL,name varchar(50) NOT NULL, CONSTRAINT PK_GUIDTest PRIMARY KEY (Id ASC))");
                 connection.Execute(@" create table StrangeColumnNames (ItemId INTEGER PRIMARY KEY AUTO_INCREMENT, word nvarchar(100) not null, colstringstrangeword nvarchar(100) not null, KeywordedProperty nvarchar(100) null) ");
                 connection.Execute(@" create table UserWithoutAutoIdentity (Id INTEGER PRIMARY KEY, Name nvarchar(100) not null, Age int not null) ");
+                connection.Execute(@" create table IgnoreColumns (Id INTEGER PRIMARY KEY AUTO_INCREMENT, IgnoreInsert nvarchar(100) null, IgnoreUpdate nvarchar(100) null, IgnoreSelect nvarchar(100)  null, IgnoreAll nvarchar(100) null) ");
+                connection.Execute(@" CREATE table KeyMaster (Key1 INTEGER NOT NULL, Key2 INTEGER NOT NULL, CONSTRAINT PK_KeyMaster PRIMARY KEY CLUSTERED (Key1 ASC, Key2 ASC))");
             }
 
         }
@@ -166,6 +197,25 @@ namespace Dapper.SimpleCRUDTests
             Console.ReadKey();
         }
 
+        private static void RunTestsSqLite()
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var pgtester = new Tests(SimpleCRUD.Dialect.SQLite);
+            foreach (var method in typeof(Tests).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                //skip schema tests
+                if (method.Name.Contains("Schema")) continue;
+                var testwatch = Stopwatch.StartNew();
+                Console.Write("Running " + method.Name + " in SQLite");
+                method.Invoke(pgtester, null);
+                Console.WriteLine(" - OK! {0}ms", testwatch.ElapsedMilliseconds);
+            }
+            stopwatch.Stop();
+            Console.WriteLine("Time elapsed: {0}", stopwatch.Elapsed);
+            Console.Write("SQLite testing complete.");
+            Console.ReadKey();
+        }
+
         private static void RunTestsMySQL()
         {
             var stopwatch = Stopwatch.StartNew();
@@ -175,6 +225,7 @@ namespace Dapper.SimpleCRUDTests
                 //skip schema tests
                 if (method.Name.Contains("Schema")) continue;
                 if (method.Name.Contains("Guid")) continue;
+
                 var testwatch = Stopwatch.StartNew();
                 Console.Write("Running " + method.Name + " in MySQL");
                 method.Invoke(mysqltester, null);

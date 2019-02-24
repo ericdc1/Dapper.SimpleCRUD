@@ -34,3 +34,5 @@
 * version 1.12.0 Added notmapped attribute to match DataAnnotations (thanks Mattykins). Allow insert with string primary key (thanks xalikoutis)
 * version 1.13.0 Accept parameters on getlist, getlistpaged, deletelist, recordcount, and matching async methods 
 * version 2.0.0 Bug fixes, .Net Core support, removed SQLite since it doesn't support .net core yet
+* version 2.0.1 Re-add SQLite, allow string primary keys
+* version 2.1.0 Speed improvements (thanks jonathanlarouche)

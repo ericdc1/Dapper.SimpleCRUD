@@ -30,7 +30,7 @@ It is based on the T4 template from the PetaPoco project which in turn is based 
 */
 	// Settings
     ConnectionStringName = ""; // Uses last connection string in config if not specified
-	ConfigPath = @""; //Looks in current project for web.config or app.config by default. This overrides to a relative path - useful for seperate class library projects.
+	ConfigPath = @""; //Looks in current project for web.config or app.config by default. This overrides to a relative path - useful for separate class library projects.
     Namespace = "$rootnamespace$.Models";
 	ClassPrefix = "";
 	ClassSuffix = "";
