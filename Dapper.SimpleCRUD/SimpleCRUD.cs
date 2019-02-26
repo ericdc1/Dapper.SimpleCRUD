@@ -55,7 +55,7 @@ namespace Dapper
             StringBuilderCacheDict.AddOrUpdate(cacheKey, value, (t, v) => value);
             sb.Append(value);
         }
-        
+
         /// <summary>
         /// Returns the current dialect name
         /// </summary>
@@ -779,7 +779,11 @@ namespace Dapper
                         attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))
                     ) continue;
 
-                    if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
+                    if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase)
+                        && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name)
+                        && property.PropertyType != typeof(Guid)
+                        && property.PropertyType != typeof(string))
+                        continue;
 
                     sb.AppendFormat("@{0}", property.Name);
                     if (i < props.Length - 1)
@@ -814,7 +818,10 @@ namespace Dapper
                         attr.GetType().Name == typeof(NotMappedAttribute).Name ||
                         attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))) continue;
 
-                    if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
+                    if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase)
+                        && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name)
+                        && property.PropertyType != typeof(Guid) && property.PropertyType != typeof(string))
+                        continue;
 
                     sb.Append(GetColumnName(property));
                     if (i < props.Length - 1)
@@ -1226,6 +1233,6 @@ internal static class TypeExtension
 
     public static string CacheKey(this IEnumerable<PropertyInfo> props)
     {
-        return string.Join(",",props.Select(p=> p.DeclaringType.FullName + "." + p.Name).ToArray());
+        return string.Join(",", props.Select(p => p.DeclaringType.FullName + "." + p.Name).ToArray());
     }
 }

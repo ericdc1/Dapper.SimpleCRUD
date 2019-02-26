@@ -111,7 +111,7 @@ namespace Dapper.SimpleCRUDTests
     public class StringTest
     {
         [Key]
-        public string stringkey { get; set; }
+        public string Id { get; set; }
         public string name { get; set; }
     }
 
@@ -733,7 +733,7 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                var id = connection.Insert<string, StringTest>(new StringTest { stringkey = "123xyz", name = "Bob" });
+                var id = connection.Insert<string, StringTest>(new StringTest { Id = "123xyz", name = "Bob" });
                 id.IsEqualTo("123xyz");
                 connection.Delete<StringTest>(id);
             }
