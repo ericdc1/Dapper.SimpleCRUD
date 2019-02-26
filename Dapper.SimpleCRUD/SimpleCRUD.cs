@@ -36,7 +36,7 @@ namespace Dapper
         private static IColumnNameResolver _columnNameResolver = new ColumnNameResolver();
 
         /// <summary>
-        /// Append a Cached version of a strinbBuilderAction result based on a cacheKey
+        /// Append a Cached version of a stringBuilderAction result based on a cacheKey
         /// </summary>
         /// <param name="sb"></param>
         /// <param name="cacheKey"></param>
@@ -703,7 +703,7 @@ namespace Dapper
             {
                 var propertyInfos = props as IList<PropertyInfo> ?? props.ToList();
                 var addedAny = false;
-                for (var i = 0; i < propertyInfos.Count(); i++)
+                for (var i = 0; i < propertyInfos.Count; i++)
                 {
                     var property = propertyInfos.ElementAt(i);
 
@@ -723,7 +723,7 @@ namespace Dapper
         private static void BuildWhere<TEntity>(StringBuilder sb, IEnumerable<PropertyInfo> idProps, object whereConditions = null)
         {
             var propertyInfos = idProps.ToArray();
-            for (var i = 0; i < propertyInfos.Count(); i++)
+            for (var i = 0; i < propertyInfos.Length; i++)
             {
                 var useIsNull = false;
 
@@ -732,7 +732,7 @@ namespace Dapper
                 //by converting the model type to the database column name via the column attribute
                 var propertyToUse = propertyInfos.ElementAt(i);
                 var sourceProperties = GetScaffoldableProperties<TEntity>().ToArray();
-                for (var x = 0; x < sourceProperties.Count(); x++)
+                for (var x = 0; x < sourceProperties.Length; x++)
                 {
                     if (sourceProperties.ElementAt(x).Name == propertyToUse.Name)
                     {
@@ -749,7 +749,7 @@ namespace Dapper
                     GetColumnName(propertyToUse),
                     propertyToUse.Name);
 
-                if (i < propertyInfos.Count() - 1)
+                if (i < propertyInfos.Length - 1)
                     sb.AppendFormat(" and ");
             }
         }
@@ -766,7 +766,7 @@ namespace Dapper
             {
 
                 var props = GetScaffoldableProperties<T>().ToArray();
-                for (var i = 0; i < props.Count(); i++)
+                for (var i = 0; i < props.Length; i++)
                 {
                     var property = props.ElementAt(i);
                     if (property.PropertyType != typeof(Guid) && property.PropertyType != typeof(string)
@@ -782,7 +782,7 @@ namespace Dapper
                     if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
 
                     sb.AppendFormat("@{0}", property.Name);
-                    if (i < props.Count() - 1)
+                    if (i < props.Length - 1)
                         sb.Append(", ");
                 }
                 if (sb.ToString().EndsWith(", "))
@@ -802,7 +802,7 @@ namespace Dapper
             {
                 var props = GetScaffoldableProperties<T>().ToArray();
 
-                for (var i = 0; i < props.Count(); i++)
+                for (var i = 0; i < props.Length; i++)
                 {
                     var property = props.ElementAt(i);
                     if (property.PropertyType != typeof(Guid) && property.PropertyType != typeof(string)
@@ -817,7 +817,7 @@ namespace Dapper
                     if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
 
                     sb.Append(GetColumnName(property));
-                    if (i < props.Count() - 1)
+                    if (i < props.Length - 1)
                         sb.Append(", ");
                 }
                 if (sb.ToString().EndsWith(", "))
