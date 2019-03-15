@@ -245,6 +245,13 @@ namespace Dapper
         /// <returns>The ID (primary key) of the newly inserted record if it is identity using the defined type, otherwise null</returns>
         public static async Task<TKey> InsertAsync<TKey, TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            if (typeof(TEntity).IsInterface) //FallBack to BaseType Generic Method : https://stackoverflow.com/questions/4101784/calling-a-generic-method-with-a-dynamic-type
+            {
+                return await (Task<TKey>)typeof(SimpleCRUD)
+                    .GetMethods().Where(methodInfo => methodInfo.Name == nameof(InsertAsync) && methodInfo.GetGenericArguments().Count() == 2).Single()
+                    .MakeGenericMethod(new Type[] { typeof(TKey), entityToInsert.GetType() })
+                    .Invoke(null, new object[] { connection, entityToInsert, transaction, commandTimeout });
+            }
             var idProps = GetIdProperties(entityToInsert).ToList();
 
             if (!idProps.Any())
@@ -319,8 +326,15 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of affected records</returns>
-        public static Task<int> UpdateAsync<TEntity>(this IDbConnection connection, TEntity entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null, System.Threading.CancellationToken? token = null)
+        public static async Task<int> UpdateAsync<TEntity>(this IDbConnection connection, TEntity entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null, System.Threading.CancellationToken? token = null)
         {
+            if (typeof(TEntity).IsInterface) //FallBack to BaseType Generic Method : https://stackoverflow.com/questions/4101784/calling-a-generic-method-with-a-dynamic-type
+            {
+                return await(Task<int>)typeof(SimpleCRUD)
+                   .GetMethods().Where(methodInfo => methodInfo.Name == nameof(UpdateAsync) && methodInfo.GetGenericArguments().Count() == 2).Single()
+                   .MakeGenericMethod(new Type[] { entityToUpdate.GetType() })
+                   .Invoke(null, new object[] { connection, entityToUpdate, transaction, commandTimeout });
+            }
             var idProps = GetIdProperties(entityToUpdate).ToList();
 
             if (!idProps.Any())
@@ -340,7 +354,7 @@ namespace Dapper
                 Trace.WriteLine(String.Format("Update: {0}", sb));
 
             System.Threading.CancellationToken cancelToken = token ?? default(System.Threading.CancellationToken);
-            return connection.ExecuteAsync(new CommandDefinition(sb.ToString(), entityToUpdate, transaction, commandTimeout, cancellationToken: cancelToken));
+            return await connection.ExecuteAsync(new CommandDefinition(sb.ToString(), entityToUpdate, transaction, commandTimeout, cancellationToken: cancelToken));
         }
 
         /// <summary>
