@@ -331,9 +331,9 @@ namespace Dapper
             if (typeof(TEntity).IsInterface) //FallBack to BaseType Generic Method : https://stackoverflow.com/questions/4101784/calling-a-generic-method-with-a-dynamic-type
             {
                 return await(Task<int>)typeof(SimpleCRUD)
-                   .GetMethods().Where(methodInfo => methodInfo.Name == nameof(UpdateAsync) && methodInfo.GetGenericArguments().Count() == 2).Single()
+                   .GetMethods().Where(methodInfo => methodInfo.Name == nameof(UpdateAsync) && methodInfo.GetGenericArguments().Count() == 1).Single()
                    .MakeGenericMethod(new Type[] { entityToUpdate.GetType() })
-                   .Invoke(null, new object[] { connection, entityToUpdate, transaction, commandTimeout });
+                   .Invoke(null, new object[] { connection, entityToUpdate, transaction, commandTimeout, token });
             }
             var idProps = GetIdProperties(entityToUpdate).ToList();
 

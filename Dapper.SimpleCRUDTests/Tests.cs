@@ -815,14 +815,13 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-        public void TestDeleteByIdAsync()
+        public async void TestDeleteByIdAsync()
         {
             using (var connection = GetOpenConnection())
             {
                 var id = connection.Insert(new User { Name = "UserAsyncDelete", Age = 10 });
-                connection.DeleteAsync<User>(id);
+                await connection.DeleteAsync<User>(id);
                 //tiny wait to let the delete happen
-                System.Threading.Thread.Sleep(300);
                 connection.Get<User>(id).IsNull();
             }
         }
@@ -1387,6 +1386,41 @@ namespace Dapper.SimpleCRUDTests
                 connection.Insert<string, INameColumn>(newCity, transaction);
                 ((CityWithIName)newCity).Population = 6000;
                 connection.Update(newCity, transaction);
+
+                var user = connection.GetList<UserWithIName>(new { Name = "Jonathan Larouche" }, transaction).FirstOrDefault();
+                user.Age.IsEqualTo(41);
+                var city = connection.GetList<CityWithIName>(new { Name = "Montreal" }, transaction).FirstOrDefault();
+                city.Population.IsEqualTo(6000);
+
+            }
+        }
+
+        public async void TestUpdateAsyncUsingInterface()
+        {
+            using (var connection = GetOpenConnection())
+            using (var transaction = connection.BeginTransaction())
+            {
+                INameColumn newUser = new UserWithIName
+                {
+                    Age = 40,
+                    Name = "Jonathan Larouche",
+                    ScheduledDayOff = DayOfWeek.Sunday,
+                    CreatedDate = new DateTime(2000, 1, 1)
+                };
+
+                ((UserWithIName)newUser).Id = connection.Insert(newUser, transaction).Value;
+                ((UserWithIName)newUser).Age = 41;
+                await connection.UpdateAsync(newUser, transaction);
+
+                INameColumn newCity = new CityWithIName
+                {
+                    Name = "Montreal",
+                    Population = 5675
+                };
+
+                connection.Insert<string, INameColumn>(newCity, transaction);
+                ((CityWithIName)newCity).Population = 6000;
+                await connection.UpdateAsync(newCity, transaction);
 
                 var user = connection.GetList<UserWithIName>(new { Name = "Jonathan Larouche" }, transaction).FirstOrDefault();
                 user.Age.IsEqualTo(41);
