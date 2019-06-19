@@ -20,7 +20,8 @@ This extension adds the following 8 helpers:
 - GetList&lt;Type&gt;(anonymous object for where clause) - gets list of all records matching the where options
 - GetList&lt;Type&gt;(string for conditions, anonymous object with parameters) - gets list of all records matching the conditions
 - GetListPaged&lt;Type&gt;(int pagenumber, int itemsperpage, string for conditions, string for order, anonymous object with parameters) - gets paged list of all records matching the conditions
-- Insert(entity) - Inserts a record and returns the new primary key
+- Insert(entity) - Inserts a record and returns the new primary key (assumes int primary key)
+- Insert<Guid,T>(entity) -  Inserts a record and returns the new guid primary key
 - Update(entity) - Updates a record
 - Delete&lt;Type&gt;(id) - Deletes a record based on primary key
 - Delete(entity) - Deletes a record based on the typed entity
@@ -36,7 +37,8 @@ For projects targeting .NET 4.5 or later, the following 8 helpers exist for asyn
 - GetListAsync&lt;Type&gt;(anonymous object for where clause) - gets list of all records matching the where options
 - GetListAsync&lt;Type&gt;(string for conditions, anonymous object with parameters) - gets list of all records matching the conditions
 - GetListPagedAsync&lt;Type&gt;(int pagenumber, int itemsperpage, string for conditions, string for order, anonymous object with parameters)  - gets paged list of all records matching the conditions
-- InsertAsync(entity) - Inserts a record and returns the new primary key
+- InsertAsync(entity) - Inserts a record and returns the new primary key (assumes int primary key)
+- InsertAsync<Guid,T>(entity) -  Inserts a record and returns the new guid primary key
 - UpdateAsync(entity) - Updates a record
 - DeleteAsync&lt;Type&gt;(id) - Deletes a record based on primary key
 - DeleteAsync(entity) - Deletes a record based on the typed entity
@@ -275,6 +277,33 @@ Notes:
 - By default the insert statement would include all properties in the class - The Editable(false),  ReadOnly(true), and IgnoreInsert attributes remove items from the insert statement
 - Properties decorated with ReadOnly(true) are only used for selects
 - Complex types are not included in the insert statement - This keeps the List<User> out of the insert even without the Editable attribute. You can include complex types if you decorate them with Editable(true). This is useful for enumerators.
+
+Insert a record with Guid key
+------------------------------------------------------------
+
+```csharp
+public static int Insert<Guid,T>(this IDbConnection connection, object entityToInsert)
+```
+
+Example usage: 
+
+```csharp     
+[Table("Users")]
+public class User
+{
+   [Key]
+   public Guid GuidKey { get; set; }
+   public string FirstName { get; set; }
+   public string LastName { get; set; }
+   public int Age { get; set; }
+}
+
+var newGuid = connection.Insert<Guid,User>(new User { FirstName = "User", LastName = "Person",  Age = 10 });  
+```
+Results in executing this SQL 
+```sql
+Insert into [Users] (FirstName, LastName, Age) VALUES (@FirstName, @LastName, @Age)
+```
 
 Update a record
 ------------------------------------------------------------
