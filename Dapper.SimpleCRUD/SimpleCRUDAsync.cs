@@ -81,11 +81,6 @@ namespace Dapper
         public static Task<IEnumerable<T>> GetListAsync<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
-            var idProps = GetIdProperties(currenttype).ToList();
-
-            if (!idProps.Any())
-                throw new ArgumentException("Entity must have at least one [Key] property");
-
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
@@ -125,10 +120,6 @@ namespace Dapper
         public static Task<IEnumerable<T>> GetListAsync<T>(this IDbConnection connection, string conditions, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
-            var idProps = GetIdProperties(currenttype).ToList();
-            if (!idProps.Any())
-                throw new ArgumentException("Entity must have at least one [Key] property");
-
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
