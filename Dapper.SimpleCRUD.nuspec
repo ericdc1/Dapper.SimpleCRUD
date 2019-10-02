@@ -2,12 +2,12 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Dapper.SimpleCRUD</id>
-    <version>2.1.0.0</version>
+    <version>2.2.0.0</version>
     <title>Dapper.SimpleCRUD</title>
     <authors>Eric Coffman</authors>
     <owners>Eric Coffman</owners>
-    <license type="expression">Apache-2.0</license>
     <projectUrl>http://github.com/ericdc1/Dapper.SimpleCRUD/</projectUrl>
+    <license type="file">License.txt</license>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>
       	Simple Get, GetList, GetListPaged, Insert, Update, Delete, DeleteList, and RecordCount extensions for Dapper.  Uses smart defaults for attribute free classes but can be overridden as needed.
@@ -48,8 +48,9 @@
 	* version 2.0.0 Bug fixes, .Net Core support, remove Sqlite support
 	* version 2.0.1 Re-add SQLite, allow string primary keys
 	* version 2.1.0 Speed improvements (thanks jonathanlarouche)
+	* version 2.2.0 Dapper 2.x support
 	</releaseNotes>
-    <copyright>Copyright Eric Coffman 2018</copyright>
+    <copyright>Copyright Eric Coffman 2019</copyright>
     <tags>orm dapper micro-orm CRUD</tags>
     <iconUrl>https://raw.githubusercontent.com/ericdc1/Dapper.SimpleCRUD/master/images/SimpleCRUD-200x200.png</iconUrl>
     <dependencies>	  
@@ -59,8 +60,8 @@
 	  </group>    
     </dependencies>
 	
-	<frameworkAssemblies>
-	  <frameworkAssembly assemblyName="System" targetFramework=".NETFramework4.0" />
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System" targetFramework=".NETFramework4.0" />
       <frameworkAssembly assemblyName="System.Core" targetFramework=".NETFramework4.0" />
       <frameworkAssembly assemblyName="Microsoft.CSharp" targetFramework=".NETFramework4.0" />
       <frameworkAssembly assemblyName="System.Data" targetFramework=".NETFramework4.0" />
@@ -70,7 +71,7 @@
       <frameworkAssembly assemblyName="System.Xml" targetFramework=".NETFramework4.0" />
       <frameworkAssembly assemblyName="System.Configuration" targetFramework=".NETFramework4.0" />
 	  
-	  <frameworkAssembly assemblyName="System" targetFramework=".NETFramework4.5" />
+      <frameworkAssembly assemblyName="System" targetFramework=".NETFramework4.5" />
       <frameworkAssembly assemblyName="System.Core" targetFramework=".NETFramework4.5" />
       <frameworkAssembly assemblyName="Microsoft.CSharp" targetFramework=".NETFramework4.5" />
       <frameworkAssembly assemblyName="System.Data" targetFramework=".NETFramework4.5" />
@@ -83,9 +84,9 @@
   </metadata>
   
   <files>
-	<file src="Dapper.SimpleCRUD\bin\Release\netstandard2.0\Dapper.SimpleCRUD.dll" target="lib\netstandard2.0" />
-    <file src="Dapper.SimpleCRUD\bin\Release\netstandard2.0\Dapper.SimpleCRUD.pdb" target="lib\netstandard2.0" />
-    <file src="Dapper.SimpleCRUD\bin\Release\netstandard2.0\Dapper.SimpleCRUD.xml" target="lib\netstandard2.0" />
-	
+	<file src="Dapper.SimpleCRUD\bin\Release\netstandard2.0\Dapper.SimpleCRUD.dll" target="lib\netstandard2.0\Dapper.SimpleCRUD.dll" />
+        <file src="Dapper.SimpleCRUD\bin\Release\netstandard2.0\Dapper.SimpleCRUD.pdb" target="lib\netstandard2.0\Dapper.SimpleCRUD.pdb" />
+        <file src="Dapper.SimpleCRUD\bin\Release\netstandard2.0\Dapper.SimpleCRUD.xml" target="lib\netstandard2.0\Dapper.SimpleCRUD.xml" />
+   <file src="License.txt" target="" />
   </files>
 </package>
