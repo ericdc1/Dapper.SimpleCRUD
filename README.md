@@ -3,7 +3,7 @@ Dapper.SimpleCRUD - simple CRUD helpers for Dapper
 Features
 --------
 <img  align="right" src="https://raw.githubusercontent.com/ericdc1/Dapper.SimpleCRUD/master/images/SimpleCRUD-200x200.png" alt="SimpleCRUD">
-Dapper.SimpleCRUD is a [single file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD/SimpleCRUD.cs) you can drop in to your project that will extend your IDbConnection interface. (If you want dynamic support, you need an [additional file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD%20NET45/SimpleCRUDAsync.cs).)
+Dapper.SimpleCRUD is a [single file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD/SimpleCRUD.cs) you can drop in to your project that will extend your IDbConnection interface. (If you want dynamic support, you need an [additional file](https://github.com/ericdc1/Dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUD/SimpleCRUDAsync.cs).)
 
 Who wants to write basic read/insert/update/delete statements? 
 
@@ -20,7 +20,8 @@ This extension adds the following 8 helpers:
 - GetList&lt;Type&gt;(anonymous object for where clause) - gets list of all records matching the where options
 - GetList&lt;Type&gt;(string for conditions, anonymous object with parameters) - gets list of all records matching the conditions
 - GetListPaged&lt;Type&gt;(int pagenumber, int itemsperpage, string for conditions, string for order, anonymous object with parameters) - gets paged list of all records matching the conditions
-- Insert(entity) - Inserts a record and returns the new primary key
+- Insert(entity) - Inserts a record and returns the new primary key (assumes int primary key)
+- Insert<Guid,T>(entity) -  Inserts a record and returns the new guid primary key
 - Update(entity) - Updates a record
 - Delete&lt;Type&gt;(id) - Deletes a record based on primary key
 - Delete(entity) - Deletes a record based on the typed entity
@@ -36,7 +37,8 @@ For projects targeting .NET 4.5 or later, the following 8 helpers exist for asyn
 - GetListAsync&lt;Type&gt;(anonymous object for where clause) - gets list of all records matching the where options
 - GetListAsync&lt;Type&gt;(string for conditions, anonymous object with parameters) - gets list of all records matching the conditions
 - GetListPagedAsync&lt;Type&gt;(int pagenumber, int itemsperpage, string for conditions, string for order, anonymous object with parameters)  - gets paged list of all records matching the conditions
-- InsertAsync(entity) - Inserts a record and returns the new primary key
+- InsertAsync(entity) - Inserts a record and returns the new primary key (assumes int primary key)
+- InsertAsync<Guid,T>(entity) -  Inserts a record and returns the new guid primary key
 - UpdateAsync(entity) - Updates a record
 - DeleteAsync&lt;Type&gt;(id) - Deletes a record based on primary key
 - DeleteAsync(entity) - Deletes a record based on the typed entity
@@ -83,7 +85,7 @@ More complex example:
     {
         [Key]
         public int UserId { get; set; }
-        [Column("strFirstName"]
+        [Column("strFirstName")]
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public int Age { get; set; }
@@ -276,6 +278,33 @@ Notes:
 - Properties decorated with ReadOnly(true) are only used for selects
 - Complex types are not included in the insert statement - This keeps the List<User> out of the insert even without the Editable attribute. You can include complex types if you decorate them with Editable(true). This is useful for enumerators.
 
+Insert a record with Guid key
+------------------------------------------------------------
+
+```csharp
+public static int Insert<Guid,T>(this IDbConnection connection, object entityToInsert)
+```
+
+Example usage: 
+
+```csharp     
+[Table("Users")]
+public class User
+{
+   [Key]
+   public Guid GuidKey { get; set; }
+   public string FirstName { get; set; }
+   public string LastName { get; set; }
+   public int Age { get; set; }
+}
+
+var newGuid = connection.Insert<Guid,User>(new User { FirstName = "User", LastName = "Person",  Age = 10 });  
+```
+Results in executing this SQL 
+```sql
+Insert into [Users] (FirstName, LastName, Age) VALUES (@FirstName, @LastName, @Age)
+```
+
 Update a record
 ------------------------------------------------------------
 
@@ -432,12 +461,10 @@ then apply the resolvers when intializing your application
 
 Database support
 ---------------------
-* There is an option to change database dialect. Default is Microsoft SQL Server but can be changed to PostgreSQL, SQLite or MySQL and possibly others down the road. 
+* There is an option to change database dialect. Default is Microsoft SQL Server but can be changed to PostgreSQL or MySQL. We dropped SQLite support with the .Net Core release. 
 ```csharp 
    SimpleCRUD.SetDialect(SimpleCRUD.Dialect.PostgreSQL);
-   
-   SimpleCRUD.SetDialect(SimpleCRUD.Dialect.SQLite);
-   
+    
    SimpleCRUD.SetDialect(SimpleCRUD.Dialect.MySQL);
 ```
 
@@ -470,5 +497,4 @@ Do you have a comprehensive list of examples?
 ---------------------
 Dapper.SimpleCRUD has a basic test suite in the [test project](https://github.com/ericdc1/dapper.SimpleCRUD/blob/master/Dapper.SimpleCRUDTests/Tests.cs)
 
-There is also a sample website showing working examples of the the core functionality in the [demo website](https://github.com/ericdc1/Dapper.SimpleCRUD/tree/master/DemoWebsite)
 

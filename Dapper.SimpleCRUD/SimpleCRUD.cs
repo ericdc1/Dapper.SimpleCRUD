@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Data;
 using System.Diagnostics;
 using System.Linq;
@@ -26,12 +26,36 @@ namespace Dapper
         private static string _getIdentitySql;
         private static string _getPagedListSql;
 
-        private static readonly IDictionary<Type, string> TableNames = new Dictionary<Type, string>();
-        private static readonly IDictionary<string, string> ColumnNames = new Dictionary<string, string>();
+        private static readonly ConcurrentDictionary<Type, string> TableNames = new ConcurrentDictionary<Type, string>();
+        private static readonly ConcurrentDictionary<string, string> ColumnNames = new ConcurrentDictionary<string, string>();
+
+        private static readonly ConcurrentDictionary<string, string> StringBuilderCacheDict = new ConcurrentDictionary<string, string>();
+        private static bool StringBuilderCacheEnabled = true;
 
         private static ITableNameResolver _tableNameResolver = new TableNameResolver();
         private static IColumnNameResolver _columnNameResolver = new ColumnNameResolver();
 
+        /// <summary>
+        /// Append a Cached version of a strinbBuilderAction result based on a cacheKey
+        /// </summary>
+        /// <param name="sb"></param>
+        /// <param name="cacheKey"></param>
+        /// <param name="stringBuilderAction"></param>
+        private static void StringBuilderCache(StringBuilder sb, string cacheKey, Action<StringBuilder> stringBuilderAction)
+        {
+            if (StringBuilderCacheEnabled && StringBuilderCacheDict.TryGetValue(cacheKey, out string value))
+            {
+                sb.Append(value);
+                return;
+            }
+
+            StringBuilder newSb = new StringBuilder();
+            stringBuilderAction(newSb);
+            value = newSb.ToString();
+            StringBuilderCacheDict.AddOrUpdate(cacheKey, value, (t, v) => value);
+            sb.Append(value);
+        }
+        
         /// <summary>
         /// Returns the current dialect name
         /// </summary>
@@ -77,7 +101,7 @@ namespace Dapper
                     _dialect = Dialect.SQLServer;
                     _encapsulation = "[{0}]";
                     _getIdentitySql = string.Format("SELECT CAST(SCOPE_IDENTITY()  AS BIGINT) AS [id]");
-                    _getPagedListSql = "SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY {OrderBy}) AS PagedNumber, {SelectColumns} FROM {TableName} {WhereClause}) AS u WHERE PagedNUMBER BETWEEN (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
+                    _getPagedListSql = "SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY {OrderBy}) AS PagedNumber, {SelectColumns} FROM {TableName} {WhereClause}) AS u WHERE PagedNumber BETWEEN (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
                     break;
             }
         }
@@ -121,20 +145,29 @@ namespace Dapper
 
             if (!idProps.Any())
                 throw new ArgumentException("Get<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Get<T> only supports an entity with a single [Key] or Id property");
 
-            var onlyKey = idProps.First();
             var name = GetTableName(currenttype);
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
-            sb.AppendFormat(" from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
+            sb.AppendFormat(" from {0} where ", name);
+
+            for (var i = 0; i < idProps.Count; i++)
+            {
+                if (i > 0)
+                    sb.Append(" and ");
+                sb.AppendFormat("{0} = @{1}", GetColumnName(idProps[i]), idProps[i].Name);
+            }
 
             var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            if (idProps.Count == 1)
+                dynParms.Add("@" + idProps.First().Name, id);
+            else
+            {
+                foreach (var prop in idProps)
+                    dynParms.Add("@" + prop.Name, id.GetType().GetProperty(prop.Name).GetValue(id, null));
+            }
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
@@ -158,23 +191,19 @@ namespace Dapper
         public static IEnumerable<T> GetList<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
-            var idProps = GetIdProperties(currenttype).ToList();
-            if (!idProps.Any())
-                throw new ArgumentException("Entity must have at least one [Key] property");
-
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
             var whereprops = GetAllProperties(whereConditions).ToArray();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
             sb.AppendFormat(" from {0}", name);
 
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)), whereConditions);
+                BuildWhere<T>(sb, whereprops, whereConditions);
             }
 
             if (Debugger.IsAttached)
@@ -201,16 +230,12 @@ namespace Dapper
         public static IEnumerable<T> GetList<T>(this IDbConnection connection, string conditions, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
-            var idProps = GetIdProperties(currenttype).ToList();
-            if (!idProps.Any())
-                throw new ArgumentException("Entity must have at least one [Key] property");
-
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
             sb.AppendFormat(" from {0}", name);
 
             sb.Append(" " + conditions);
@@ -275,7 +300,7 @@ namespace Dapper
             }
 
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties((T)Activator.CreateInstance(typeof(T))).ToArray());
+            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
             query = query.Replace("{SelectColumns}", sb.ToString());
             query = query.Replace("{TableName}", name);
             query = query.Replace("{PageNumber}", pageNumber.ToString());
@@ -304,13 +329,13 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The ID (primary key) of the newly inserted record if it is identity using the int? type, otherwise null</returns>
-        public static int? Insert(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static int? Insert<TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-            return Insert<int?>(connection, entityToInsert, transaction, commandTimeout);
+            return Insert<int?, TEntity>(connection, entityToInsert, transaction, commandTimeout);
         }
 
         /// <summary>
-        /// <para>Inserts a row into the database</para>
+        /// <para>Inserts a row into the database, using ONLY the properties defined by TEntity</para>
         /// <para>By default inserts into the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Insert filters out Id column and any columns with the [Key] attribute</para>
@@ -323,14 +348,12 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The ID (primary key) of the newly inserted record if it is identity using the defined type, otherwise null</returns>
-        public static TKey Insert<TKey>(this IDbConnection connection, object entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
+        public static TKey Insert<TKey, TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var idProps = GetIdProperties(entityToInsert).ToList();
 
             if (!idProps.Any())
                 throw new ArgumentException("Insert<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Insert<T> only supports an entity with a single [Key] or Id property");
 
             var keyHasPredefinedValue = false;
             var baseType = typeof(TKey);
@@ -345,11 +368,11 @@ namespace Dapper
             var sb = new StringBuilder();
             sb.AppendFormat("insert into {0}", name);
             sb.Append(" (");
-            BuildInsertParameters(entityToInsert, sb);
+            BuildInsertParameters<TEntity>(sb);
             sb.Append(") ");
             sb.Append("values");
             sb.Append(" (");
-            BuildInsertValues(entityToInsert, sb);
+            BuildInsertValues<TEntity>(sb);
             sb.Append(")");
 
             if (keytype == typeof(Guid))
@@ -389,40 +412,42 @@ namespace Dapper
         }
 
         /// <summary>
-        /// <para>Updates a record or records in the database</para>
+        /// <para>Updates a record or records in the database with only the properties of TEntity</para>
         /// <para>By default updates records in the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Updates records where the Id property and properties with the [Key] attribute match those in the database.</para>
         /// <para>Properties marked with attribute [Editable(false)] and complex types are ignored</para>
         /// <para>Supports transaction and command timeout</para>
-        /// <para>Returns number of rows effected</para>
+        /// <para>Returns number of rows affected</para>
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="entityToUpdate"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <returns>The number of effected records</returns>
-        public static int Update(this IDbConnection connection, object entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null)
+        /// <returns>The number of affected records</returns>
+        public static int Update<TEntity>(this IDbConnection connection, TEntity entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-            var idProps = GetIdProperties(entityToUpdate).ToList();
+            var masterSb = new StringBuilder();
+            StringBuilderCache(masterSb, $"{typeof(TEntity).FullName}_Update", sb =>
+            {
+                var idProps = GetIdProperties(entityToUpdate).ToList();
 
-            if (!idProps.Any())
-                throw new ArgumentException("Entity must have at least one [Key] or Id property");
+                if (!idProps.Any())
+                    throw new ArgumentException("Entity must have at least one [Key] or Id property");
 
-            var name = GetTableName(entityToUpdate);
+                var name = GetTableName(entityToUpdate);
 
-            var sb = new StringBuilder();
-            sb.AppendFormat("update {0}", name);
+                sb.AppendFormat("update {0}", name);
 
-            sb.AppendFormat(" set ");
-            BuildUpdateSet(entityToUpdate, sb);
-            sb.Append(" where ");
-            BuildWhere(sb, idProps, entityToUpdate);
+                sb.AppendFormat(" set ");
+                BuildUpdateSet(entityToUpdate, sb);
+                sb.Append(" where ");
+                BuildWhere<TEntity>(sb, idProps, entityToUpdate);
 
-            if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Update: {0}", sb));
-
-            return connection.Execute(sb.ToString(), entityToUpdate, transaction, commandTimeout);
+                if (Debugger.IsAttached)
+                    Trace.WriteLine(String.Format("Update: {0}", sb));
+            });
+            return connection.Execute(masterSb.ToString(), entityToUpdate, transaction, commandTimeout);
         }
 
         /// <summary>
@@ -430,34 +455,36 @@ namespace Dapper
         /// <para>-By default deletes records in the table matching the class name</para>
         /// <para>Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Supports transaction and command timeout</para>
-        /// <para>Returns the number of records effected</para>
+        /// <para>Returns the number of records affected</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="entityToDelete"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <returns>The number of records effected</returns>
+        /// <returns>The number of records affected</returns>
         public static int Delete<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-            var idProps = GetIdProperties(entityToDelete).ToList();
+            var masterSb = new StringBuilder();
+            StringBuilderCache(masterSb, $"{typeof(T).FullName}_Delete", sb =>
+            {
 
+                var idProps = GetIdProperties(entityToDelete).ToList();
 
-            if (!idProps.Any())
-                throw new ArgumentException("Entity must have at least one [Key] or Id property");
+                if (!idProps.Any())
+                    throw new ArgumentException("Entity must have at least one [Key] or Id property");
 
-            var name = GetTableName(entityToDelete);
+                var name = GetTableName(entityToDelete);
 
-            var sb = new StringBuilder();
-            sb.AppendFormat("delete from {0}", name);
+                sb.AppendFormat("delete from {0}", name);
 
-            sb.Append(" where ");
-            BuildWhere(sb, idProps, entityToDelete);
+                sb.Append(" where ");
+                BuildWhere<T>(sb, idProps, entityToDelete);
 
-            if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("Delete: {0}", sb));
-
-            return connection.Execute(sb.ToString(), entityToDelete, transaction, commandTimeout);
+                if (Debugger.IsAttached)
+                    Trace.WriteLine(String.Format("Delete: {0}", sb));
+            });
+            return connection.Execute(masterSb.ToString(), entityToDelete, transaction, commandTimeout);
         }
 
         /// <summary>
@@ -465,7 +492,7 @@ namespace Dapper
         /// <para>By default deletes records in the table matching the class name</para>
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Deletes records where the Id property and properties with the [Key] attribute match those in the database</para>
-        /// <para>The number of records effected</para>
+        /// <para>The number of records affected</para>
         /// <para>Supports transaction and command timeout</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -473,7 +500,7 @@ namespace Dapper
         /// <param name="id"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <returns>The number of records effected</returns>
+        /// <returns>The number of records affected</returns>
         public static int Delete<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
@@ -482,18 +509,27 @@ namespace Dapper
 
             if (!idProps.Any())
                 throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
-            if (idProps.Count() > 1)
-                throw new ArgumentException("Delete<T> only supports an entity with a single [Key] or Id property");
 
-            var onlyKey = idProps.First();
             var name = GetTableName(currenttype);
 
             var sb = new StringBuilder();
-            sb.AppendFormat("Delete from {0}", name);
-            sb.Append(" where " + GetColumnName(onlyKey) + " = @Id");
+            sb.AppendFormat("Delete from {0} where ", name);
+
+            for (var i = 0; i < idProps.Count; i++)
+            {
+                if (i > 0)
+                    sb.Append(" and ");
+                sb.AppendFormat("{0} = @{1}", GetColumnName(idProps[i]), idProps[i].Name);
+            }
 
             var dynParms = new DynamicParameters();
-            dynParms.Add("@id", id);
+            if (idProps.Count == 1)
+                dynParms.Add("@" + idProps.First().Name, id);
+            else
+            {
+                foreach (var prop in idProps)
+                    dynParms.Add("@" + prop.Name, id.GetType().GetProperty(prop.Name).GetValue(id, null));
+            }
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));
@@ -507,7 +543,7 @@ namespace Dapper
         /// <para>-Table name can be overridden by adding an attribute on your class [Table("YourTableName")]</para>
         /// <para>Deletes records where that match the where clause</para>
         /// <para>whereConditions is an anonymous type to filter the results ex: new {Category = 1, SubCategory=2}</para>
-        /// <para>The number of records effected</para>
+        /// <para>The number of records affected</para>
         /// <para>Supports transaction and command timeout</para>
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -515,26 +551,27 @@ namespace Dapper
         /// <param name="whereConditions"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <returns>The number of records effected</returns>
+        /// <returns>The number of records affected</returns>
         public static int DeleteList<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-
-            var currenttype = typeof(T);
-            var name = GetTableName(currenttype);
-
-            var sb = new StringBuilder();
-            var whereprops = GetAllProperties(whereConditions).ToArray();
-            sb.AppendFormat("Delete from {0}", name);
-            if (whereprops.Any())
+            var masterSb = new StringBuilder();
+            StringBuilderCache(masterSb, $"{typeof(T).FullName}_DeleteWhere{whereConditions?.GetType()?.FullName}", sb =>
             {
-                sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
-            }
+                var currenttype = typeof(T);
+                var name = GetTableName(currenttype);
 
-            if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("DeleteList<{0}> {1}", currenttype, sb));
+                var whereprops = GetAllProperties(whereConditions).ToArray();
+                sb.AppendFormat("Delete from {0}", name);
+                if (whereprops.Any())
+                {
+                    sb.Append(" where ");
+                    BuildWhere<T>(sb, whereprops);
+                }
 
-            return connection.Execute(sb.ToString(), whereConditions, transaction, commandTimeout);
+                if (Debugger.IsAttached)
+                    Trace.WriteLine(String.Format("DeleteList<{0}> {1}", currenttype, sb));
+            });
+            return connection.Execute(masterSb.ToString(), whereConditions, transaction, commandTimeout);
         }
 
         /// <summary>
@@ -552,25 +589,27 @@ namespace Dapper
         /// <param name="parameters"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <returns>The number of records effected</returns>
+        /// <returns>The number of records affected</returns>
         public static int DeleteList<T>(this IDbConnection connection, string conditions, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
         {
-            if (string.IsNullOrEmpty(conditions))
-                throw new ArgumentException("DeleteList<T> requires a where clause");
-            if (!conditions.ToLower().Contains("where"))
-                throw new ArgumentException("DeleteList<T> requires a where clause and must contain the WHERE keyword");
+            var masterSb = new StringBuilder();
+            StringBuilderCache(masterSb, $"{typeof(T).FullName}_DeleteWhere{conditions}", sb =>
+            {
+                if (string.IsNullOrEmpty(conditions))
+                    throw new ArgumentException("DeleteList<T> requires a where clause");
+                if (!conditions.ToLower().Contains("where"))
+                    throw new ArgumentException("DeleteList<T> requires a where clause and must contain the WHERE keyword");
 
-            var currenttype = typeof(T);
-            var name = GetTableName(currenttype);
+                var currenttype = typeof(T);
+                var name = GetTableName(currenttype);
 
-            var sb = new StringBuilder();
-            sb.AppendFormat("Delete from {0}", name);
-            sb.Append(" " + conditions);
+                sb.AppendFormat("Delete from {0}", name);
+                sb.Append(" " + conditions);
 
-            if (Debugger.IsAttached)
-                Trace.WriteLine(String.Format("DeleteList<{0}> {1}", currenttype, sb));
-
-            return connection.Execute(sb.ToString(), parameters, transaction, commandTimeout);
+                if (Debugger.IsAttached)
+                    Trace.WriteLine(String.Format("DeleteList<{0}> {1}", currenttype, sb));
+            });
+            return connection.Execute(masterSb.ToString(), parameters, transaction, commandTimeout);
         }
 
         /// <summary>
@@ -628,7 +667,7 @@ namespace Dapper
             if (whereprops.Any())
             {
                 sb.Append(" where ");
-                BuildWhere(sb, whereprops, (T)Activator.CreateInstance(typeof(T)));
+                BuildWhere<T>(sb, whereprops);
             }
 
             if (Debugger.IsAttached)
@@ -638,41 +677,48 @@ namespace Dapper
         }
 
         //build update statement based on list on an entity
-        private static void BuildUpdateSet(object entityToUpdate, StringBuilder sb)
+        private static void BuildUpdateSet<T>(T entityToUpdate, StringBuilder masterSb)
         {
-            var nonIdProps = GetUpdateableProperties(entityToUpdate).ToArray();
-
-            for (var i = 0; i < nonIdProps.Length; i++)
+            StringBuilderCache(masterSb, $"{typeof(T).FullName}_BuildUpdateSet", sb =>
             {
-                var property = nonIdProps[i];
+                var nonIdProps = GetUpdateableProperties(entityToUpdate).ToArray();
 
-                sb.AppendFormat("{0} = @{1}", GetColumnName(property), property.Name);
-                if (i < nonIdProps.Length - 1)
-                    sb.AppendFormat(", ");
-            }
+                for (var i = 0; i < nonIdProps.Length; i++)
+                {
+                    var property = nonIdProps[i];
+
+                    sb.AppendFormat("{0} = @{1}", GetColumnName(property), property.Name);
+                    if (i < nonIdProps.Length - 1)
+                        sb.AppendFormat(", ");
+                }
+            });
         }
 
         //build select clause based on list of properties skipping ones with the IgnoreSelect and NotMapped attribute
-        private static void BuildSelect(StringBuilder sb, IEnumerable<PropertyInfo> props)
+        private static void BuildSelect(StringBuilder masterSb, IEnumerable<PropertyInfo> props)
         {
-            var propertyInfos = props as IList<PropertyInfo> ?? props.ToList();
-            var addedAny = false;
-            for (var i = 0; i < propertyInfos.Count(); i++)
+            StringBuilderCache(masterSb, $"{props.CacheKey()}_BuildSelect", sb =>
             {
-                if (propertyInfos.ElementAt(i).GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreSelectAttribute).Name || attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
+                var propertyInfos = props as IList<PropertyInfo> ?? props.ToList();
+                var addedAny = false;
+                for (var i = 0; i < propertyInfos.Count(); i++)
+                {
+                    var property = propertyInfos.ElementAt(i);
 
-                if (addedAny)
-                    sb.Append(",");
-                sb.Append(GetColumnName(propertyInfos.ElementAt(i)));
-                //if there is a custom column name add an "as customcolumnname" to the item so it maps properly
-                if (propertyInfos.ElementAt(i).GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == typeof(ColumnAttribute).Name) != null)
-                    sb.Append(" as " + Encapsulate(propertyInfos.ElementAt(i).Name));
-                addedAny = true;
+                    if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreSelectAttribute).Name || attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
 
-            }
+                    if (addedAny)
+                        sb.Append(",");
+                    sb.Append(GetColumnName(property));
+                    //if there is a custom column name add an "as customcolumnname" to the item so it maps properly
+                    if (property.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == typeof(ColumnAttribute).Name) != null)
+                        sb.Append(" as " + Encapsulate(property.Name));
+                    addedAny = true;
+                }
+            });
         }
 
-        private static void BuildWhere(StringBuilder sb, IEnumerable<PropertyInfo> idProps, object sourceEntity, object whereConditions = null)
+        private static void BuildWhere<TEntity>(StringBuilder sb, IEnumerable<PropertyInfo> idProps, object whereConditions = null)
         {
             var propertyInfos = idProps.ToArray();
             for (var i = 0; i < propertyInfos.Count(); i++)
@@ -683,24 +729,23 @@ namespace Dapper
                 //the anonymous object used for search doesn't have the custom attributes attached to them so this allows us to build the correct where clause
                 //by converting the model type to the database column name via the column attribute
                 var propertyToUse = propertyInfos.ElementAt(i);
-                var sourceProperties = GetScaffoldableProperties(sourceEntity).ToArray();
+                var sourceProperties = GetScaffoldableProperties<TEntity>().ToArray();
                 for (var x = 0; x < sourceProperties.Count(); x++)
                 {
-                    if (sourceProperties.ElementAt(x).Name == propertyInfos.ElementAt(i).Name)
+                    if (sourceProperties.ElementAt(x).Name == propertyToUse.Name)
                     {
-                        propertyToUse = sourceProperties.ElementAt(x);
-
-                        if (whereConditions != null && propertyInfos.ElementAt(i).CanRead && (propertyInfos.ElementAt(i).GetValue(whereConditions, null) == null || propertyInfos.ElementAt(i).GetValue(whereConditions, null) == DBNull.Value))
+                        if (whereConditions != null && propertyToUse.CanRead && (propertyToUse.GetValue(whereConditions, null) == null || propertyToUse.GetValue(whereConditions, null) == DBNull.Value))
                         {
                             useIsNull = true;
                         }
+                        propertyToUse = sourceProperties.ElementAt(x);
                         break;
                     }
                 }
                 sb.AppendFormat(
                     useIsNull ? "{0} is null" : "{0} = @{1}",
                     GetColumnName(propertyToUse),
-                    propertyInfos.ElementAt(i).Name);
+                    propertyToUse.Name);
 
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
@@ -713,29 +758,34 @@ namespace Dapper
         //Not marked with the [Key] attribute (without required attribute)
         //Not marked with [IgnoreInsert]
         //Not marked with [NotMapped]
-        private static void BuildInsertValues(object entityToInsert, StringBuilder sb)
+        private static void BuildInsertValues<T>(StringBuilder masterSb)
         {
-            var props = GetScaffoldableProperties(entityToInsert).ToArray();
-            for (var i = 0; i < props.Count(); i++)
+            StringBuilderCache(masterSb, $"{typeof(T).FullName}_BuildInsertValues", sb =>
             {
-                var property = props.ElementAt(i);
-                if (property.PropertyType != typeof(Guid)
-                      && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)
-                      && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
-                    continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreInsertAttribute).Name)) continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))) continue;
 
-                if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
+                var props = GetScaffoldableProperties<T>().ToArray();
+                for (var i = 0; i < props.Count(); i++)
+                {
+                    var property = props.ElementAt(i);
+                    if (property.PropertyType != typeof(Guid) && property.PropertyType != typeof(string)
+                          && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)
+                          && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
+                        continue;
+                    if (property.GetCustomAttributes(true).Any(attr =>
+                        attr.GetType().Name == typeof(IgnoreInsertAttribute).Name ||
+                        attr.GetType().Name == typeof(NotMappedAttribute).Name ||
+                        attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))
+                    ) continue;
 
-                sb.AppendFormat("@{0}", property.Name);
-                if (i < props.Count() - 1)
-                    sb.Append(", ");
-            }
-            if (sb.ToString().EndsWith(", "))
-                sb.Remove(sb.Length - 2, 2);
+                    if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
 
+                    sb.AppendFormat("@{0}", property.Name);
+                    if (i < props.Count() - 1)
+                        sb.Append(", ");
+                }
+                if (sb.ToString().EndsWith(", "))
+                    sb.Remove(sb.Length - 2, 2);
+            });
         }
 
         //build insert parameters which include all properties in the class that are not:
@@ -744,47 +794,55 @@ namespace Dapper
         //marked with [IgnoreInsert]
         //named Id
         //marked with [NotMapped]
-        private static void BuildInsertParameters(object entityToInsert, StringBuilder sb)
+        private static void BuildInsertParameters<T>(StringBuilder masterSb)
         {
-            var props = GetScaffoldableProperties(entityToInsert).ToArray();
-
-            for (var i = 0; i < props.Count(); i++)
+            StringBuilderCache(masterSb, $"{typeof(T).FullName}_BuildInsertParameters", sb =>
             {
-                var property = props.ElementAt(i);
-                if (property.PropertyType != typeof(Guid)
-                      && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)
-                      && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
-                    continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(IgnoreInsertAttribute).Name)) continue;
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(NotMappedAttribute).Name)) continue;
+                var props = GetScaffoldableProperties<T>().ToArray();
 
-                if (property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))) continue;
-                if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
+                for (var i = 0; i < props.Count(); i++)
+                {
+                    var property = props.ElementAt(i);
+                    if (property.PropertyType != typeof(Guid) && property.PropertyType != typeof(string)
+                          && property.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)
+                          && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name))
+                        continue;
+                    if (property.GetCustomAttributes(true).Any(attr =>
+                        attr.GetType().Name == typeof(IgnoreInsertAttribute).Name ||
+                        attr.GetType().Name == typeof(NotMappedAttribute).Name ||
+                        attr.GetType().Name == typeof(ReadOnlyAttribute).Name && IsReadOnly(property))) continue;
 
-                sb.Append(GetColumnName(property));
-                if (i < props.Count() - 1)
-                    sb.Append(", ");
-            }
-            if (sb.ToString().EndsWith(", "))
-                sb.Remove(sb.Length - 2, 2);
+                    if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
+
+                    sb.Append(GetColumnName(property));
+                    if (i < props.Count() - 1)
+                        sb.Append(", ");
+                }
+                if (sb.ToString().EndsWith(", "))
+                    sb.Remove(sb.Length - 2, 2);
+            });
         }
 
         //Get all properties in an entity
-        private static IEnumerable<PropertyInfo> GetAllProperties(object entity)
+        private static IEnumerable<PropertyInfo> GetAllProperties<T>(T entity) where T : class
         {
-            if (entity == null) entity = new { };
+            if (entity == null) return new PropertyInfo[0];
             return entity.GetType().GetProperties();
         }
 
         //Get all properties that are not decorated with the Editable(false) attribute
-        private static IEnumerable<PropertyInfo> GetScaffoldableProperties(object entity)
+        private static IEnumerable<PropertyInfo> GetScaffoldableProperties<T>()
         {
-            var props = entity.GetType().GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(EditableAttribute).Name && !IsEditable(p)) == false);
+            IEnumerable<PropertyInfo> props = typeof(T).GetProperties();
+
+            props = props.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(EditableAttribute).Name && !IsEditable(p)) == false);
+
+
             return props.Where(p => p.PropertyType.IsSimpleType() || IsEditable(p));
         }
 
         //Determine if the Attribute has an AllowEdit key and return its boolean state
-        //fake the funk and try to mimick EditableAttribute in System.ComponentModel.DataAnnotations 
+        //fake the funk and try to mimic EditableAttribute in System.ComponentModel.DataAnnotations 
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
         private static bool IsEditable(PropertyInfo pi)
         {
@@ -802,7 +860,7 @@ namespace Dapper
 
 
         //Determine if the Attribute has an IsReadOnly key and return its boolean state
-        //fake the funk and try to mimick ReadOnlyAttribute in System.ComponentModel 
+        //fake the funk and try to mimic ReadOnlyAttribute in System.ComponentModel 
         //This allows use of the DataAnnotations property in the model and have the SimpleCRUD engine just figure it out without a reference
         private static bool IsReadOnly(PropertyInfo pi)
         {
@@ -824,9 +882,9 @@ namespace Dapper
         //Not marked ReadOnly
         //Not marked IgnoreInsert
         //Not marked NotMapped
-        private static IEnumerable<PropertyInfo> GetUpdateableProperties(object entity)
+        private static IEnumerable<PropertyInfo> GetUpdateableProperties<T>(T entity)
         {
-            var updateableProperties = GetScaffoldableProperties(entity);
+            var updateableProperties = GetScaffoldableProperties<T>();
             //remove ones with ID
             updateableProperties = updateableProperties.Where(p => !p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase));
             //remove ones with key attribute
@@ -878,7 +936,8 @@ namespace Dapper
                 return tableName;
 
             tableName = _tableNameResolver.ResolveTableName(type);
-            TableNames[type] = tableName;
+
+            TableNames.AddOrUpdate(type, tableName, (t, v) => tableName);
 
             return tableName;
         }
@@ -891,7 +950,8 @@ namespace Dapper
                 return columnName;
 
             columnName = _columnNameResolver.ResolveColumnName(propertyInfo);
-            ColumnNames[key] = columnName;
+
+            ColumnNames.AddOrUpdate(key, columnName, (t, v) => columnName);
 
             return columnName;
         }
@@ -901,7 +961,7 @@ namespace Dapper
             return string.Format(_encapsulation, databaseword);
         }
         /// <summary>
-        /// Generates a guid based on the current date/time
+        /// Generates a GUID based on the current date/time
         /// http://stackoverflow.com/questions/1752004/sequential-guid-generator-c-sharp
         /// </summary>
         /// <returns></returns>
@@ -1157,8 +1217,14 @@ internal static class TypeExtension
                                    typeof(Guid),
                                    typeof(DateTime),
                                    typeof(DateTimeOffset),
+                                   typeof(TimeSpan),
                                    typeof(byte[])
                                };
         return simpleTypes.Contains(type) || type.IsEnum;
+    }
+
+    public static string CacheKey(this IEnumerable<PropertyInfo> props)
+    {
+        return string.Join(",",props.Select(p=> p.DeclaringType.FullName + "." + p.Name).ToArray());
     }
 }
