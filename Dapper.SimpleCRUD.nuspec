@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Dapper.SimpleCRUD</id>
-    <version>2.2.0.0</version>
+    <version>2.2.1.0</version>
     <title>Dapper.SimpleCRUD</title>
     <authors>Eric Coffman</authors>
     <owners>Eric Coffman</owners>
@@ -49,6 +49,7 @@
 	* version 2.0.1 Re-add SQLite, allow string primary keys
 	* version 2.1.0 Speed improvements (thanks jonathanlarouche)
 	* version 2.2.0 Dapper 2.x support
+	* version 2.2.1 Fixing for Columns with TypeHandlers
 	</releaseNotes>
     <copyright>Copyright Eric Coffman 2019</copyright>
     <tags>orm dapper micro-orm CRUD</tags>
