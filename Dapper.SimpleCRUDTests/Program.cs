@@ -13,8 +13,8 @@ namespace Dapper.SimpleCRUDTests
     {
         static void Main()
         {
-            //Setup();
-            //RunTests();
+            Setup();
+            RunTests();
 
             SetupSqLite();
             RunTestsSqLite();
