@@ -28,6 +28,7 @@ namespace Dapper
 
         private static readonly ConcurrentDictionary<Type, string> TableNames = new ConcurrentDictionary<Type, string>();
         private static readonly ConcurrentDictionary<string, string> ColumnNames = new ConcurrentDictionary<string, string>();
+        private static readonly List<Type> TypesWithHandlers = new List<Type>();
 
         private static readonly ConcurrentDictionary<string, string> StringBuilderCacheDict = new ConcurrentDictionary<string, string>();
         private static bool StringBuilderCacheEnabled = true;
@@ -116,6 +117,30 @@ namespace Dapper
         public static void SetColumnNameResolver(IColumnNameResolver resolver)
         {
             _columnNameResolver = resolver;
+        }
+
+        /// <summary>
+        /// Configure the specified type to be processed by a custom handler.
+        /// </summary>
+        /// <param name="type">The type to handle.</param>
+        /// <param name="handler">The handler to process the <paramref name="type"/>.</param>
+        public static void AddTypeHandler(Type type, SqlMapper.ITypeHandler handler)
+        {
+            if(!TypesWithHandlers.Contains(type))
+                TypesWithHandlers.Add(type);
+            SqlMapper.AddTypeHandler(type, handler);
+        }
+
+        /// <summary>
+        /// Configure the specified type to be processed by a custom handler.
+        /// </summary>
+        /// <typeparam name="T">The type to handle.</typeparam>
+        /// <param name="handler">The handler for the type <typeparamref name="T"/>.</param>
+        public static void AddTypeHandler<T>(SqlMapper.TypeHandler<T> handler)
+        {
+            if(!TypesWithHandlers.Contains(typeof(T)))
+                TypesWithHandlers.Add(typeof(T));
+            SqlMapper.AddTypeHandler<T>(handler);
         }
 
         /// <summary>
@@ -832,7 +857,7 @@ namespace Dapper
             props = props.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(EditableAttribute).Name && !IsEditable(p)) == false);
 
 
-            return props.Where(p => p.PropertyType.IsSimpleType() || IsEditable(p));
+            return props.Where(p => p.PropertyType.IsSimpleType() || IsEditable(p) || TypesWithHandlers.Any(a=>a==p.PropertyType));
         }
 
         //Determine if the Attribute has an AllowEdit key and return its boolean state
