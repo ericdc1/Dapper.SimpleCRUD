@@ -37,3 +37,4 @@
 * version 2.0.1 Re-add SQLite, allow string primary keys
 * version 2.1.0 Speed improvements (thanks jonathanlarouche)
 * version 2.2.0 Dapper 2.x support
+* version 2.2.1 Pointed to Dapper 2.0.4
