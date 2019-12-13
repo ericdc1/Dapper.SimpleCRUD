@@ -29,6 +29,7 @@ namespace Dapper
         private static readonly ConcurrentDictionary<Type, string> TableNames = new ConcurrentDictionary<Type, string>();
         private static readonly ConcurrentDictionary<string, string> ColumnNames = new ConcurrentDictionary<string, string>();
         private static readonly List<Type> TypesWithHandlers = new List<Type>();
+        private static object locker = new object();
 
         private static readonly ConcurrentDictionary<string, string> StringBuilderCacheDict = new ConcurrentDictionary<string, string>();
         private static bool StringBuilderCacheEnabled = true;
@@ -56,7 +57,7 @@ namespace Dapper
             StringBuilderCacheDict.AddOrUpdate(cacheKey, value, (t, v) => value);
             sb.Append(value);
         }
-        
+
         /// <summary>
         /// Returns the current dialect name
         /// </summary>
@@ -126,8 +127,11 @@ namespace Dapper
         /// <param name="handler">The handler to process the <paramref name="type"/>.</param>
         public static void AddTypeHandler(Type type, SqlMapper.ITypeHandler handler)
         {
-            if(!TypesWithHandlers.Contains(type))
-                TypesWithHandlers.Add(type);
+            lock (locker)
+            {
+                if (!TypesWithHandlers.Contains(type))
+                    TypesWithHandlers.Add(type);
+            }
             SqlMapper.AddTypeHandler(type, handler);
         }
 
@@ -138,8 +142,12 @@ namespace Dapper
         /// <param name="handler">The handler for the type <typeparamref name="T"/>.</param>
         public static void AddTypeHandler<T>(SqlMapper.TypeHandler<T> handler)
         {
-            if(!TypesWithHandlers.Contains(typeof(T)))
-                TypesWithHandlers.Add(typeof(T));
+            lock (locker)
+            {
+                var type = typeof(T);
+                if (!TypesWithHandlers.Contains(type))
+                    TypesWithHandlers.Add(type);
+            }
             SqlMapper.AddTypeHandler<T>(handler);
         }
 
@@ -857,7 +865,7 @@ namespace Dapper
             props = props.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(EditableAttribute).Name && !IsEditable(p)) == false);
 
 
-            return props.Where(p => p.PropertyType.IsSimpleType() || IsEditable(p) || TypesWithHandlers.Any(a=>a==p.PropertyType));
+            return props.Where(p => p.PropertyType.IsSimpleType() || IsEditable(p) || TypesWithHandlers.Any(a => a == p.PropertyType));
         }
 
         //Determine if the Attribute has an AllowEdit key and return its boolean state
@@ -1243,6 +1251,6 @@ internal static class TypeExtension
 
     public static string CacheKey(this IEnumerable<PropertyInfo> props)
     {
-        return string.Join(",",props.Select(p=> p.DeclaringType.FullName + "." + p.Name).ToArray());
+        return string.Join(",", props.Select(p => p.DeclaringType.FullName + "." + p.Name).ToArray());
     }
 }
