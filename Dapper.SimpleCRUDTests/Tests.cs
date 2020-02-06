@@ -332,6 +332,21 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
+        public void TestFilteredGetListWithArrayParam()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                connection.Insert(new User { Name = "TestFilteredGetList1", Age = 10 });
+                connection.Insert(new User { Name = "TestFilteredGetList2", Age = 11 });
+                connection.Insert(new User { Name = "TestFilteredGetList3", Age = 12 });
+                connection.Insert(new User { Name = "TestFilteredGetList4", Age = 13 });
+
+                var user = connection.GetList<User>(new { Age = new [] { 10,11,12 } });
+                user.Count().IsEqualTo(3);
+                connection.Execute("Delete from Users");
+            }
+        }
+
 
         public void TestFilteredGetListWithMultipleKeys()
         {
