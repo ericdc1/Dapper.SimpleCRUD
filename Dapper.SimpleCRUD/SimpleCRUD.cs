@@ -55,7 +55,7 @@ namespace Dapper
             StringBuilderCacheDict.AddOrUpdate(cacheKey, value, (t, v) => value);
             sb.Append(value);
         }
-        
+
         /// <summary>
         /// Returns the current dialect name
         /// </summary>
@@ -605,6 +605,51 @@ namespace Dapper
             });
             return connection.Execute(masterSb.ToString(), parameters, transaction, commandTimeout);
         }
+        /// <summary>
+        /// Logic deleted using receiving the item to delete and the DeleteRestoreAttribute
+        /// only update the DeleteRestoreAttribute 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="entityToDelete"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
+        /// <returns>The number of records affected</returns>
+        public static int LogicDelete<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+
+            StringBuilder query = new StringBuilder();
+            StringBuilderCache(query, $"{typeof(T).FullName}LogicDelete", sb =>
+            {
+                List<PropertyInfo> idProps = GetIdProperties(entityToDelete).ToList();
+                List<PropertyInfo> delProps = GetDeleteProperties(entityToDelete).ToList();
+
+                string tableName = GetTableName(entityToDelete);
+
+                if (!idProps.Any())
+                {
+                    throw new ArgumentException("LogicDelete<T> only supports an entity with a [Key] or Id property");
+                }
+
+                if (!delProps.Any())
+                {
+                    throw new ArgumentException("LogicDelete<T> only supports an entity with a [Deleted] Deleted ");
+                }
+
+                sb.AppendFormat("UPDATE {0}", tableName);
+                sb.AppendFormat(" SET ");
+                BuildLogicDeleted(entityToDelete, sb);
+                sb.Append(" WHERE ");
+
+                BuildWhere<T>(sb, idProps, entityToDelete);
+
+                if (Debugger.IsAttached)
+                {
+                    Trace.WriteLine($"LogicDelete {sb}");
+                }
+            });
+            return connection.Execute(query.ToString(), entityToDelete, transaction, commandTimeout);
+        }
 
         /// <summary>
         /// <para>By default queries the table matching the class name</para>
@@ -687,7 +732,27 @@ namespace Dapper
                 }
             });
         }
+        //build logic deleted and restore statement based on list on an entity
+        private static void BuildLogicDeleted<T>(T entityToUpdate, StringBuilder masterSb)
+        {
+            StringBuilderCache(masterSb, $"{typeof(T).FullName}BuildLogicDeleted", sb =>
+            {
+                PropertyInfo[] nonIdProps = GetDeletedProperties(entityToUpdate).ToArray();
 
+                for (int i = 0; i < nonIdProps.Length; i++)
+                {
+                    PropertyInfo property = nonIdProps[i];
+
+                    sb.AppendFormat("{0} = @{1}", GetColumnName(property), property.Name);
+                    if (i >= nonIdProps.Length - 1)
+                    {
+                        continue;
+                    }
+
+                    sb.AppendFormat(", ");
+                }
+            });
+        }
         //build select clause based on list of properties skipping ones with the IgnoreSelect and NotMapped attribute
         private static void BuildSelect(StringBuilder masterSb, IEnumerable<PropertyInfo> props)
         {
@@ -892,7 +957,15 @@ namespace Dapper
 
             return updateableProperties;
         }
+        //Get properties to delete or update the row
+        private static IEnumerable<PropertyInfo> GetDeletedProperties<T>(T entity)
+        {
+            IEnumerable<PropertyInfo> deletableProperties = GetScaffoldableProperties<T>();
 
+            deletableProperties = deletableProperties.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(DeleteRestore).Name) == true);
+
+            return deletableProperties;
+        }
         //Get all properties that are named Id or have the Key attribute
         //For Inserts and updates we have a whole entity so this method is used
         private static IEnumerable<PropertyInfo> GetIdProperties(object entity)
@@ -918,6 +991,19 @@ namespace Dapper
             return GetTableName(type);
         }
 
+        //Get all properties that are named Id or have the Key attribute
+        //For Get(id) and Delete(id) we don't have an entity, just the type so this method is used
+        private static IEnumerable<PropertyInfo> GetDeleteProperties(object entity)
+        {
+            Type type = entity.GetType();
+            return GetDeleteProperties(type);
+        }
+        //Get all properties that are named Id or have the Key attribute
+        //For Get(id) and Delete(id) we don't have an entity, just the type so this method is used
+        private static IEnumerable<PropertyInfo> GetDeleteProperties(Type type)
+        {
+            return type.GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(DeleteRestore).Name));
+        }
         //Gets the table name for this type
         //For Get(id) and Delete(id) we don't have an entity, just the type so this method is used
         //Use dynamic type to be able to handle both our Table-attribute and the DataAnnotation
@@ -1087,6 +1173,21 @@ namespace Dapper
     }
 
     /// <summary>
+    /// Optional DeleteRestore attribute.
+    /// Is needed to use the logic delete and restore
+    /// You can use the System.ComponentModel.DataAnnotations version in its place to specify the table name of a poco
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property)]
+    public class DeleteRestore : Attribute
+    {
+        /// <summary>
+        /// Optional Column attribute.
+        /// </summary>
+        public DeleteRestore()
+        {
+        }
+    }
+    /// <summary>
     /// Optional Key attribute.
     /// You can use the System.ComponentModel.DataAnnotations version in its place to specify the Primary Key of a poco
     /// </summary>
@@ -1218,6 +1319,6 @@ internal static class TypeExtension
 
     public static string CacheKey(this IEnumerable<PropertyInfo> props)
     {
-        return string.Join(",",props.Select(p=> p.DeclaringType.FullName + "." + p.Name).ToArray());
+        return string.Join(",", props.Select(p => p.DeclaringType.FullName + "." + p.Name).ToArray());
     }
 }

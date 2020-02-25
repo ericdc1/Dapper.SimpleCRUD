@@ -295,7 +295,7 @@ namespace Dapper
             var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
             return (TKey)r.First().id;
         }
-        
+
         /// <summary>
         ///  <para>Updates a record or records in the database asynchronously</para>
         ///  <para>By default updates records in the table matching the class name</para>
@@ -386,7 +386,7 @@ namespace Dapper
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
-            
+
             if (!idProps.Any())
                 throw new ArgumentException("Delete<T> only supports an entity with a [Key] or Id property");
 
@@ -416,7 +416,51 @@ namespace Dapper
 
             return connection.ExecuteAsync(sb.ToString(), dynParms, transaction, commandTimeout);
         }
+        /// <summary>
+        /// Logic deleted using receiving the item to delete and the DeleteRestoreAttribute
+        /// only update the DeleteRestoreAttribute 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="entityToDelete"></param>
+        /// <param name="transaction"></param>
+        /// <param name="commandTimeout"></param>
+        /// <returns>The number of records affected</returns>
+        public static Task<int> LogicDeleteAsync<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
 
+            StringBuilder query = new StringBuilder();
+            StringBuilderCache(query, $"{typeof(T).FullName}LogicDelete", sb =>
+            {
+                var idProps = GetIdProperties(entityToDelete).ToList();
+                var delProps = GetDeleteProperties(entityToDelete).ToList();
+
+                string tableName = GetTableName(entityToDelete);
+
+                if (!idProps.Any())
+                {
+                    throw new ArgumentException("LogicDelete<T> only supports an entity with a [Key] or Id property");
+                }
+
+                if (!delProps.Any())
+                {
+                    throw new ArgumentException("LogicDelete<T> only supports an entity with a [Deleted] Deleted ");
+                }
+
+                sb.AppendFormat("UPDATE {0}", tableName);
+                sb.AppendFormat(" SET ");
+                BuildLogicDeleted(entityToDelete, sb);
+                sb.Append(" WHERE ");
+
+                BuildWhere<T>(sb, idProps, entityToDelete);
+
+                if (Debugger.IsAttached)
+                {
+                    Trace.WriteLine($"LogicDelete {sb}");
+                }
+            });
+            return connection.ExecuteAsync(query.ToString(), entityToDelete, transaction, commandTimeout);
+        }
 
         /// <summary>
         /// <para>Deletes a list of records in the database</para>
