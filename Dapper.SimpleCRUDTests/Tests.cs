@@ -8,6 +8,7 @@ using System;
 using System.Data.SQLite;
 using MySql.Data.MySqlClient;
 using Npgsql;
+using IBM.Data.DB2.Core;
 
 namespace Dapper.SimpleCRUDTests
 {
@@ -189,6 +190,11 @@ namespace Dapper.SimpleCRUDTests
             {
                 connection = new MySqlConnection(String.Format("Server={0};Port={1};User Id={2};Password={3};Database={4};", "localhost", "3306", "root", "admin", "testdb"));
                 SimpleCRUD.SetDialect(SimpleCRUD.Dialect.MySQL);
+            }
+            else if (_dbtype == SimpleCRUD.Dialect.DB2)
+            {
+                connection = new DB2Connection(string.Format("Server={0};UID={1};PWD={2};Database={3};", "localhost:50000", "db2admin", "db2admin", "testdb"));
+                SimpleCRUD.SetDialect(SimpleCRUD.Dialect.DB2);
             }
             else
             {
