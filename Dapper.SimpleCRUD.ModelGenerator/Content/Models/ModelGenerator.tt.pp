@@ -71,6 +71,8 @@ foreach(Table tbl in from t in tables where !t.Ignore select t){
 {#>
 	<# if (tbl.IsPrimaryKeyColumn(col.PropertyName)) { #>
 	[Key]
+	<#}#><# if (col.PropertyName.Contains("_")) { #>
+	[Column("<#=col.PropertyName.Replace("_"," ")#>")]
 	<#}#>
 	public virtual <#=col.PropertyType #><#=CheckNullable(col)#> <#=col.PropertyName #> { get; set; }
 <#}#>
