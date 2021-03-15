@@ -16,11 +16,11 @@ namespace Dapper.SimpleCRUDTests
 
         static void Main()
         {
-            //Setup();
-            //RunTests();
+            Setup();
+            RunTests();
 
-            //SetupSqLite();
-            //RunTestsSqLite();
+            SetupSqLite();
+            RunTestsSqLite();
 
             //PostgreSQL tests assume port 5432 with username postgres and password postgrespass
             //they are commented out by default since postgres setup is required to run tests
@@ -34,8 +34,8 @@ namespace Dapper.SimpleCRUDTests
 
             //DB2 tests assume port 50000 with username db2admin and password db2admin
             //they are commented out by default since db2 setup is required to run tests
-            SetupDB2();
-            RunTestsDB2();
+            //SetupDB2();
+            //RunTestsDB2();
         }
 
         private static void Setup()

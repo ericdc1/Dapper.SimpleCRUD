@@ -91,6 +91,12 @@ namespace Dapper
                     _getIdentitySql = string.Format("SELECT LAST_INSERT_ID() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {Offset},{RowsPerPage}";
                     break;
+                case Dialect.Oracle:
+                    _dialect = Dialect.Oracle;
+                    _encapsulation = "\"{0}\"";
+                    _getIdentitySql = "";
+                    _getPagedListSql = "SELECT * FROM (SELECT ROWNUM PagedNUMBER, u.* FROM(SELECT {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy}) u) WHERE PagedNUMBER BETWEEN (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
+                    break;
                 case Dialect.DB2:
                     _dialect = Dialect.DB2;
                     _encapsulation = "\"{0}\"";
@@ -1002,6 +1008,7 @@ namespace Dapper
             PostgreSQL,
             SQLite,
             MySQL,
+            Oracle,
             DB2
         }
 
