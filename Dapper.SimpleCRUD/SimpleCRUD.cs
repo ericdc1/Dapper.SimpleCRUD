@@ -350,6 +350,13 @@ namespace Dapper
         /// <returns>The ID (primary key) of the newly inserted record if it is identity using the defined type, otherwise null</returns>
         public static TKey Insert<TKey, TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            if (typeof(TEntity).IsInterface) //FallBack to BaseType Generic Method : https://stackoverflow.com/questions/4101784/calling-a-generic-method-with-a-dynamic-type
+            {
+                return (TKey)typeof(SimpleCRUD)
+                    .GetMethods().Where(methodInfo=>methodInfo.Name == nameof(Insert) && methodInfo.GetGenericArguments().Count()==2).Single()
+                    .MakeGenericMethod(new Type[] { typeof(TKey), entityToInsert.GetType() })
+                    .Invoke(null, new object[] { connection,entityToInsert,transaction,commandTimeout });
+            }
             var idProps = GetIdProperties(entityToInsert).ToList();
 
             if (!idProps.Any())
@@ -427,6 +434,13 @@ namespace Dapper
         /// <returns>The number of affected records</returns>
         public static int Update<TEntity>(this IDbConnection connection, TEntity entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            if (typeof(TEntity).IsInterface) //FallBack to BaseType Generic Method: https://stackoverflow.com/questions/4101784/calling-a-generic-method-with-a-dynamic-type
+            {
+                return (int)typeof(SimpleCRUD)
+                    .GetMethods().Where(methodInfo => methodInfo.Name == nameof(Update) && methodInfo.GetGenericArguments().Count() == 1).Single()
+                    .MakeGenericMethod(new Type[] { entityToUpdate.GetType() })
+                    .Invoke(null, new object[] { connection, entityToUpdate, transaction, commandTimeout });
+            }
             var masterSb = new StringBuilder();
             StringBuilderCache(masterSb, $"{typeof(TEntity).FullName}_Update", sb =>
             {
