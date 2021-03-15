@@ -91,6 +91,12 @@ namespace Dapper
                     _getIdentitySql = string.Format("SELECT LAST_INSERT_ID() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {Offset},{RowsPerPage}";
                     break;
+                case Dialect.DB2:
+                    _dialect = Dialect.DB2;
+                    _encapsulation = "\"{0}\"";
+                    _getIdentitySql = string.Format("SELECT CAST(IDENTITY_VAL_LOCAL() AS DEC(31,0)) AS \"id\" FROM SYSIBM.SYSDUMMY1");
+                    _getPagedListSql = "Select * from (Select {SelectColumns}, row_number() over(order by {OrderBy}) as PagedNumber from {TableName} {WhereClause} Order By {OrderBy}) as t where t.PagedNumber between (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
+                    break;
                 default:
                     _dialect = Dialect.SQLServer;
                     _encapsulation = "[{0}]";
@@ -982,6 +988,7 @@ namespace Dapper
             PostgreSQL,
             SQLite,
             MySQL,
+            DB2
         }
 
         public interface ITableNameResolver
@@ -998,7 +1005,16 @@ namespace Dapper
         {
             public virtual string ResolveTableName(Type type)
             {
-                var tableName = Encapsulate(type.Name);
+                string tableName;
+
+                if (GetDialect() == Dialect.DB2.ToString())
+                {
+                    tableName = type.Name;
+                }
+                else
+                {
+                    tableName = Encapsulate(type.Name);
+                }
 
                 var tableattr = type.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == typeof(TableAttribute).Name) as dynamic;
                 if (tableattr != null)
@@ -1026,7 +1042,16 @@ namespace Dapper
         {
             public virtual string ResolveColumnName(PropertyInfo propertyInfo)
             {
-                var columnName = Encapsulate(propertyInfo.Name);
+                string columnName;
+
+                if (GetDialect() == Dialect.DB2.ToString())
+                {
+                    columnName = propertyInfo.Name;
+                }
+                else
+                {
+                    columnName = Encapsulate(propertyInfo.Name);
+                }
 
                 var columnattr = propertyInfo.GetCustomAttributes(true).SingleOrDefault(attr => attr.GetType().Name == typeof(ColumnAttribute).Name) as dynamic;
                 if (columnattr != null)
