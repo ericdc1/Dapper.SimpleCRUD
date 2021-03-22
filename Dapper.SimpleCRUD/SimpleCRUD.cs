@@ -763,7 +763,7 @@ namespace Dapper
                     }
                 }
                 sb.AppendFormat(
-                    useIsNull ? "{0} is null" : "{0} = @{1}",
+                    useIsNull ? "{0} is null" : propertyInfos[i].PropertyType.IsArray ? "{0} in @{1}" : "{0} = @{1}",
                     GetColumnName(propertyToUse),
                     propertyToUse.Name);
 
