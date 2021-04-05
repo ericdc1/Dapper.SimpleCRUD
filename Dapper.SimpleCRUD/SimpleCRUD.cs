@@ -799,7 +799,13 @@ namespace Dapper
 
                     if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
 
-                    sb.AppendFormat("@{0}", property.Name);
+                    var apParamPrefix = "@";
+                    if (_dialect == Dialect.Oracle)
+                    {
+                        apParamPrefix = ":";
+                    }
+
+                    sb.AppendFormat(apParamPrefix + "{0}", property.Name);
                     if (i < props.Count() - 1)
                         sb.Append(", ");
                 }
@@ -1078,9 +1084,16 @@ namespace Dapper
                 if (columnattr != null)
                 {
                     columnName = Encapsulate(columnattr.Name);
+                    
                     if (Debugger.IsAttached)
                         Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
                 }
+
+                if (_dialect == Dialect.Oracle)
+                {
+                    columnName = columnName.ToUpper();
+                }
+
                 return columnName;
             }
         }
