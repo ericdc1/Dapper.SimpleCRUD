@@ -41,27 +41,27 @@ namespace Dapper
             //create a new empty instance of the type to get the base properties
             BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
             sb.AppendFormat(" from {0} where ", name);
+            BuildWhere<T>(sb, idProps);
 
-            for (var i = 0; i < idProps.Count; i++)
+            var dynamicParameters = new DynamicParameters();
+            foreach (var property in idProps)
             {
-                if (i > 0)
-                    sb.Append(" and ");
-                sb.AppendFormat("{0} = @{1}", GetColumnName(idProps[i]), idProps[i].Name);
-            }
+                var value = id;
+                if (_dialect == Dialect.Oracle)
+                {
+                    if (Guid.TryParse(value.ToString(), out var result))
+                    {
+                        value = value.ToString();
+                    }
+                }
 
-            var dynParms = new DynamicParameters();
-            if (idProps.Count == 1)
-                dynParms.Add("@" + idProps.First().Name, id);
-            else
-            {
-                foreach (var prop in idProps)
-                    dynParms.Add("@" + prop.Name, id.GetType().GetProperty(prop.Name).GetValue(id, null));
+                dynamicParameters.Add(property.Name, value);
             }
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
 
-            var query = await connection.QueryAsync<T>(sb.ToString(), dynParms, transaction, commandTimeout);
+            var query = await connection.QueryAsync<T>(sb.ToString(), dynamicParameters, transaction, commandTimeout);
             return query.FirstOrDefault();
         }
 

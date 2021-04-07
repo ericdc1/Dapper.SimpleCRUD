@@ -706,8 +706,13 @@ namespace Dapper
                 for (var i = 0; i < nonIdProps.Length; i++)
                 {
                     var property = nonIdProps[i];
+                    var apParamPrefix = "@";
+                    if (_dialect == Dialect.Oracle)
+                    {
+                        apParamPrefix = ":";
+                    }
 
-                    sb.AppendFormat("{0} = @{1}", GetColumnName(property), property.Name);
+                    sb.AppendFormat("{0} = " + apParamPrefix + "{1}", GetColumnName(property), property.Name);
                     if (i < nonIdProps.Length - 1)
                         sb.AppendFormat(", ");
                 }
@@ -744,6 +749,7 @@ namespace Dapper
             for (var i = 0; i < propertyInfos.Count(); i++)
             {
                 var useIsNull = false;
+                var defaultWhereAttributeStatement = "{0} = @{1}";
 
                 //match up generic properties to source entity properties to allow fetching of the column attribute
                 //the anonymous object used for search doesn't have the custom attributes attached to them so this allows us to build the correct where clause
@@ -762,8 +768,14 @@ namespace Dapper
                         break;
                     }
                 }
+
+                if (_dialect == Dialect.Oracle)
+                {
+                    defaultWhereAttributeStatement = defaultWhereAttributeStatement.Replace("@", ":");
+                }
+
                 sb.AppendFormat(
-                    useIsNull ? "{0} is null" : "{0} = @{1}",
+                    useIsNull ? "{0} is null" : defaultWhereAttributeStatement,
                     GetColumnName(propertyToUse),
                     propertyToUse.Name);
 
@@ -799,7 +811,13 @@ namespace Dapper
 
                     if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
 
-                    sb.AppendFormat("@{0}", property.Name);
+                    var apParamPrefix = "@";
+                    if (_dialect == Dialect.Oracle)
+                    {
+                        apParamPrefix = ":";
+                    }
+
+                    sb.AppendFormat(apParamPrefix + "{0}", property.Name);
                     if (i < props.Count() - 1)
                         sb.Append(", ");
                 }
@@ -1078,9 +1096,16 @@ namespace Dapper
                 if (columnattr != null)
                 {
                     columnName = Encapsulate(columnattr.Name);
+                    
                     if (Debugger.IsAttached)
                         Trace.WriteLine(String.Format("Column name for type overridden from {0} to {1}", propertyInfo.Name, columnName));
                 }
+
+                if (_dialect == Dialect.Oracle)
+                {
+                    columnName = columnName.ToUpper();
+                }
+
                 return columnName;
             }
         }
