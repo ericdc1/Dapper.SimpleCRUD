@@ -25,6 +25,7 @@ namespace Dapper
         private static string _encapsulation;
         private static string _getIdentitySql;
         private static string _getPagedListSql;
+        private static string _paramPrefix;
 
         private static readonly ConcurrentDictionary<Type, string> TableNames = new ConcurrentDictionary<Type, string>();
         private static readonly ConcurrentDictionary<string, string> ColumnNames = new ConcurrentDictionary<string, string>();
@@ -36,7 +37,7 @@ namespace Dapper
         private static IColumnNameResolver _columnNameResolver = new ColumnNameResolver();
 
         /// <summary>
-        /// Append a Cached version of a strinbBuilderAction result based on a cacheKey
+        /// Append a Cached version of a stringBuilderAction result based on a cacheKey
         /// </summary>
         /// <param name="sb"></param>
         /// <param name="cacheKey"></param>
@@ -78,36 +79,42 @@ namespace Dapper
                     _encapsulation = "\"{0}\"";
                     _getIdentitySql = string.Format("SELECT LASTVAL() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
+                    _paramPrefix = "@";
                     break;
                 case Dialect.SQLite:
                     _dialect = Dialect.SQLite;
                     _encapsulation = "\"{0}\"";
                     _getIdentitySql = string.Format("SELECT LAST_INSERT_ROWID() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
+                    _paramPrefix = "@";
                     break;
                 case Dialect.MySQL:
                     _dialect = Dialect.MySQL;
                     _encapsulation = "`{0}`";
                     _getIdentitySql = string.Format("SELECT LAST_INSERT_ID() AS id");
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {Offset},{RowsPerPage}";
+                    _paramPrefix = "@";
                     break;
                 case Dialect.Oracle:
                     _dialect = Dialect.Oracle;
                     _encapsulation = "\"{0}\"";
                     _getIdentitySql = "";
                     _getPagedListSql = "SELECT * FROM (SELECT ROWNUM PagedNUMBER, u.* FROM(SELECT {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy}) u) WHERE PagedNUMBER BETWEEN (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
+                    _paramPrefix = ":";
                     break;
                 case Dialect.DB2:
                     _dialect = Dialect.DB2;
                     _encapsulation = "\"{0}\"";
                     _getIdentitySql = string.Format("SELECT CAST(IDENTITY_VAL_LOCAL() AS DEC(31,0)) AS \"id\" FROM SYSIBM.SYSDUMMY1");
                     _getPagedListSql = "Select * from (Select {SelectColumns}, row_number() over(order by {OrderBy}) as PagedNumber from {TableName} {WhereClause} Order By {OrderBy}) as t where t.PagedNumber between (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
+                    _paramPrefix = "@";
                     break;
                 default:
                     _dialect = Dialect.SQLServer;
                     _encapsulation = "[{0}]";
                     _getIdentitySql = string.Format("SELECT CAST(SCOPE_IDENTITY()  AS BIGINT) AS [id]");
                     _getPagedListSql = "SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY {OrderBy}) AS PagedNumber, {SelectColumns} FROM {TableName} {WhereClause}) AS u WHERE PagedNumber BETWEEN (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
+                    _paramPrefix = "@";
                     break;
             }
         }
@@ -163,16 +170,16 @@ namespace Dapper
             {
                 if (i > 0)
                     sb.Append(" and ");
-                sb.AppendFormat("{0} = @{1}", GetColumnName(idProps[i]), idProps[i].Name);
+                sb.AppendFormat("{0} = {2}{1}", GetColumnName(idProps[i]), idProps[i].Name, _paramPrefix);
             }
 
             var dynParms = new DynamicParameters();
             if (idProps.Count == 1)
-                dynParms.Add("@" + idProps.First().Name, id);
+                dynParms.Add(_paramPrefix + idProps.First().Name, id);
             else
             {
                 foreach (var prop in idProps)
-                    dynParms.Add("@" + prop.Name, id.GetType().GetProperty(prop.Name).GetValue(id, null));
+                    dynParms.Add(_paramPrefix + prop.Name, id.GetType().GetProperty(prop.Name).GetValue(id, null));
             }
 
             if (Debugger.IsAttached)
@@ -539,16 +546,16 @@ namespace Dapper
             {
                 if (i > 0)
                     sb.Append(" and ");
-                sb.AppendFormat("{0} = @{1}", GetColumnName(idProps[i]), idProps[i].Name);
+                sb.AppendFormat("{0} = {2}{1}", GetColumnName(idProps[i]), idProps[i].Name, _paramPrefix);
             }
 
             var dynParms = new DynamicParameters();
             if (idProps.Count == 1)
-                dynParms.Add("@" + idProps.First().Name, id);
+                dynParms.Add(_paramPrefix + idProps.First().Name, id);
             else
             {
                 foreach (var prop in idProps)
-                    dynParms.Add("@" + prop.Name, id.GetType().GetProperty(prop.Name).GetValue(id, null));
+                    dynParms.Add(_paramPrefix + prop.Name, id.GetType().GetProperty(prop.Name).GetValue(id, null));
             }
 
             if (Debugger.IsAttached)
@@ -707,7 +714,7 @@ namespace Dapper
                 {
                     var property = nonIdProps[i];
 
-                    sb.AppendFormat("{0} = @{1}", GetColumnName(property), property.Name);
+                    sb.AppendFormat("{0} = {2}{1}", GetColumnName(property), property.Name, _paramPrefix);
                     if (i < nonIdProps.Length - 1)
                         sb.AppendFormat(", ");
                 }
@@ -763,9 +770,10 @@ namespace Dapper
                     }
                 }
                 sb.AppendFormat(
-                    useIsNull ? "{0} is null" : "{0} = @{1}",
+                    useIsNull ? "{0} is null" : "{0} = {2}{1}",
                     GetColumnName(propertyToUse),
-                    propertyToUse.Name);
+                    propertyToUse.Name,
+                    _paramPrefix);
 
                 if (i < propertyInfos.Count() - 1)
                     sb.AppendFormat(" and ");
@@ -799,7 +807,7 @@ namespace Dapper
 
                     if (property.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) && property.GetCustomAttributes(true).All(attr => attr.GetType().Name != typeof(RequiredAttribute).Name) && property.PropertyType != typeof(Guid)) continue;
 
-                    sb.AppendFormat("@{0}", property.Name);
+                    sb.AppendFormat("{1}{0}", property.Name, _paramPrefix);
                     if (i < props.Count() - 1)
                         sb.Append(", ");
                 }
@@ -1267,3 +1275,4 @@ internal static class TypeExtension
         return string.Join(",",props.Select(p=> p.DeclaringType.FullName + "." + p.Name).ToArray());
     }
 }
+
