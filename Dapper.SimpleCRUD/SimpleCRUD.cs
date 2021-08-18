@@ -55,7 +55,7 @@ namespace Dapper
             StringBuilderCacheDict.AddOrUpdate(cacheKey, value, (t, v) => value);
             sb.Append(value);
         }
-        
+
         /// <summary>
         /// Returns the current dialect name
         /// </summary>
@@ -76,7 +76,7 @@ namespace Dapper
                 case Dialect.PostgreSQL:
                     _dialect = Dialect.PostgreSQL;
                     _encapsulation = "\"{0}\"";
-                    _getIdentitySql = string.Format("SELECT LASTVAL() AS id");
+                    _getIdentitySql = "RETURNING {0} AS id";
                     _getPagedListSql = "Select {SelectColumns} from {TableName} {WhereClause} Order By {OrderBy} LIMIT {RowsPerPage} OFFSET (({PageNumber}-1) * {RowsPerPage})";
                     break;
                 case Dialect.SQLite:
@@ -359,9 +359,9 @@ namespace Dapper
             if (typeof(TEntity).IsInterface) //FallBack to BaseType Generic Method : https://stackoverflow.com/questions/4101784/calling-a-generic-method-with-a-dynamic-type
             {
                 return (TKey)typeof(SimpleCRUD)
-                    .GetMethods().Where(methodInfo=>methodInfo.Name == nameof(Insert) && methodInfo.GetGenericArguments().Count()==2).Single()
+                    .GetMethods().Where(methodInfo => methodInfo.Name == nameof(Insert) && methodInfo.GetGenericArguments().Count() == 2).Single()
                     .MakeGenericMethod(new Type[] { typeof(TKey), entityToInsert.GetType() })
-                    .Invoke(null, new object[] { connection,entityToInsert,transaction,commandTimeout });
+                    .Invoke(null, new object[] { connection, entityToInsert, transaction, commandTimeout });
             }
             var idProps = GetIdProperties(entityToInsert).ToList();
 
@@ -405,7 +405,15 @@ namespace Dapper
 
             if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
             {
-                sb.Append(";" + _getIdentitySql);
+                switch (_dialect)
+                {
+                    case (Dialect.PostgreSQL):
+                        sb.Append(" " + string.Format(_getIdentitySql, GetColumnName(idProps.First())));
+                        break;
+                    default:
+                        sb.Append(";" + _getIdentitySql);
+                        break;
+                }
             }
             else
             {
@@ -1264,6 +1272,6 @@ internal static class TypeExtension
 
     public static string CacheKey(this IEnumerable<PropertyInfo> props)
     {
-        return string.Join(",",props.Select(p=> p.DeclaringType.FullName + "." + p.Name).ToArray());
+        return string.Join(",", props.Select(p => p.DeclaringType.FullName + "." + p.Name).ToArray());
     }
 }
