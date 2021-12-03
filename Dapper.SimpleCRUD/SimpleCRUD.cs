@@ -103,10 +103,16 @@ namespace Dapper
                     _getIdentitySql = string.Format("SELECT CAST(IDENTITY_VAL_LOCAL() AS DEC(31,0)) AS \"id\" FROM SYSIBM.SYSDUMMY1");
                     _getPagedListSql = "Select * from (Select {SelectColumns}, row_number() over(order by {OrderBy}) as PagedNumber from {TableName} {WhereClause} Order By {OrderBy}) as t where t.PagedNumber between (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
                     break;
+                case Dialect.SQLServer12:
+                    _dialect = Dialect.SQLServer12;
+                    _encapsulation = "[{0}]";
+                    _getIdentitySql = string.Format("SELECT CAST(SCOPE_IDENTITY() AS BIGINT) AS [id]");
+                    _getPagedListSql = "SELECT * FROM {TableName} {WhereClause} ORDER BY {OrderBy} OFFSET (({PageNumber}-1) * {RowsPerPage}) ROWS FETCH NEXT {RowsPerPage} ROWS ONLY";
+                    break;
                 default:
                     _dialect = Dialect.SQLServer;
                     _encapsulation = "[{0}]";
-                    _getIdentitySql = string.Format("SELECT CAST(SCOPE_IDENTITY()  AS BIGINT) AS [id]");
+                    _getIdentitySql = string.Format("SELECT CAST(SCOPE_IDENTITY() AS BIGINT) AS [id]");
                     _getPagedListSql = "SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY {OrderBy}) AS PagedNumber, {SelectColumns} FROM {TableName} {WhereClause}) AS u WHERE PagedNumber BETWEEN (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
                     break;
             }
@@ -1005,6 +1011,7 @@ namespace Dapper
         public enum Dialect
         {
             SQLServer,
+            SQLServer12,
             PostgreSQL,
             SQLite,
             MySQL,
