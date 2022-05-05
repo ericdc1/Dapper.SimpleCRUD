@@ -106,6 +106,7 @@ Notes:
 - The [Column] attribute can be used from the Dapper namespace, System.ComponentModel.DataAnnotations.Schema, or System.Data.Linq.Mapping - By default the column name will match the property name but it can be overridden with this. You can even use the model property names in the where clause anonymous object and SimpleCRUD will generate a proper where clause to match the database based on the column attribute
 
 - GUID (uniqueidentifier) primary keys are supported (autopopulates if no value is passed in)
+- If no record is found the default value of the given type ( `default(T)` ) is returned.
 
 Execute a query and map the results to a strongly typed List
 ------------------------------------------------------------

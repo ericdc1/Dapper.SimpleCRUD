@@ -26,7 +26,7 @@ namespace Dapper
         /// <param name="id"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <returns>Returns a single entity by a single id from table T.</returns>
+        /// <returns>Returns a single entity by a single id from table T or default(T) if no entity is found.</returns>
         public static async Task<T> GetAsync<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var currenttype = typeof(T);
