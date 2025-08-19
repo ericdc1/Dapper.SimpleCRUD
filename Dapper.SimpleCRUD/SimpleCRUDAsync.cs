@@ -4,6 +4,7 @@ using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Dapper
@@ -29,6 +30,24 @@ namespace Dapper
         /// <returns>Returns a single entity by a single id from table T.</returns>
         public static async Task<T> GetAsync<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            DynamicParameters dynamicParameters = new DynamicParameters();
+            var sb = _GetAsync<T>(id, dynamicParameters);
+
+            var query = await connection.QueryAsync<T>(sb.ToString(), dynamicParameters, transaction, commandTimeout);
+            return query.FirstOrDefault();
+        }
+        
+        public static async Task<T> GetAsync<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null, CancellationToken? token = null)
+        {
+            var dynamicParameters = new DynamicParameters();
+            var sb = _GetAsync<T>(id, dynamicParameters);
+
+            var query = await connection.QueryAsync<T>(new CommandDefinition(sb.ToString(), dynamicParameters, transaction, commandTimeout, cancellationToken: token ?? default));
+            return query.FirstOrDefault();
+        }
+
+        private static StringBuilder _GetAsync<T>(object id, DynamicParameters dynParms)
+        {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
 
@@ -49,7 +68,6 @@ namespace Dapper
                 sb.AppendFormat("{0} = @{1}", GetColumnName(idProps[i]), idProps[i].Name);
             }
 
-            var dynParms = new DynamicParameters();
             if (idProps.Count == 1)
                 dynParms.Add("@" + idProps.First().Name, id);
             else
@@ -60,9 +78,7 @@ namespace Dapper
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Get<{0}>: {1} with Id: {2}", currenttype, sb, id));
-
-            var query = await connection.QueryAsync<T>(sb.ToString(), dynParms, transaction, commandTimeout);
-            return query.FirstOrDefault();
+            return sb;
         }
 
         /// <summary>
@@ -79,6 +95,18 @@ namespace Dapper
         /// <param name="commandTimeout"></param>
         /// <returns>Gets a list of entities with optional exact match where conditions</returns>
         public static Task<IEnumerable<T>> GetListAsync<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+            var sb = _GetListAsync<T>(whereConditions);
+            return connection.QueryAsync<T>(sb.ToString(), whereConditions, transaction, commandTimeout);
+        }
+
+        public static Task<IEnumerable<T>> GetListAsync<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null, CancellationToken? token = null)
+        {
+            var sb = _GetListAsync<T>(whereConditions);
+            return connection.QueryAsync<T>(new CommandDefinition(sb.ToString(), whereConditions, transaction, commandTimeout, cancellationToken: token ?? default));
+        }
+
+        private static StringBuilder _GetListAsync<T>(object whereConditions)
         {
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
@@ -98,8 +126,7 @@ namespace Dapper
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb));
-
-            return connection.QueryAsync<T>(sb.ToString(), whereConditions, transaction, commandTimeout);
+            return sb;
         }
 
         /// <summary>
@@ -119,6 +146,18 @@ namespace Dapper
         /// <returns>Gets a list of entities with optional SQL where conditions</returns>
         public static Task<IEnumerable<T>> GetListAsync<T>(this IDbConnection connection, string conditions, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            var sb = _GetListAsync<T>(conditions);
+            return connection.QueryAsync<T>(sb.ToString(), parameters, transaction, commandTimeout);
+        }
+
+        public static Task<IEnumerable<T>> GetListAsync<T>(this IDbConnection connection, string conditions, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null, CancellationToken? token = null)
+        {
+            var sb = _GetListAsync<T>(conditions);
+            return connection.QueryAsync<T>(new CommandDefinition(sb.ToString(), parameters, transaction, commandTimeout, cancellationToken: token ?? default));
+        }
+
+        private static StringBuilder _GetListAsync<T>(string conditions)
+        {
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
 
@@ -132,8 +171,7 @@ namespace Dapper
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetList<{0}>: {1}", currenttype, sb));
-
-            return connection.QueryAsync<T>(sb.ToString(), parameters, transaction, commandTimeout);
+            return sb;
         }
 
         /// <summary>
@@ -146,7 +184,12 @@ namespace Dapper
         /// <returns>Gets a list of all entities</returns>
         public static Task<IEnumerable<T>> GetListAsync<T>(this IDbConnection connection)
         {
-            return connection.GetListAsync<T>(new { });
+            return connection.GetListAsync<T>(new { }, null, null);
+        }
+
+        public static Task<IEnumerable<T>> GetListAsync<T>(this IDbConnection connection, CancellationToken? token = null)
+        {
+            return connection.GetListAsync<T>(new { }, null, null, token);
         }
 
         /// <summary>
@@ -168,6 +211,18 @@ namespace Dapper
         /// <param name="commandTimeout"></param>
         /// <returns>Gets a list of entities with optional exact match where conditions</returns>
         public static Task<IEnumerable<T>> GetListPagedAsync<T>(this IDbConnection connection, int pageNumber, int rowsPerPage, string conditions, string orderby, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+            var query = _GetListPagedAsync<T>(pageNumber, rowsPerPage, conditions, orderby);
+            return connection.QueryAsync<T>(query, parameters, transaction, commandTimeout);
+        }
+
+        public static Task<IEnumerable<T>> GetListPagedAsync<T>(this IDbConnection connection, int pageNumber, int rowsPerPage, string conditions, string orderby, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null, CancellationToken? token = null)
+        {
+            var query = _GetListPagedAsync<T>(pageNumber, rowsPerPage, conditions, orderby);
+            return connection.QueryAsync<T>(new CommandDefinition(query, parameters, transaction, commandTimeout, cancellationToken: token ?? default));
+        }
+
+        private static string _GetListPagedAsync<T>(int pageNumber, int rowsPerPage, string conditions, string orderby)
         {
             if (string.IsNullOrEmpty(_getPagedListSql))
                 throw new Exception("GetListPage is not supported with the current SQL Dialect");
@@ -197,8 +252,7 @@ namespace Dapper
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("GetListPaged<{0}>: {1}", currenttype, query));
-
-            return connection.QueryAsync<T>(query, parameters, transaction, commandTimeout);
+            return query;
         }
 
         /// <summary>
@@ -220,6 +274,11 @@ namespace Dapper
             return InsertAsync<int?, TEntity>(connection, entityToInsert, transaction, commandTimeout);
         }
 
+        public static Task<int?> InsertAsync<TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null, CancellationToken? token = null)
+        {
+            return InsertAsync<int?, TEntity>(connection, entityToInsert, transaction, commandTimeout, token);
+        }
+
         /// <summary>
         /// <para>Inserts a row into the database, using ONLY the properties defined by TEntity</para>
         /// <para>By default inserts into the table matching the class name</para>
@@ -239,7 +298,7 @@ namespace Dapper
             if (typeof(TEntity).IsInterface) //FallBack to BaseType Generic Method : https://stackoverflow.com/questions/4101784/calling-a-generic-method-with-a-dynamic-type
             {
                 return await (Task<TKey>)typeof(SimpleCRUD)
-                    .GetMethods().Where(methodInfo => methodInfo.Name == nameof(InsertAsync) && methodInfo.GetGenericArguments().Count() == 2).Single()
+                    .GetMethods().Where(methodInfo => methodInfo.Name == nameof(InsertAsync) && methodInfo.GetGenericArguments().Count() == 2 && methodInfo.GetParameters().Length == 4).Single()
                     .MakeGenericMethod(new Type[] { typeof(TKey), entityToInsert.GetType() })
                     .Invoke(null, new object[] { connection, entityToInsert, transaction, commandTimeout });
             }
@@ -302,6 +361,75 @@ namespace Dapper
             var r = await connection.QueryAsync(sb.ToString(), entityToInsert, transaction, commandTimeout);
             return (TKey)r.First().id;
         }
+
+        public static async Task<TKey> InsertAsync<TKey, TEntity>(this IDbConnection connection, TEntity entityToInsert, IDbTransaction transaction = null, int? commandTimeout = null, CancellationToken? token = null)
+        {
+            if (typeof(TEntity).IsInterface) //FallBack to BaseType Generic Method : https://stackoverflow.com/questions/4101784/calling-a-generic-method-with-a-dynamic-type
+            {
+                return await (Task<TKey>)typeof(SimpleCRUD)
+                    .GetMethods().Where(methodInfo => methodInfo.Name == nameof(InsertAsync) && methodInfo.GetGenericArguments().Count() == 2 && methodInfo.GetParameters().Length == 5).Single()
+                    .MakeGenericMethod(new Type[] { typeof(TKey), entityToInsert.GetType() })
+                    .Invoke(null, new object[] { connection, entityToInsert, transaction, commandTimeout, token });
+            }
+            var idProps = GetIdProperties(entityToInsert).ToList();
+
+            if (!idProps.Any())
+                throw new ArgumentException("Insert<T> only supports an entity with a [Key] or Id property");
+
+            var keyHasPredefinedValue = false;
+            var baseType = typeof(TKey);
+            var underlyingType = Nullable.GetUnderlyingType(baseType);
+            var keytype = underlyingType ?? baseType;
+            if (keytype != typeof(int) && keytype != typeof(uint) && keytype != typeof(long) && keytype != typeof(ulong) && keytype != typeof(short) && keytype != typeof(ushort) && keytype != typeof(Guid) && keytype != typeof(string))
+            {
+                throw new Exception("Invalid return type");
+            }
+
+            var name = GetTableName(entityToInsert);
+            var sb = new StringBuilder();
+            sb.AppendFormat("insert into {0}", name);
+            sb.Append(" (");
+            BuildInsertParameters<TEntity>(sb);
+            sb.Append(") ");
+            sb.Append("values");
+            sb.Append(" (");
+            BuildInsertValues<TEntity>(sb);
+            sb.Append(")");
+
+            if (keytype == typeof(Guid))
+            {
+                var guidvalue = (Guid)idProps.First().GetValue(entityToInsert, null);
+                if (guidvalue == Guid.Empty)
+                {
+                    var newguid = SequentialGuid();
+                    idProps.First().SetValue(entityToInsert, newguid, null);
+                }
+                else
+                {
+                    keyHasPredefinedValue = true;
+                }
+            }
+
+            if ((keytype == typeof(int) || keytype == typeof(long)) && Convert.ToInt64(idProps.First().GetValue(entityToInsert, null)) == 0)
+            {
+                sb.Append(";" + _getIdentitySql);
+            }
+            else
+            {
+                keyHasPredefinedValue = true;
+            }
+
+            if (Debugger.IsAttached)
+                Trace.WriteLine(String.Format("Insert: {0}", sb));
+
+            if (keytype == typeof(Guid) || keyHasPredefinedValue)
+            {
+                await connection.ExecuteAsync(new CommandDefinition(sb.ToString(), entityToInsert, transaction, commandTimeout, cancellationToken: token ?? default));
+                return (TKey)idProps.First().GetValue(entityToInsert, null);
+            }
+            var r = await connection.QueryAsync(new CommandDefinition(sb.ToString(), entityToInsert, transaction, commandTimeout, cancellationToken: token ?? default));
+            return (TKey)r.First().id;
+        }
         
         /// <summary>
         ///  <para>Updates a record or records in the database asynchronously</para>
@@ -317,7 +445,7 @@ namespace Dapper
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns>The number of affected records</returns>
-        public static async Task<int> UpdateAsync<TEntity>(this IDbConnection connection, TEntity entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null, System.Threading.CancellationToken? token = null)
+        public static async Task<int> UpdateAsync<TEntity>(this IDbConnection connection, TEntity entityToUpdate, IDbTransaction transaction = null, int? commandTimeout = null, CancellationToken? token = null)
         {
             if (typeof(TEntity).IsInterface) //FallBack to BaseType Generic Method : https://stackoverflow.com/questions/4101784/calling-a-generic-method-with-a-dynamic-type
             {
@@ -363,6 +491,18 @@ namespace Dapper
         /// <returns>The number of records affected</returns>
         public static Task<int> DeleteAsync<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            var sb = _DeleteAsync(entityToDelete);
+            return connection.ExecuteAsync(sb.ToString(), entityToDelete, transaction, commandTimeout);
+        }
+
+        public static Task<int> DeleteAsync<T>(this IDbConnection connection, T entityToDelete, IDbTransaction transaction = null, int? commandTimeout = null, CancellationToken? token = null)
+        {
+            var sb = _DeleteAsync(entityToDelete);
+            return connection.ExecuteAsync(new CommandDefinition(sb.ToString(), entityToDelete, transaction, commandTimeout, cancellationToken: token ?? default));
+        }
+
+        private static StringBuilder _DeleteAsync<T>(T entityToDelete)
+        {
             var idProps = GetIdProperties(entityToDelete).ToList();
 
             if (!idProps.Any())
@@ -378,8 +518,7 @@ namespace Dapper
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete: {0}", sb));
-
-            return connection.ExecuteAsync(sb.ToString(), entityToDelete, transaction, commandTimeout);
+            return sb;
         }
 
         /// <summary>
@@ -397,6 +536,18 @@ namespace Dapper
         /// <param name="commandTimeout"></param>
         /// <returns>The number of records affected</returns>
         public static Task<int> DeleteAsync<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null)
+        {
+            var sb = _DeleteAsync<T>(id, out var dynParms);
+            return connection.ExecuteAsync(sb.ToString(), dynParms, transaction, commandTimeout);
+        }
+
+        public static Task<int> DeleteAsync<T>(this IDbConnection connection, object id, IDbTransaction transaction = null, int? commandTimeout = null, CancellationToken? token = null)
+        {
+            var sb = _DeleteAsync<T>(id, out var dynParms);
+            return connection.ExecuteAsync(new CommandDefinition(sb.ToString(), dynParms, transaction, commandTimeout, cancellationToken: token ?? default));
+        }
+
+        private static StringBuilder _DeleteAsync<T>(object id, out DynamicParameters dynParms)
         {
             var currenttype = typeof(T);
             var idProps = GetIdProperties(currenttype).ToList();
@@ -416,7 +567,7 @@ namespace Dapper
                 sb.AppendFormat("{0} = @{1}", GetColumnName(idProps[i]), idProps[i].Name);
             }
 
-            var dynParms = new DynamicParameters();
+            dynParms = new DynamicParameters();
             if (idProps.Count == 1)
                 dynParms.Add("@" + idProps.First().Name, id);
             else
@@ -427,8 +578,7 @@ namespace Dapper
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("Delete<{0}> {1}", currenttype, sb));
-
-            return connection.ExecuteAsync(sb.ToString(), dynParms, transaction, commandTimeout);
+            return sb;
         }
 
 
@@ -449,7 +599,18 @@ namespace Dapper
         /// <returns>The number of records affected</returns>
         public static Task<int> DeleteListAsync<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            var sb = _DeleteListAsync<T>(whereConditions);
+            return connection.ExecuteAsync(sb.ToString(), whereConditions, transaction, commandTimeout);
+        }
 
+        public static Task<int> DeleteListAsync<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null, CancellationToken? token = null)
+        {
+            var sb = _DeleteListAsync<T>(whereConditions);
+            return connection.ExecuteAsync(new CommandDefinition(sb.ToString(), whereConditions, transaction, commandTimeout, cancellationToken: token ?? default));
+        }
+
+        private static StringBuilder _DeleteListAsync<T>(object whereConditions)
+        {
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
 
@@ -464,8 +625,7 @@ namespace Dapper
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("DeleteList<{0}> {1}", currenttype, sb));
-
-            return connection.ExecuteAsync(sb.ToString(), whereConditions, transaction, commandTimeout);
+            return sb;
         }
 
         /// <summary>
@@ -485,6 +645,18 @@ namespace Dapper
         /// <returns>The number of records affected</returns>
         public static Task<int> DeleteListAsync<T>(this IDbConnection connection, string conditions, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            var sb = _DeleteListAsync<T>(conditions);
+            return connection.ExecuteAsync(sb.ToString(), parameters, transaction, commandTimeout);
+        }
+
+        public static Task<int> DeleteListAsync<T>(this IDbConnection connection, string conditions, object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null, CancellationToken? token = null)
+        {
+            var sb = _DeleteListAsync<T>(conditions);
+            return connection.ExecuteAsync(new CommandDefinition(sb.ToString(), parameters, transaction, commandTimeout, cancellationToken: token ?? default));
+        }
+
+        private static StringBuilder _DeleteListAsync<T>(string conditions)
+        {
             if (string.IsNullOrEmpty(conditions))
                 throw new ArgumentException("DeleteList<T> requires a where clause");
             if (!conditions.ToLower().Contains("where"))
@@ -499,8 +671,7 @@ namespace Dapper
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("DeleteList<{0}> {1}", currenttype, sb));
-
-            return connection.ExecuteAsync(sb.ToString(), parameters, transaction, commandTimeout);
+            return sb;
         }
 
         /// <summary>
@@ -519,6 +690,18 @@ namespace Dapper
         /// <returns>Returns a count of records.</returns>
         public static Task<int> RecordCountAsync<T>(this IDbConnection connection, string conditions = "", object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            var sb = _RecordCountAsync<T>(conditions);
+            return connection.ExecuteScalarAsync<int>(sb.ToString(), parameters, transaction, commandTimeout);
+        }
+
+        public static Task<int> RecordCountAsync<T>(this IDbConnection connection, string conditions = "", object parameters = null, IDbTransaction transaction = null, int? commandTimeout = null, CancellationToken? token = null)
+        {
+            var sb = _RecordCountAsync<T>(conditions);
+            return connection.ExecuteScalarAsync<int>(new CommandDefinition(sb.ToString(), parameters, transaction, commandTimeout, cancellationToken: token ?? default));
+        }
+
+        private static StringBuilder _RecordCountAsync<T>(string conditions)
+        {
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
             var sb = new StringBuilder();
@@ -528,8 +711,7 @@ namespace Dapper
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currenttype, sb));
-
-            return connection.ExecuteScalarAsync<int>(sb.ToString(), parameters, transaction, commandTimeout);
+            return sb;
         }
 
         /// <summary>
@@ -547,6 +729,18 @@ namespace Dapper
         /// <returns>Returns a count of records.</returns>
         public static Task<int> RecordCountAsync<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null)
         {
+            var sb = _RecordCountAsync<T>(whereConditions);
+            return connection.ExecuteScalarAsync<int>(sb.ToString(), whereConditions, transaction, commandTimeout);
+        }
+
+        public static Task<int> RecordCountAsync<T>(this IDbConnection connection, object whereConditions, IDbTransaction transaction = null, int? commandTimeout = null, CancellationToken? token = null)
+        {
+            var sb = _RecordCountAsync<T>(whereConditions);
+            return connection.ExecuteScalarAsync<int>(new CommandDefinition(sb.ToString(), whereConditions, transaction, commandTimeout, cancellationToken: token ?? default));
+        }
+
+        private static StringBuilder _RecordCountAsync<T>(object whereConditions)
+        {
             var currenttype = typeof(T);
             var name = GetTableName(currenttype);
 
@@ -562,8 +756,7 @@ namespace Dapper
 
             if (Debugger.IsAttached)
                 Trace.WriteLine(String.Format("RecordCount<{0}>: {1}", currenttype, sb));
-
-            return connection.ExecuteScalarAsync<int>(sb.ToString(), whereConditions, transaction, commandTimeout);
+            return sb;
         }
     }
 }
