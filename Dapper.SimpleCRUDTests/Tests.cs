@@ -1,11 +1,10 @@
-﻿using System.ComponentModel;
-using System.Data;
+﻿using System.Data;
 using System.Data.SqlClient;
-using System.Diagnostics;
 using System.Linq;
 using System.Collections.Generic;
 using System;
 using System.Data.SQLite;
+using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
 using Npgsql;
 using IBM.Data.DB2.Core;
@@ -768,10 +767,10 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                connection.InsertAsync(new User { Name = "TestMultiInsertASync1", Age = 10 });
-                connection.InsertAsync(new User { Name = "TestMultiInsertASync2", Age = 10 });
-                connection.InsertAsync(new User { Name = "TestMultiInsertASync3", Age = 10 });
-                connection.InsertAsync(new User { Name = "TestMultiInsertASync4", Age = 11 });
+                connection.InsertAsync(new User { Name = "TestMultiInsertASync1", Age = 10 }, null, null);
+                connection.InsertAsync(new User { Name = "TestMultiInsertASync2", Age = 10 }, null, null);
+                connection.InsertAsync(new User { Name = "TestMultiInsertASync3", Age = 10 }, null, null);
+                connection.InsertAsync(new User { Name = "TestMultiInsertASync4", Age = 11 }, null, null);
                 System.Threading.Thread.Sleep(300);
                 //tiny wait to let the inserts happen
                 var list = connection.GetList<User>(new { Age = 10 });
@@ -785,10 +784,10 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                await connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
-                await connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
-                await connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
-                await connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" });
+                await connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" }, null, null);
+                await connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" }, null, null);
+                await connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" }, null, null);
+                await connection.InsertAsync<Guid, GUIDTest>(new GUIDTest { Name = "MultiInsertWithGuidAsync" }, null, null);
                 //tiny wait to let the inserts happen
                 System.Threading.Thread.Sleep(300);
                 var list = connection.GetList<GUIDTest>(new { Name = "MultiInsertWithGuidAsync" });
@@ -802,7 +801,7 @@ namespace Dapper.SimpleCRUDTests
             using (var connection = GetOpenConnection())
             {
                 var id = connection.Insert(new User { Name = "TestSimpleGetAsync", Age = 10 });
-                var user = connection.GetAsync<User>(id);
+                var user = connection.GetAsync<User>(id, null, null);
                 user.Result.Name.IsEqualTo("TestSimpleGetAsync");
                 connection.Delete<User>(id);
             }
@@ -814,19 +813,19 @@ namespace Dapper.SimpleCRUDTests
             {
                 var keyMaster = new KeyMaster { Key1 = 1, Key2 = 2 };
                 connection.Insert(keyMaster);
-                var result = connection.GetAsync<KeyMaster>(new { Key1 = 1, Key2 = 2 });
+                var result = connection.GetAsync<KeyMaster>(new { Key1 = 1, Key2 = 2 }, null, null);
                 result.Result.Key1.IsEqualTo(1);
                 result.Result.Key2.IsEqualTo(2);
                 connection.Delete(keyMaster);
             }
         }
 
-        public async void TestDeleteByIdAsync()
+        public async Task TestDeleteByIdAsync()
         {
             using (var connection = GetOpenConnection())
             {
                 var id = connection.Insert(new User { Name = "UserAsyncDelete", Age = 10 });
-                await connection.DeleteAsync<User>(id);
+                await connection.DeleteAsync<User>(id, null, null);
                 //tiny wait to let the delete happen
                 connection.Get<User>(id).IsNull();
             }
@@ -838,7 +837,7 @@ namespace Dapper.SimpleCRUDTests
             {
                 var id = connection.Insert(new User { Name = "TestDeleteByObjectAsync", Age = 10 });
                 var user = connection.Get<User>(id);
-                connection.DeleteAsync(user);
+                connection.DeleteAsync(user, null, null);
                 connection.Get<User>(id).IsNull();
                 connection.Delete<User>(id);
             }
@@ -863,7 +862,7 @@ namespace Dapper.SimpleCRUDTests
             {
                 connection.Insert(new User { Name = "TestSimpleGetListAsync1", Age = 10 });
                 connection.Insert(new User { Name = "TestSimpleGetListAsync2", Age = 10 });
-                var user = connection.GetListAsync<User>(new { });
+                var user = connection.GetListAsync<User>(new { }, null, null);
                 user.Result.Count().IsEqualTo(2);
                 connection.Execute("Delete from Users");
             }
@@ -878,7 +877,7 @@ namespace Dapper.SimpleCRUDTests
                 connection.Insert(new User { Name = "TestFilteredGetListAsync3", Age = 10 });
                 connection.Insert(new User { Name = "TestFilteredGetListAsync4", Age = 11 });
 
-                var user = connection.GetListAsync<User>(new { Age = 10 });
+                var user = connection.GetListAsync<User>(new { Age = 10 }, null, null);
                 user.Result.Count().IsEqualTo(3);
                 connection.Execute("Delete from Users");
             }
@@ -893,7 +892,7 @@ namespace Dapper.SimpleCRUDTests
                 connection.Insert(new User { Name = "TestFilteredGetListParametersAsync3", Age = 10 });
                 connection.Insert(new User { Name = "TestFilteredGetListParametersAsync4", Age = 11 });
 
-                var user = connection.GetListAsync<User>("where Age = @Age", new { Age = 10 });
+                var user = connection.GetListAsync<User>("where Age = @Age", new { Age = 10 }, null, null);
                 user.Result.Count().IsEqualTo(3);
                 connection.Execute("Delete from Users");
             }
@@ -912,9 +911,9 @@ namespace Dapper.SimpleCRUDTests
 
                 var resultlist = connection.GetList<User>();
                 resultlist.Count().IsEqualTo(30);
-                connection.RecordCountAsync<User>().Result.IsEqualTo(30);
+                connection.RecordCountAsync<User>("", (object)null, null, null).Result.IsEqualTo(30);
 
-                connection.RecordCountAsync<User>("where age = 10 or age = 11").Result.IsEqualTo(2);
+                connection.RecordCountAsync<User>("where age = 10 or age = 11", (object)null, null, null).Result.IsEqualTo(2);
 
 
                 connection.Execute("Delete from Users");
@@ -935,9 +934,9 @@ namespace Dapper.SimpleCRUDTests
 
                 var resultlist = connection.GetList<User>();
                 resultlist.Count().IsEqualTo(30);
-                connection.RecordCountAsync<User>().Result.IsEqualTo(30);
+                connection.RecordCountAsync<User>("", (object)null, null, null).Result.IsEqualTo(30);
 
-                connection.RecordCountAsync<User>(new { age = 10 }).Result.IsEqualTo(1);
+                connection.RecordCountAsync<User>(new { age = 10 }, null, null).Result.IsEqualTo(1);
 
 
                 connection.Execute("Delete from Users");
@@ -949,22 +948,22 @@ namespace Dapper.SimpleCRUDTests
         {
             using (var connection = GetOpenConnection())
             {
-                var id = connection.InsertAsync(new UserWithoutAutoIdentity() { Id = 999, Name = "User999Async", Age = 10 });
+                var id = connection.InsertAsync(new UserWithoutAutoIdentity() { Id = 999, Name = "User999Async", Age = 10 }, null, null);
                 id.Result.IsEqualTo(999);
-                var user = connection.GetAsync<UserWithoutAutoIdentity>(999);
+                var user = connection.GetAsync<UserWithoutAutoIdentity>(999, null, null);
                 user.Result.Name.IsEqualTo("User999Async");
                 connection.Execute("Delete from UserWithoutAutoIdentity");
             }
         }
 
 
-        public async void TestInsertWithMultiplePrimaryKeysAsync()
+        public async Task TestInsertWithMultiplePrimaryKeysAsync()
         {
             using (var connection = GetOpenConnection())
             {
                 var keyMaster = new KeyMaster { Key1 = 1, Key2 = 2 };
-                await connection.InsertAsync(keyMaster);
-                var result = connection.GetAsync<KeyMaster>(new { Key1 = 1, Key2 = 2 });
+                await connection.InsertAsync(keyMaster, null, null);
+                var result = connection.GetAsync<KeyMaster>(new { Key1 = 1, Key2 = 2 }, null, null);
                 result.Result.Key1.IsEqualTo(1);
                 result.Result.Key2.IsEqualTo(2);
                 connection.Execute("Delete from KeyMaster");
@@ -978,7 +977,7 @@ namespace Dapper.SimpleCRUDTests
                 var user = new User { Name = "User1", Age = 10, ScheduledDayOff = DayOfWeek.Friday };
 
                 //act
-                var idTask = connection.InsertAsync<int?, UserEditableSettings>(user);
+                var idTask = connection.InsertAsync<int?, UserEditableSettings>(user, null, null);
                 idTask.Wait();
                 var id = idTask.Result;
 
@@ -1345,7 +1344,7 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-        public async void TestInsertAsyncUsingInterface()
+        public async Task TestInsertAsyncUsingInterface()
         {
             using (var connection = GetOpenConnection())
             using (var transaction = connection.BeginTransaction())
@@ -1358,11 +1357,266 @@ namespace Dapper.SimpleCRUDTests
                     CreatedDate = new DateTime(2000, 1, 1)
                 };
 
-                await connection.InsertAsync(newUser, transaction);
-                
+                await connection.InsertAsync(newUser, transaction, null);
+
                 var user = connection.GetList<UserWithIName>(new { Name = "Jonathan Larouche" }, transaction).FirstOrDefault();
                 user.Age.IsEqualTo(40);
 
+            }
+        }
+
+        public async Task TestInsertAsyncWithCancellationToken()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                // Test that cancellation token parameter is accepted and method completes successfully
+                using (var cts = new System.Threading.CancellationTokenSource())
+                {
+                    var user = new User { Name = "TestInsertAsyncWithCancellationToken", Age = 25 };
+
+                    // Test the simple InsertAsync method with cancellation token
+                    var id = await connection.InsertAsync(user, token: cts.Token);
+                    id.HasValue.IsTrue();
+
+                    // Verify the user was inserted
+                    var insertedUser = connection.Get<User>(id);
+                    insertedUser.Name.IsEqualTo("TestInsertAsyncWithCancellationToken");
+                    insertedUser.Age.IsEqualTo(25);
+
+                    // Clean up
+                    connection.Delete<User>(id);
+                }
+            }
+        }
+
+        public async Task TestInsertAsyncGenericWithCancellationToken()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                // Test that cancellation token parameter is accepted for generic InsertAsync method
+                using (var cts = new System.Threading.CancellationTokenSource())
+                {
+                    var car = new Car { Make = "Toyota", Model = "Camry" };
+
+                    // Test the generic InsertAsync method with cancellation token
+                    var id = await connection.InsertAsync<int, Car>(car, token: cts.Token);
+                    (id > 0).IsEqualTo(true);
+
+                    // Verify the car was inserted
+                    var insertedCar = connection.Get<Car>(id);
+                    insertedCar.Make.IsEqualTo("Toyota");
+                    insertedCar.Model.IsEqualTo("Camry");
+
+                    // Clean up
+                    connection.Delete<Car>(id);
+                }
+            }
+        }
+
+        public async Task TestGetAsyncWithCancellationToken()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                using (var cts = new System.Threading.CancellationTokenSource())
+                {
+                    var id = connection.Insert(new User { Name = "TestGetAsyncWithCancellationToken", Age = 30 });
+
+                    // Test GetAsync with cancellation token using new overload
+                    var user = await connection.GetAsync<User>(id, null, null, cts.Token);
+                    user.Name.IsEqualTo("TestGetAsyncWithCancellationToken");
+                    user.Age.IsEqualTo(30);
+
+                    connection.Delete<User>(id);
+                }
+            }
+        }
+
+        public async Task TestGetListAsyncWithCancellationToken()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                using (var cts = new System.Threading.CancellationTokenSource())
+                {
+                    connection.Insert(new User { Name = "TestGetListAsync1", Age = 35 });
+                    connection.Insert(new User { Name = "TestGetListAsync2", Age = 35 });
+
+                    // Test GetListAsync with object conditions and cancellation token using new overload
+                    var users = await connection.GetListAsync<User>(new { Age = 35 }, null, null, cts.Token);
+                    users.Count().IsEqualTo(2);
+
+                    // Test GetListAsync with string conditions and cancellation token
+                    var users2 = await connection.GetListAsync<User>("where Age = @Age", new { Age = 35 }, token: cts.Token);
+                    users2.Count().IsEqualTo(2);
+
+                    // Test GetListAsync with no conditions - use original method for now
+                    var allUsers = await connection.GetListAsync<User>();
+                    (allUsers.Count() >= 2).IsEqualTo(true);
+
+                    connection.Execute("Delete from Users where Age = 35");
+                }
+            }
+        }
+
+        public async Task TestGetListPagedAsyncWithCancellationToken()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                using (var cts = new System.Threading.CancellationTokenSource())
+                {
+                    // Insert test data
+                    for (int i = 1; i <= 10; i++)
+                    {
+                        connection.Insert(new User { Name = $"TestPaged{i}", Age = 40 + i });
+                    }
+
+                    // Test GetListPagedAsync with cancellation token
+                    var pagedUsers = await connection.GetListPagedAsync<User>(1, 5, "where Age > @MinAge", "Age", new { MinAge = 40 }, token: cts.Token);
+                    pagedUsers.Count().IsEqualTo(5);
+
+                    connection.Execute("Delete from Users where Name like 'TestPaged%'");
+                }
+            }
+        }
+
+        public async Task TestUpdateAsyncWithCancellationToken()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                using (var cts = new System.Threading.CancellationTokenSource())
+                {
+                    var id = connection.Insert(new User { Name = "TestUpdateAsync", Age = 40 });
+                    var user = connection.Get<User>(id);
+                    user.Age = 41;
+
+                    // Test UpdateAsync with cancellation token
+                    var rowsAffected = await connection.UpdateAsync(user, token: cts.Token);
+                    rowsAffected.IsEqualTo(1);
+
+                    var updatedUser = connection.Get<User>(id);
+                    updatedUser.Age.IsEqualTo(41);
+
+                    connection.Delete<User>(id);
+                }
+            }
+        }
+
+        public async Task TestDeleteAsyncWithCancellationToken()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                using (var cts = new System.Threading.CancellationTokenSource())
+                {
+                    var id = connection.Insert(new User { Name = "TestDeleteAsync", Age = 45 });
+                    var user = connection.Get<User>(id);
+
+                    // Test DeleteAsync with entity and cancellation token
+                    var rowsAffected = await connection.DeleteAsync(user, token: cts.Token);
+                    rowsAffected.IsEqualTo(1);
+
+                    var deletedUser = connection.Get<User>(id);
+                    deletedUser.IsNull();
+                }
+            }
+        }
+
+        public async Task TestDeleteAsyncByIdWithCancellationToken()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                using (var cts = new System.Threading.CancellationTokenSource())
+                {
+                    var id = connection.Insert(new User { Name = "TestDeleteAsyncById", Age = 50 });
+
+                    // Test DeleteAsync with id and cancellation token
+                    var rowsAffected = await connection.DeleteAsync<User>(id, token: cts.Token);
+                    rowsAffected.IsEqualTo(1);
+
+                    var deletedUser = connection.Get<User>(id);
+                    deletedUser.IsNull();
+                }
+            }
+        }
+
+        public async Task TestDeleteListAsyncWithCancellationToken()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                using (var cts = new System.Threading.CancellationTokenSource())
+                {
+                    connection.Insert(new User { Name = "TestDeleteList1", Age = 55 });
+                    connection.Insert(new User { Name = "TestDeleteList2", Age = 55 });
+                    connection.Insert(new User { Name = "TestDeleteList3", Age = 56 });
+
+                    // Test DeleteListAsync with object conditions and cancellation token
+                    var rowsAffected = await connection.DeleteListAsync<User>(new { Age = 55 }, token: cts.Token);
+                    rowsAffected.IsEqualTo(2);
+
+                    var remainingUsers = connection.GetList<User>(new { Age = 55 });
+                    remainingUsers.Count().IsEqualTo(0);
+
+                    // Clean up remaining test data
+                    connection.Execute("Delete from Users where Age = 56");
+                }
+            }
+        }
+
+        public async Task TestDeleteListAsyncWithStringConditionsAndCancellationToken()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                using (var cts = new System.Threading.CancellationTokenSource())
+                {
+                    connection.Insert(new User { Name = "TestDeleteString1", Age = 57 });
+                    connection.Insert(new User { Name = "TestDeleteString2", Age = 57 });
+
+                    // Test DeleteListAsync with string conditions and cancellation token
+                    var rowsAffected = await connection.DeleteListAsync<User>("where Age = @Age", new { Age = 57 }, token: cts.Token);
+                    rowsAffected.IsEqualTo(2);
+
+                    var remainingUsers = connection.GetList<User>(new { Age = 57 });
+                    remainingUsers.Count().IsEqualTo(0);
+                }
+            }
+        }
+
+        public async Task TestRecordCountAsyncWithCancellationToken()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                using (var cts = new System.Threading.CancellationTokenSource())
+                {
+                    connection.Insert(new User { Name = "TestRecordCount1", Age = 60 });
+                    connection.Insert(new User { Name = "TestRecordCount2", Age = 60 });
+                    connection.Insert(new User { Name = "TestRecordCount3", Age = 61 });
+
+                    // Test RecordCountAsync with string conditions and cancellation token
+                    var count1 = await connection.RecordCountAsync<User>("where Age = @Age", new { Age = 60 }, token: cts.Token);
+                    count1.IsEqualTo(2);
+
+                    // Test RecordCountAsync with no conditions and cancellation token
+                    var totalCount = await connection.RecordCountAsync<User>(token: cts.Token);
+                    (totalCount >= 3).IsEqualTo(true);
+
+                    connection.Execute("Delete from Users where Age in (60, 61)");
+                }
+            }
+        }
+
+        public async Task TestRecordCountAsyncWithObjectConditionsAndCancellationToken()
+        {
+            using (var connection = GetOpenConnection())
+            {
+                using (var cts = new System.Threading.CancellationTokenSource())
+                {
+                    connection.Insert(new User { Name = "TestRecordCountObj1", Age = 62 });
+                    connection.Insert(new User { Name = "TestRecordCountObj2", Age = 62 });
+
+                    // Test RecordCountAsync with object conditions and cancellation token
+                    var count = await connection.RecordCountAsync<User>(new { Age = 62 }, token: cts.Token);
+                    count.IsEqualTo(2);
+
+                    connection.Execute("Delete from Users where Age = 62");
+                }
             }
         }
 
@@ -1401,7 +1655,7 @@ namespace Dapper.SimpleCRUDTests
             }
         }
 
-        public async void TestUpdateAsyncUsingInterface()
+        public async Task TestUpdateAsyncUsingInterface()
         {
             using (var connection = GetOpenConnection())
             using (var transaction = connection.BeginTransaction())
