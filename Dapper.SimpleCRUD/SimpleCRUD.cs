@@ -29,6 +29,10 @@ namespace Dapper
         private static readonly ConcurrentDictionary<Type, string> TableNames = new ConcurrentDictionary<Type, string>();
         private static readonly ConcurrentDictionary<string, string> ColumnNames = new ConcurrentDictionary<string, string>();
 
+        //property lists depend only on the type (not on the dialect or the name resolvers), so they are computed once per type
+        private static readonly ConcurrentDictionary<Type, PropertyInfo[]> ScaffoldableProperties = new ConcurrentDictionary<Type, PropertyInfo[]>();
+        private static readonly ConcurrentDictionary<Type, PropertyInfo[]> IdProperties = new ConcurrentDictionary<Type, PropertyInfo[]>();
+
         private static readonly ConcurrentDictionary<string, string> StringBuilderCacheDict = new ConcurrentDictionary<string, string>();
         private static bool StringBuilderCacheEnabled = true;
 
@@ -156,7 +160,7 @@ namespace Dapper
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
+            BuildSelect<T>(sb);
             sb.AppendFormat(" from {0} where ", name);
 
             for (var i = 0; i < idProps.Count; i++)
@@ -203,7 +207,7 @@ namespace Dapper
             var whereprops = GetAllProperties(whereConditions).ToArray();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
+            BuildSelect<T>(sb);
             sb.AppendFormat(" from {0}", name);
 
             if (whereprops.Any())
@@ -241,7 +245,7 @@ namespace Dapper
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
+            BuildSelect<T>(sb);
             sb.AppendFormat(" from {0}", name);
 
             sb.Append(" " + conditions);
@@ -306,7 +310,7 @@ namespace Dapper
             }
 
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
+            BuildSelect<T>(sb);
             query = query.Replace("{SelectColumns}", sb.ToString());
             query = query.Replace("{TableName}", name);
             query = query.Replace("{PageNumber}", pageNumber.ToString());
@@ -715,10 +719,11 @@ namespace Dapper
         }
 
         //build select clause based on list of properties skipping ones with the IgnoreSelect and NotMapped attribute
-        private static void BuildSelect(StringBuilder masterSb, IEnumerable<PropertyInfo> props)
+        private static void BuildSelect<T>(StringBuilder masterSb)
         {
-            StringBuilderCache(masterSb, $"{props.CacheKey()}_BuildSelect", sb =>
+            StringBuilderCache(masterSb, $"{typeof(T).FullName}_BuildSelect", sb =>
             {
+                var props = GetScaffoldableProperties<T>();
                 var propertyInfos = props as IList<PropertyInfo> ?? props.ToList();
                 var addedAny = false;
                 for (var i = 0; i < propertyInfos.Count(); i++)
@@ -853,15 +858,18 @@ namespace Dapper
         //Get all properties that are not decorated with the Editable(false) attribute
         private static IEnumerable<PropertyInfo> GetScaffoldableProperties<T>()
         {
-            IEnumerable<PropertyInfo> props = typeof(T).GetProperties();
+            return ScaffoldableProperties.GetOrAdd(typeof(T), type =>
+            {
+                IEnumerable<PropertyInfo> props = type.GetProperties();
 
-            props = props.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(EditableAttribute).Name && !IsEditable(p)) == false);
+                props = props.Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(EditableAttribute).Name && !IsEditable(p)) == false);
 
-            return props.Where(p =>
-                p.PropertyType.IsSimpleType()
-                || IsEditable(p)
-                || IsConvertible(p)
-                || IsDefinedColumn(p));
+                return props.Where(p =>
+                    p.PropertyType.IsSimpleType()
+                    || IsEditable(p)
+                    || IsConvertible(p)
+                    || IsDefinedColumn(p)).ToArray();
+            });
         }
 
         //Determine if the Attribute has an AllowEdit key and return its boolean state
@@ -926,8 +934,11 @@ namespace Dapper
         //For Get(id) and Delete(id) we don't have an entity, just the type so this method is used
         private static IEnumerable<PropertyInfo> GetIdProperties(Type type)
         {
-            var tp = type.GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)).ToList();
-            return tp.Any() ? tp : type.GetProperties().Where(p => p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase));
+            return IdProperties.GetOrAdd(type, t =>
+            {
+                var tp = t.GetProperties().Where(p => p.GetCustomAttributes(true).Any(attr => attr.GetType().Name == typeof(KeyAttribute).Name)).ToArray();
+                return tp.Any() ? tp : t.GetProperties().Where(p => p.Name.Equals("Id", StringComparison.OrdinalIgnoreCase)).ToArray();
+            });
         }
 
         //Gets the table name for this entity

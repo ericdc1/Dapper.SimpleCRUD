@@ -39,7 +39,7 @@ namespace Dapper
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
+            BuildSelect<T>(sb);
             sb.AppendFormat(" from {0} where ", name);
 
             for (var i = 0; i < idProps.Count; i++)
@@ -87,7 +87,7 @@ namespace Dapper
             var whereprops = GetAllProperties(whereConditions).ToArray();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
+            BuildSelect<T>(sb);
             sb.AppendFormat(" from {0}", name);
 
             if (whereprops.Any())
@@ -125,7 +125,7 @@ namespace Dapper
             var sb = new StringBuilder();
             sb.Append("Select ");
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
+            BuildSelect<T>(sb);
             sb.AppendFormat(" from {0}", name);
 
             sb.Append(" " + conditions);
@@ -186,7 +186,7 @@ namespace Dapper
             }
 
             //create a new empty instance of the type to get the base properties
-            BuildSelect(sb, GetScaffoldableProperties<T>().ToArray());
+            BuildSelect<T>(sb);
             query = query.Replace("{SelectColumns}", sb.ToString());
             query = query.Replace("{TableName}", name);
             query = query.Replace("{PageNumber}", pageNumber.ToString());
