@@ -71,6 +71,7 @@ namespace Dapper
         /// <param name="dialect"></param>
         public static void SetDialect(Dialect dialect)
         {
+            var previous = _dialect;
             switch (dialect)
             {
                 case Dialect.PostgreSQL:
@@ -110,6 +111,17 @@ namespace Dapper
                     _getPagedListSql = "SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY {OrderBy}) AS PagedNumber, {SelectColumns} FROM {TableName} {WhereClause}) AS u WHERE PagedNumber BETWEEN (({PageNumber}-1) * {RowsPerPage} + 1) AND ({PageNumber} * {RowsPerPage})";
                     break;
             }
+
+            //cached names and SQL fragments embed the old dialect's quoting; rebuild them only on a real change,
+            //so calling SetDialect every time a connection is opened keeps the caches warm
+            if (_dialect != previous) ClearCaches();
+        }
+
+        private static void ClearCaches()
+        {
+            TableNames.Clear();
+            ColumnNames.Clear();
+            StringBuilderCacheDict.Clear();
         }
 
         /// <summary>
@@ -118,7 +130,9 @@ namespace Dapper
         /// <param name="resolver">The resolver to use when requesting the format of a table name</param>
         public static void SetTableNameResolver(ITableNameResolver resolver)
         {
+            if (ReferenceEquals(_tableNameResolver, resolver)) return;
             _tableNameResolver = resolver;
+            ClearCaches();
         }
 
         /// <summary>
@@ -127,7 +141,9 @@ namespace Dapper
         /// <param name="resolver">The resolver to use when requesting the format of a column name</param>
         public static void SetColumnNameResolver(IColumnNameResolver resolver)
         {
+            if (ReferenceEquals(_columnNameResolver, resolver)) return;
             _columnNameResolver = resolver;
+            ClearCaches();
         }
 
         /// <summary>

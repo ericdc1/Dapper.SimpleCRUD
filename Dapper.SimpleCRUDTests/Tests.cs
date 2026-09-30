@@ -752,6 +752,39 @@ namespace Dapper.SimpleCRUDTests
             SimpleCRUD.GetDialect().IsEqualTo(SimpleCRUD.Dialect.PostgreSQL.ToString());
         }
 
+        public void TestChangeDialectRebuildsCachedNames()
+        {
+            var resolver = new CountingTableNameResolver();
+            SimpleCRUD.SetTableNameResolver(resolver);
+            using (var connection = GetOpenConnection())
+            {
+                connection.RecordCount<User>();
+                connection.RecordCount<User>();
+                resolver.Calls.IsEqualTo(1); //second call is served from the cache
+
+                SimpleCRUD.SetDialect(_dbtype); //same dialect: cache is kept
+                connection.RecordCount<User>();
+                resolver.Calls.IsEqualTo(1);
+
+                var other = _dbtype == SimpleCRUD.Dialect.SQLServer ? SimpleCRUD.Dialect.PostgreSQL : SimpleCRUD.Dialect.SQLServer;
+                SimpleCRUD.SetDialect(other); //a real switch rebuilds names with the new quoting
+                SimpleCRUD.SetDialect(_dbtype);
+                connection.RecordCount<User>();
+                resolver.Calls.IsEqualTo(2);
+            }
+            SimpleCRUD.SetTableNameResolver(new SimpleCRUD.TableNameResolver());
+        }
+
+        private class CountingTableNameResolver : SimpleCRUD.TableNameResolver
+        {
+            public int Calls;
+            public override string ResolveTableName(Type type)
+            {
+                Calls++;
+                return base.ResolveTableName(type);
+            }
+        }
+
 
         //        A GUID is being created and returned on insert but never actually
         //applied to the insert query.
